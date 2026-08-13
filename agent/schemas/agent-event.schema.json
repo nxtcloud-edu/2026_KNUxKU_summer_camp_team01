@@ -1,336 +1,74 @@
 {
   "title": "AgentEvent",
-  "description": "에이전트 서버가 SSE로 보내는 단위 이벤트. contract.md 3~4절이 원본이다. 이 스키마는 봉투와 이벤트별 필드 형식만 검증하고, 작업별 payload 내용은 task-io.schema.json이 담당한다. JSON Schema draft 2020-12 문법을 사용한다.",
-  "x-contract-version": "v1.0-draft",
-  "x-dialect": "draft/2020-12",
-
+  "description": "에이전트가 SSE data 필드로 보내는 공통 전송 이벤트. Handoff payload 계약과 분리한다.",
   "type": "object",
   "required": ["seq", "at", "type"],
   "properties": {
-    "seq": {
-      "type": "integer",
-      "minimum": 0,
-      "description": "스트림 내 순번. 0부터 1씩 증가. 건너뛰거나 되돌아가지 않는다."
-    },
-    "at": {
-      "type": "integer",
-      "minimum": 0,
-      "description": "스트림 시작 기준 경과 밀리초. 단조 증가(같은 값 허용)."
-    },
-    "type": {
-      "enum": [
-        "status",
-        "thought",
-        "tool_call",
-        "tool_result",
-        "partial",
-        "check_update",
-        "progress",
-        "done",
-        "error"
-      ]
-    }
+    "seq": { "type": "integer", "minimum": 0 },
+    "at": { "type": "integer", "minimum": 0 },
+    "type": { "enum": ["status", "progress", "done", "error"] }
   },
-
-  "allOf": [{ "$ref": "#/$defs/byType" }],
-
+  "oneOf": [
+    { "$ref": "#/$defs/StatusEvent" },
+    { "$ref": "#/$defs/ProgressEvent" },
+    { "$ref": "#/$defs/DoneEvent" },
+    { "$ref": "#/$defs/ErrorEvent" }
+  ],
   "$defs": {
-    "byType": {
-      "oneOf": [
-        { "$ref": "#/$defs/statusEvent" },
-        { "$ref": "#/$defs/thoughtEvent" },
-        { "$ref": "#/$defs/toolCallEvent" },
-        { "$ref": "#/$defs/toolResultEvent" },
-        { "$ref": "#/$defs/partialEvent" },
-        { "$ref": "#/$defs/checkUpdateEvent" },
-        { "$ref": "#/$defs/progressEvent" },
-        { "$ref": "#/$defs/doneEvent" },
-        { "$ref": "#/$defs/errorEvent" }
-      ]
-    },
-
-    "plainText": {
-      "type": "string",
-      "description": "사용자에게 표시되는 한국어 텍스트. 개행·마크다운·HTML 금지 (contract.md 7.6절).",
-      "not": { "pattern": "[\\n\\r]|\\*\\*|<[a-zA-Z/]" }
-    },
-
-    "shortId": {
-      "type": "string",
-      "pattern": "^[A-Za-z0-9_-]{1,64}$",
-      "description": "공백·슬래시·물음표·샵 금지. URL 쿼리에 그대로 들어간다."
-    },
-
-    "statusEvent": {
+    "Base": {
       "type": "object",
+      "required": ["seq", "at", "type"],
+      "properties": {
+        "seq": { "type": "integer", "minimum": 0 },
+        "at": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "StatusEvent": {
+      "type": "object",
+      "additionalProperties": false,
       "required": ["seq", "at", "type", "text"],
-      "additionalProperties": false,
       "properties": {
-        "seq": true,
-        "at": true,
+        "seq": { "type": "integer", "minimum": 0 },
+        "at": { "type": "integer", "minimum": 0 },
         "type": { "const": "status" },
-        "text": {
-          "allOf": [{ "$ref": "#/$defs/plainText" }],
-          "minLength": 1,
-          "maxLength": 30,
-          "description": "패널 헤더 한 줄. 권고 20자 이내."
-        }
+        "text": { "type": "string", "minLength": 1, "maxLength": 100 }
       }
     },
-
-    "thoughtEvent": {
+    "ProgressEvent": {
       "type": "object",
-      "required": ["seq", "at", "type", "id", "text", "done"],
       "additionalProperties": false,
-      "properties": {
-        "seq": true,
-        "at": true,
-        "type": { "const": "thought" },
-        "id": { "$ref": "#/$defs/shortId" },
-        "text": {
-          "allOf": [{ "$ref": "#/$defs/plainText" }],
-          "maxLength": 200,
-          "description": "누적 전체 텍스트(델타 아님). 권고 120자 이내."
-        },
-        "done": { "type": "boolean" }
-      }
-    },
-
-    "toolCallEvent": {
-      "type": "object",
-      "required": ["seq", "at", "type", "id", "name", "label"],
-      "additionalProperties": false,
-      "properties": {
-        "seq": true,
-        "at": true,
-        "type": { "const": "tool_call" },
-        "id": { "$ref": "#/$defs/shortId" },
-        "name": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_]{1,39}$",
-          "description": "도구 이름. snake_case 영문."
-        },
-        "label": {
-          "allOf": [{ "$ref": "#/$defs/plainText" }],
-          "minLength": 1,
-          "maxLength": 30,
-          "description": "한국어 진행 문구. 권고 20자 이내."
-        },
-        "args": {
-          "type": "object",
-          "description": "디버깅용. 프론트는 화면에 표시하지 않는다. 비밀·대용량 금지."
-        }
-      }
-    },
-
-    "toolResultEvent": {
-      "type": "object",
-      "required": ["seq", "at", "type", "id", "label", "ok"],
-      "additionalProperties": false,
-      "properties": {
-        "seq": true,
-        "at": true,
-        "type": { "const": "tool_result" },
-        "id": {
-          "allOf": [{ "$ref": "#/$defs/shortId" }],
-          "description": "대응 tool_call의 id. 짝 없는 결과 금지."
-        },
-        "label": {
-          "allOf": [{ "$ref": "#/$defs/plainText" }],
-          "minLength": 1,
-          "maxLength": 30
-        },
-        "ok": { "type": "boolean" },
-        "count": { "type": "integer", "minimum": 0 },
-        "detail": {
-          "allOf": [{ "$ref": "#/$defs/plainText" }],
-          "maxLength": 200
-        }
-      }
-    },
-
-    "partialEvent": {
-      "type": "object",
-      "required": ["seq", "at", "type", "payload"],
-      "additionalProperties": false,
-      "properties": {
-        "seq": true,
-        "at": true,
-        "type": { "const": "partial" },
-        "payload": {
-          "type": "object",
-          "required": ["id"],
-          "description": "완전한 1건. flightSearch=FlightOffer, staySearch=StayOffer, placeDiscovery=Place, itineraryGenerate=ItineraryDay. cityInfo와 itineraryVerify는 사용하지 않는다.",
-          "properties": { "id": { "type": "string", "minLength": 1 } }
-        }
-      }
-    },
-
-    "checkUpdateEvent": {
-      "type": "object",
-      "required": ["seq", "at", "type", "check"],
-      "additionalProperties": false,
-      "properties": {
-        "seq": true,
-        "at": true,
-        "type": { "const": "check_update" },
-        "check": { "$ref": "#/$defs/verificationCheck" }
-      }
-    },
-
-    "progressEvent": {
-      "type": "object",
       "required": ["seq", "at", "type", "value"],
-      "additionalProperties": false,
       "properties": {
-        "seq": true,
-        "at": true,
+        "seq": { "type": "integer", "minimum": 0 },
+        "at": { "type": "integer", "minimum": 0 },
         "type": { "const": "progress" },
         "value": { "type": "number", "minimum": 0, "maximum": 1 }
       }
     },
-
-    "doneEvent": {
+    "DoneEvent": {
       "type": "object",
-      "required": ["seq", "at", "type", "payload"],
       "additionalProperties": false,
+      "required": ["seq", "at", "type", "payload"],
       "properties": {
-        "seq": true,
-        "at": true,
+        "seq": { "type": "integer", "minimum": 0 },
+        "at": { "type": "integer", "minimum": 0 },
         "type": { "const": "done" },
-        "payload": {
-          "type": ["array", "object"],
-          "description": "작업별 출력 전체. 배열(FlightOffer[]/StayOffer[]/Place[]) 또는 객체(CityInfo/Itinerary/VerificationReport)."
-        },
-        "summary": {
-          "allOf": [{ "$ref": "#/$defs/plainText" }],
-          "maxLength": 80,
-          "description": "결과 요약 한 문장. 권고 60자 이내."
-        }
+        "payload": { "type": ["object", "array"] },
+        "summary": { "type": "string", "maxLength": 200 }
       }
     },
-
-    "errorEvent": {
+    "ErrorEvent": {
       "type": "object",
-      "required": ["seq", "at", "type", "code", "message", "retryable"],
       "additionalProperties": false,
+      "required": ["seq", "at", "type", "code", "message", "retryable"],
       "properties": {
-        "seq": true,
-        "at": true,
+        "seq": { "type": "integer", "minimum": 0 },
+        "at": { "type": "integer", "minimum": 0 },
         "type": { "const": "error" },
-        "code": {
-          "enum": [
-            "network",
-            "timeout",
-            "no_results",
-            "invalid_input",
-            "rate_limit",
-            "agent_failed"
-          ],
-          "description": "aborted는 프론트가 생성한다. 서버가 보내지 않는다 (contract.md 2.6절)."
-        },
-        "message": {
-          "allOf": [{ "$ref": "#/$defs/plainText" }],
-          "minLength": 1,
-          "maxLength": 200,
-          "description": "사용자에게 보여도 되는 한국어. 스택 트레이스·영문 예외 금지."
-        },
+        "code": { "enum": ["invalid_input", "timeout", "rate_limit", "agent_failed"] },
+        "message": { "type": "string", "minLength": 1, "maxLength": 200 },
         "retryable": { "type": "boolean" }
       }
-    },
-
-    "verificationCheck": {
-      "type": "object",
-      "required": [
-        "id",
-        "ruleId",
-        "label",
-        "description",
-        "status",
-        "severity",
-        "targetRefs",
-        "message",
-        "evidence"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "allOf": [{ "$ref": "#/$defs/shortId" }],
-          "description": "스트림 내에서 규칙당 고정. ruleId와 같게 두는 것을 권고."
-        },
-        "ruleId": {
-          "enum": ["V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10"]
-        },
-        "label": {
-          "enum": [
-            "영업시간 · 휴관일",
-            "이동 시간 실현성",
-            "항공 도착 · 출발 여유",
-            "숙소 체크인 · 체크아웃",
-            "하루 일정량",
-            "예산",
-            "접근성",
-            "관심사 반영",
-            "사전 예약 필요",
-            "시즌 · 날씨"
-          ],
-          "description": "contract.md 6.5절의 문구를 그대로. 프론트 체크리스트 행 라벨."
-        },
-        "description": {
-          "allOf": [{ "$ref": "#/$defs/plainText" }],
-          "minLength": 1,
-          "maxLength": 120
-        },
-        "status": { "enum": ["pending", "running", "done"] },
-        "severity": { "enum": ["pass", "warning", "conflict", "skipped"] },
-        "targetRefs": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": ["dayIndex"],
-            "additionalProperties": false,
-            "properties": {
-              "dayIndex": { "type": "integer", "minimum": 0 },
-              "itemId": { "type": "string", "minLength": 1 }
-            }
-          }
-        },
-        "message": {
-          "allOf": [{ "$ref": "#/$defs/plainText" }],
-          "maxLength": 60,
-          "description": "결과 한 줄. status가 done이 아니면 빈 문자열."
-        },
-        "evidence": {
-          "type": "array",
-          "items": {
-            "allOf": [{ "$ref": "#/$defs/plainText" }],
-            "maxLength": 100
-          },
-          "description": "근거 로그. 접두 규약은 contract.md 4.6절."
-        },
-        "startedAt": {
-          "type": "number",
-          "minimum": 0,
-          "description": "스트림 시작 기준 경과 ms. at과 같은 기준. 유닉스 타임스탬프 금지."
-        },
-        "finishedAt": { "type": "number", "minimum": 0 }
-      },
-
-      "allOf": [
-        {
-          "description": "status가 done이 아니면 severity는 pass, message는 빈 문자열이어야 한다.",
-          "if": {
-            "required": ["status"],
-            "properties": { "status": { "not": { "const": "done" } } }
-          },
-          "then": {
-            "properties": {
-              "severity": { "const": "pass" },
-              "message": { "const": "" }
-            }
-          }
-        }
-      ]
     }
   }
 }
