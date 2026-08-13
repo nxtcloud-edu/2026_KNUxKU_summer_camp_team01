@@ -34,6 +34,8 @@ export const FLIGHTS: FlightOffer[] = [
 export const STAYS: StayOffer[] = [
   {
     id: 'gracery',
+    type: 'hotel',
+    features: ['central', 'station', 'attraction'],
     name: '호텔 그레이스리 신주쿠',
     area: '신주쿠',
     address: '1 Chome-19-1 Kabukicho, Shinjuku City, Tokyo 160-8466, Japan',
@@ -50,6 +52,8 @@ export const STAYS: StayOffer[] = [
   },
   {
     id: 'granbell',
+    type: 'hotel',
+    features: ['station', 'quiet'],
     name: '신주쿠 그란벨 호텔',
     area: '신주쿠',
     address: '2 Chome-14-5 Kabukicho, Shinjuku City, Tokyo 160-0021, Japan',
@@ -66,6 +70,8 @@ export const STAYS: StayOffer[] = [
   },
   {
     id: 'park-hyatt',
+    type: 'hotel',
+    features: ['central', 'quiet'],
     name: '파크 하이엇 도쿄',
     area: '니시신주쿠',
     address: '3 Chome-7-1-2 Nishi-shinjuku, Shinjuku City, Tokyo 163-1055, Japan',

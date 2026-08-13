@@ -33,7 +33,7 @@ function LocationSearch({ options, query, selectedId, placeholder, onQueryChange
         placeholder={placeholder}
         aria-label={placeholder}
       />
-      {query && !selected && (
+      {query && !selected && filtered.length > 0 && (
         <div className="city-search__menu">
           {filtered.map((item) => (
             <button key={item.id} onClick={() => { onSelect(item.id); onQueryChange(''); }}>
@@ -84,7 +84,7 @@ export function HomeScreen() {
             {messages.home.start}<ArrowRight size={16} />
           </button>
         </div>
-        <div className="popular-cities"><span>{messages.home.popular}</span>{CITIES.map((city) => <button key={city.id} onClick={() => start(city.id)}>{city.flag} {city.name}</button>)}</div>
+        <div className="popular-cities"><span>{messages.home.popular}</span>{CITIES.map((city) => <button key={city.id} onClick={() => { setSelectedCityId(city.id); setDestinationQuery(''); }}>{city.flag} {city.name}</button>)}</div>
       </section>
 
       <section className="trip-section">

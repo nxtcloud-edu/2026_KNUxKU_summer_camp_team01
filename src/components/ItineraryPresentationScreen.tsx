@@ -6,7 +6,8 @@ import { ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, Clock3, Navigation, 
 import { useEffect, useMemo, useState } from 'react';
 
 import { MapPanel } from '@/components/MapPanel';
-import { CITIES, PLACES, STAYS } from '@/lib/data';
+import { CITIES, STAYS } from '@/lib/data';
+import { getTripPlace, getTripPlaces } from '@/lib/places';
 import { useTripStore } from '@/lib/store';
 import type { ItineraryItem, Trip } from '@/lib/types';
 
@@ -62,7 +63,8 @@ export function ItineraryPresentationScreen() {
 
   const activeDay = days[activeDayIndex];
   const activeItem = activeDay?.items[activeStepIndex];
-  const activePlace = PLACES.find((place) => place.id === activeItem?.placeId);
+  const allPlaces = useMemo(() => trip ? getTripPlaces(trip) : [], [trip]);
+  const activePlace = trip ? getTripPlace(trip, activeItem?.placeId ?? '') : undefined;
   const city = CITIES.find((item) => item.id === trip?.destinationId);
   const stay = STAYS.find((item) => item.id === trip?.selectedStayId) ?? null;
   const dayPlaceIds = activeDay?.items.flatMap((item) => item.placeId ? [item.placeId] : []) ?? [];
@@ -109,6 +111,7 @@ export function ItineraryPresentationScreen() {
     <main className="presentation-page presentation-page--fullscreen">
       <section className="presentation-map" aria-label="일정 지도">
         <MapPanel
+          places={allPlaces}
           selectedIds={dayPlaceIds}
           activeId={activeItem?.placeId ?? null}
           onMarkerClick={(id) => {
