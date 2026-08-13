@@ -192,4 +192,151 @@ async def itinerary_generate(
     return _stream(events())
 
 
+@app.post("/agent/itineraryReplan")
+async def itinerary_replan(request: Request) -> StreamingResponse:
+    """검증 피드백(프롬프트)을 반영해 일정을 다시 만든다.
+
+    본문은 `SearchToPlanInput`에 두 필드가 더해진 형태다.
+
+        _feedback       자연어 피드백 프롬프트
+        _previous_plan  이전에 만든 PlanToVerificationInput
+
+    `SearchToPlanInput`은 `additionalProperties: false`이므로 두 필드를 먼저
+    떼어낸 뒤 검증한다. 계약 스키마를 느슨하게 만드는 대신 이렇게 한다.
+    """
+
+    from .models import PlanToVerificationInput
+    from .replan import replan_with_feedback
+
+    try:
+        body = await request.json()
+    except Exception:
+        async def bad_json() -> AsyncIterator[str]:
+            emitter = SseEmitter()
+            yield emitter.error(
+                code="invalid_input",
+                message="요청 본문이 JSON이 아니에요.",
+                retryable=False,
+            )
+
+        return _stream(bad_json())
+
+    async def events() -> AsyncIterator[str]:
+        emitter = SseEmitter()
+        try:
+            yield emitter.status("피드백을 확인하고 있어요")
+            yield emitter.progress(0.1)
+
+            feedback = str(body.pop("_feedback", "") or "")
+            previous_raw = body.pop("_previous_plan", None)
+
+            try:
+                source = SearchToPlanInput.model_validate(body)
+            except Exception as exc:
+                logger.warning("재계획 입력 검증 실패: %s", exc)
+                yield emitter.error(
+                    code="invalid_input",
+                    message="입력 형식이 계약과 맞지 않아요.",
+                    retryable=False,
+                )
+                return
+
+            if previous_raw is None:
+                # 이전 일정이 없으면 재계획이 아니라 새로 만드는 것이다.
+                logger.info("이전 일정이 없어 처음부터 계획합니다.")
+                result, diagnostics = await asyncio.wait_for(
+                    generate_itinerary(source),
+                    timeout=CONFIG.own_timeout_ms / 1000,
+                )
+                if result is None:
+                    reason = (
+                        diagnostics.violations[0].message
+                        if diagnostics.violations
+                        else "일정을 만들 수 없었어요."
+                    )
+                    yield emitter.error(
+                        code="agent_failed", message=reason, retryable=False
+                    )
+                    return
+                yield emitter.progress(1.0)
+                yield emitter.done(
+                    payload=result.model_dump(mode="json"),
+                    summary="일정을 새로 만들었어요.",
+                )
+                return
+
+            try:
+                previous = PlanToVerificationInput.model_validate(previous_raw)
+            except Exception as exc:
+                logger.warning("이전 일정 검증 실패: %s", exc)
+                yield emitter.error(
+                    code="invalid_input",
+                    message="이전 일정 형식이 계약과 맞지 않아요.",
+                    retryable=False,
+                )
+                return
+
+            yield emitter.status("일정을 다시 배치하고 있어요")
+            yield emitter.progress(0.5)
+
+            outcome = await asyncio.wait_for(
+                replan_with_feedback(previous, feedback, source),
+                timeout=CONFIG.own_timeout_ms / 1000,
+            )
+
+            if await request.is_disconnected():
+                return
+
+            if outcome.payload is None:
+                yield emitter.error(
+                    code="agent_failed",
+                    message="일정을 다시 만들지 못했어요.",
+                    retryable=True,
+                )
+                return
+
+            yield emitter.progress(1.0)
+            yield emitter.done(
+                payload=outcome.payload.model_dump(mode="json"),
+                summary=outcome.summary[:200],
+            )
+            logger.info(
+                "재계획 완료: 이동 %d건, 제거 %d건, 거부 %d건",
+                outcome.applied_moves,
+                outcome.applied_removals,
+                len(outcome.rejected),
+            )
+            for reason in outcome.rejected:
+                logger.info("  거부: %s", reason)
+
+        except asyncio.TimeoutError:
+            logger.error("재계획이 %dms를 초과했습니다.", CONFIG.own_timeout_ms)
+            if not emitter.terminated:
+                yield emitter.error(
+                    code="timeout",
+                    message="일정을 다시 만드는 데 오래 걸리고 있어요.",
+                    retryable=True,
+                )
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("재계획 중 예외")
+            if not emitter.terminated:
+                yield emitter.error(
+                    code="agent_failed",
+                    message="일정을 다시 만들지 못했어요.",
+                    retryable=True,
+                )
+        finally:
+            if not emitter.terminated:
+                logger.error("종료 이벤트 없이 스트림이 끝나려 했습니다.")
+                yield emitter.error(
+                    code="agent_failed",
+                    message="재계획이 예상치 못하게 중단됐어요.",
+                    retryable=True,
+                )
+
+    return _stream(events())
+
+
 __all__ = ["app"]

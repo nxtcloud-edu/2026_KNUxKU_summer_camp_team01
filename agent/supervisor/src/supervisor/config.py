@@ -80,9 +80,16 @@ class SupervisorConfig:
     plan_timeout_ms: int
     verification_timeout_ms: int
 
-    # 수락 검사 실패 시 재하달 횟수 상한.
+    # 수락 검사 실패 시 재하달 횟수 상한 (하위 구현이 계약을 어긴 경우).
     # 무한 반송을 막는다. 같은 입력에 같은 결과가 나오면 반복해도 달라지지 않는다.
     max_reissue: int
+
+    # 검증 실패 시 자동 재계획 횟수 (일정 품질 문제).
+    #
+    # 기본 1회다. 그 뒤로는 사용자가 요청할 때만 다시 계획한다. 자동으로 여러 번
+    # 돌리면 시간과 LLM 비용만 쓰고 결과는 크게 달라지지 않는다. 사용자가 결과를
+    # 보고 판단하는 것이 낫다 — 수락하면 넘어가고, 다시 요청하면 또 계획한다.
+    auto_replan: int
 
     @property
     def has_search_agent(self) -> bool:
@@ -110,6 +117,7 @@ def _build() -> SupervisorConfig:
         plan_timeout_ms=_get_int("PLAN_AGENT_TIMEOUT_MS", 20_000),
         verification_timeout_ms=_get_int("VERIFICATION_AGENT_TIMEOUT_MS", 15_000),
         max_reissue=_get_int("SUPERVISOR_MAX_REISSUE", 1),
+        auto_replan=_get_int("SUPERVISOR_AUTO_REPLAN", 1),
     )
 
 
@@ -125,6 +133,7 @@ def describe() -> list[str]:
         f"verification: {CONFIG.verification_url} ({CONFIG.verification_timeout_ms}ms)",
         f"search: {CONFIG.search_url} ({CONFIG.search_timeout_ms}ms)",
         f"수락 실패 시 재하달 상한: {CONFIG.max_reissue}회",
+        f"검증 실패 시 자동 재계획: {CONFIG.auto_replan}회 (이후 사용자 요청 시)",
     ]
 
 
