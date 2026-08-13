@@ -3,7 +3,7 @@
     "contractVersion": "v1.0-draft",
     "purpose": "계약 테스트(tools/conformance.mjs)와 골든 케이스(behavior.md 7.1절)의 입력 픽스처.",
     "structure": {
-      "default": "conformance.mjs가 기본으로 쓰는 작업별 입력 5개. 골든 케이스 G1과 동일하다.",
+      "default": "conformance.mjs가 기본으로 쓰는 작업별 입력 6개. 골든 케이스 G1과 동일하다.",
       "cases": "골든 케이스 G2~G5. 해당 케이스에서 의미 있는 작업의 입력만 담는다."
     },
     "notes": [
@@ -14,6 +14,11 @@
   },
 
   "default": {
+    "cityInfo": {
+      "cityId": "tokyo",
+      "dateRange": { "start": "2026-06-12", "end": "2026-06-16" }
+    },
+
     "flightSearch": {
       "origin": ["ICN"],
       "destination": ["NRT", "HND"],

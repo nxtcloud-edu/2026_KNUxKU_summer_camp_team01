@@ -36,7 +36,7 @@
 | 2 | [전송 계층](#2-전송-계층) |
 | 3 | [이벤트 봉투와 순서 규칙](#3-이벤트-봉투와-순서-규칙) |
 | 4 | [이벤트 타입 9종](#4-이벤트-타입-9종) |
-| 5 | [작업별 계약 5개](#5-작업별-계약-5개) |
+| 5 | [작업별 계약 6개](#5-작업별-계약-6개) |
 | 6 | [도메인 타입 — 프론트가 깨지는 지점](#6-도메인-타입--프론트가-깨지는-지점) |
 | 7 | [형식 규약](#7-형식-규약) |
 | 8 | [에러 계약](#8-에러-계약) |
@@ -94,7 +94,7 @@ flowchart LR
 POST /agent/{task}
 ```
 
-`{task}` ∈ `flightSearch` · `staySearch` · `placeDiscovery` · `itineraryGenerate` · `itineraryVerify`
+`{task}` ∈ `cityInfo` · `flightSearch` · `staySearch` · `placeDiscovery` · `itineraryGenerate` · `itineraryVerify`
 
 프론트엔드는 **동일 출처 프록시를 경유**한다(기본값).
 
@@ -118,14 +118,14 @@ POST /agent/placeDiscovery HTTP/1.1
 Content-Type: application/json
 Accept: text/event-stream
 X-Voyagent-Trace-Id: 8f3a1c9e-...        🔶 §11.2-6
-X-Voyagent-Contract: v1.0                🔶 §11.2-6
+X-Voyagent-Contract: v1.0-draft          🔶 §11.2-6
 
 { ...AgentTaskIO[task]['input'] }
 ```
 
 | 항목 | 규칙 |
 |---|---|
-| 본문 | [§5](#5-작업별-계약-5개)의 작업별 입력 타입 **그대로**. 래핑(`{ "input": ... }`)하지 않는다 |
+| 본문 | [§5](#5-작업별-계약-6개)의 작업별 입력 타입 **그대로**. 래핑(`{ "input": ... }`)하지 않는다 |
 | 입력 검증 | 서버는 본문을 스키마로 검증한다. 실패 시 **HTTP 200 + `error` 이벤트(`invalid_input`)** 로 응답한다 (§8.2) |
 | 멱등성 | 같은 입력으로 여러 번 호출될 수 있다. 부작용을 남기지 않는다 |
 | 동시성 | 한 사용자가 동시에 두 작업을 실행하지는 않지만, 서로 다른 사용자의 동시 요청은 처리해야 한다 |
@@ -194,7 +194,7 @@ data: {"seq":1,"at":540,"type":"thought","id":"t1","text":"인천(ICN) → 도�
 |---|---|---|
 | 클라이언트 하드 타임아웃 | **45초** | `spec.md` 6.9.3 ✅ |
 | 서버 하드 상한 | **40초** | 클라이언트보다 먼저 끝내 `timeout` 이벤트를 보낼 수 있게 🔶 |
-| 작업별 목표 소요 | [§5](#5-작업별-계약-5개) 표 | `spec.md` 6.5.2 ✅ |
+| 작업별 목표 소요 | [§5](#5-작업별-계약-6개) 표 | `spec.md` 6.5.2 ✅ |
 | 작업별 소프트 상한 | 목표 상한 × 2 | 넘으면 경고 로그 + 부분 결과로 `done` 🔶 |
 
 서버가 하드 상한에 도달하면 **연결을 끊지 말고** `error`(`timeout`, `retryable: true`)를 보낸 뒤 정상 종료한다. 그래야 프론트가 이유를 표시할 수 있다.
@@ -252,6 +252,7 @@ type AgentEventBase = { seq: number; at: number };
 | `flightSearch` | 3–4문장 | 3–4개 | 결과 수만큼 | 40–120 |
 | `staySearch` | 3–4문장 | 3–4개 | 결과 수만큼 | 40–110 |
 | `placeDiscovery` | 3–4문장 | 4–5개 | 결과 수만큼 | 60–160 |
+| `cityInfo` | 2–4문장 | 2–4개 | 사용 안 함 | 40–120 |
 | `itineraryGenerate` | 4–5문장 | 4–5개 | 일자 수만큼 | 50–140 |
 | `itineraryVerify` | 5–7문장 | 0–10개 | 사용 안 함 | 60–150 |
 
@@ -365,6 +366,7 @@ type AgentEventBase = { seq: number; at: number };
 | `flightSearch` | `FlightOffer` | 항공권 1건 |
 | `staySearch` | `StayOffer` | 숙소 1건 |
 | `placeDiscovery` | `Place` | 장소 1건 |
+| `cityInfo` | — | ⛔ 사용하지 않는다. 최종 객체를 `done`으로 한 번만 보낸다 |
 | `itineraryGenerate` | `ItineraryDay` | **일자 1개** (항목 전체 포함) |
 | `itineraryVerify` | — | ⛔ 사용하지 않는다. `check_update`로 대체 |
 
@@ -461,7 +463,7 @@ type AgentEventBase = { seq: number; at: number };
 
 | 필드 | 타입 | 필수 | 규칙 |
 |---|---|---|---|
-| `payload` | 작업별 출력 | ✅ | [§5](#5-작업별-계약-5개)의 출력 타입. **전체 결과**(부분 아님) |
+| `payload` | 작업별 출력 | ✅ | [§5](#5-작업별-계약-6개)의 출력 타입. **전체 결과**(부분 아님) |
 | `summary` | `string` | 🔶 강력 권고 | **60자 이내** 한국어 한 문장. 결과 요약 바에 그대로 표시된다 |
 
 | 규칙 | 내용 |
@@ -488,17 +490,18 @@ type AgentEventBase = { seq: number; at: number };
 
 ---
 
-## 5. 작업별 계약 5개
+## 5. 작업별 계약 6개
 
-전체 필드 정의는 [`spec.md` 5장](../spec.md#5-데이터-모델)이 원본이다. 여기서는 **경계에서 지켜야 할 것**만 적는다.
+도메인 타입은 [`spec.md` 5장](../spec.md#5-데이터-모델), 작업 경계 타입은 [`spec.md` 6.3](../spec.md#63-agentevent-계약)이 원본이다. 여기서는 **경계에서 지켜야 할 것**만 적는다.
 
 ### 5.0 요약표 ✅
 
 | 작업 | 출력 | 목표 소요 | `partial` 단위 | 비고 |
 |---|---|---|---|---|
-| `flightSearch` | `FlightOffer[]` | 8–10초 | 항공권 1건 | 12–24건 권고 |
-| `staySearch` | `StayOffer[]` | 7–9초 | 숙소 1건 | 12–18건 권고 |
-| `placeDiscovery` | `Place[]` | 9–12초 | 장소 1건 | **정확히 40건 권고** |
+| `cityInfo` | `CityInfo` | 5–8초 | 사용 안 함 | 웹 출처 1건 이상 |
+| `flightSearch` | `FlightOffer[]` | 8–10초 | 항공권 1건 | 최대 20건 |
+| `staySearch` | `StayOffer[]` | 7–9초 | 숙소 1건 | 최대 20건 |
+| `placeDiscovery` | `Place[]` | 9–12초 | 장소 1건 | 최대 20건 |
 | `itineraryGenerate` | `Itinerary` | 10–14초 | `ItineraryDay` 1개 | 불변식 5개 (§5.4) |
 | `itineraryVerify` | `VerificationReport` | 11–15초 | 사용 안 함 | 검사 10개 전부 |
 
@@ -552,6 +555,8 @@ type StaySearchInput = {
 
 **출력** `StayOffer[]`
 
+실시간 객실 가격·재고는 제공하지 않는다. Places API의 정적 숙소 정보에 팀 공용 데모 가격 fixture를 결합하며, `nightlyPrice`와 `totalPrice`는 예상값이다. `survey.rooms`는 재고 조건이 아니라 총액 계산 배수다.
+
 | 불변식 | 내용 |
 |---|---|
 | I-S1 | `images.length >= 4` (`spec.md` 5.6). 갤러리가 4장 미만이면 캐러셀이 무의미해진다 |
@@ -595,9 +600,9 @@ type PlaceDiscoveryInput = {
 
 | 항목 | 권고 |
 |---|---|
-| 총 개수 | **40건.** 20건 미만이면 선택할 게 없고, 60건 초과면 훑을 수 없다 |
+| 총 개수 | **최대 20건.** 조건을 만족하는 후보가 20건보다 적으면 실제 건수만 반환하고, 0건이면 `error(no_results)` |
 | 카테고리 균형 | 한 카테고리가 전체의 25%를 넘지 않게. 배분 예시는 `spec.md` 6.2.2 표 |
-| 관심사 커버리지 | `persona.interests`의 **모든 항목**에 최소 3건씩 (검증 V8이 누락을 잡아낸다) |
+| 관심사 커버리지 | `persona.interests`를 각 1건 이상 우선 커버하고, 상위 관심사는 3건까지 배정한다. 20건 한도 때문에 전부 충족할 수 없으면 사용자 입력 순서를 우선한다 |
 | 휴관일 다양성 | 박물관 계열 일부에 실제 휴관일을 반영한다. V1 검증이 동작할 근거가 된다 |
 
 ### 5.4 `itineraryGenerate`
@@ -689,6 +694,59 @@ type VerifyInput = {
 > ⛔ **애매하면 `warning`으로.** `conflict`를 남발하면 사용자가 검증을 신뢰하지 않는다.
 
 규칙 10개의 판정 로직·자동 수정 종류는 [`spec.md` 9.2](../spec.md#92-규칙-상세)가 원본이고, 구현 지침은 [`behavior.md` §6](./behavior.md#6-itineraryverify)에 있다.
+
+### 5.6 `cityInfo`
+
+**입력** ✅
+
+```ts
+type CityInfoInput = {
+  cityId: string;
+  dateRange?: { start: ISODate; end: ISODate };
+};
+```
+
+`dateRange`가 있으면 해당 여행 시기의 날씨·준비 팁을 우선 조사한다. 없으면 도시의 일반적인 계절 정보를 제공한다.
+
+**출력** `CityInfo`
+
+```ts
+type CityInfo = {
+  cityId: string;
+  cityName: string;
+  countryName: string;
+  timezone: string;
+  currency: string;             // ISO 4217, 예: JPY
+  languages: string[];
+  overview: string;
+  weather: { summary: string; packingTips: string[] };
+  transport: { summary: string; tips: string[] };
+  safety: { summary: string; emergencyNumbers: string[]; tips: string[] };
+  etiquetteTips: string[];
+  practicalTips: string[];
+  sources: WebSource[];
+  fetchedAt: Timestamp;
+};
+
+type WebSource = {
+  title: string;
+  url: string;                  // HTTPS 원문 URL
+  publisher: string;
+  retrievedAt: Timestamp;
+};
+```
+
+| 불변식 | 내용 |
+|---|---|
+| I-C1 | 출력 `cityId`는 입력 `cityId`와 정확히 같다 |
+| I-C2 | 도시명·국가명·timezone·통화·언어는 출처에서 확인한 값이며 추측하지 않는다 |
+| I-C3 | 날씨·교통·안전은 각각 요약과 실행 가능한 팁을 포함한다 |
+| I-C4 | 응급 전화번호처럼 바뀔 수 있는 정보는 공식 기관 출처를 우선한다 |
+| I-C5 | `sources`는 최소 1건이며 모든 항목에 HTTPS URL과 조회 시각이 있다 |
+| I-C6 | 서로 다른 출처가 충돌하면 더 최신인 공식 출처를 우선하고, 불확실성을 문장에 표시한다 |
+| I-C7 | `partial`을 사용하지 않고 완성된 단일 객체를 `done.payload`로 보낸다 |
+
+웹 검색 결과의 문장을 길게 복제하지 않고 사실을 요약한다. 검색 결과가 없거나 신뢰할 출처를 확보하지 못하면 내용을 지어내지 말고 `error(no_results)`로 종료한다. 구현 지침은 [`behavior.md`](./behavior.md#cityinfo)에 있다.
 
 ---
 
@@ -1023,7 +1081,6 @@ major 변경은 [`collaboration.md` §2](./collaboration.md#2-인터페이스-�
 | 1 | 추론 콘솔 로그 전달 방식 | `check.evidence` 접두 규약 (§4.6) | `itineraryVerify` 착수 전 |
 | 2 | `ItineraryChange.payload` 스키마 | [부록 B](#부록-b-itinerarychangepayload-스키마-제안) | 자동 수정 착수 전 |
 | 3 | `VerificationCheck.startedAt/finishedAt` 기준 | 스트림 시작 기준 ms (§4.6) | `itineraryVerify` 착수 전 |
-| 4 | `Place.id` 안정성과 목 데이터 소유권 | 목 데이터를 공용 스냅샷으로 분리 | live 전환 전 |
 | 5 | 인증 방식 | 캠프 범위는 없음. 프록시로 격리 (§2.8) | 배포 전 |
 | 6 | 요청 헤더 이름 | `X-Voyagent-Trace-Id` / `X-Voyagent-Contract` | M0 |
 | 7 | `staySearch` 스크립트 파일명 오타 | [부록 A](#부록-a-specmd-정합성-메모) | 프론트 구현 시 |

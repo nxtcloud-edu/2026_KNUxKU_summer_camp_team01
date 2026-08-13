@@ -59,7 +59,7 @@ flowchart LR
 ```ts
 // src/app/api/agent/[task]/route.ts
 const TASKS = new Set([
-  'flightSearch', 'staySearch', 'placeDiscovery', 'itineraryGenerate', 'itineraryVerify',
+  'cityInfo', 'flightSearch', 'staySearch', 'placeDiscovery', 'itineraryGenerate', 'itineraryVerify',
 ]);
 
 export async function POST(req: Request, { params }: { params: Promise<{ task: string }> }) {
@@ -76,7 +76,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ task: s
     headers: {
       'Content-Type': 'application/json',
       Accept: 'text/event-stream',
-      'X-Voyagent-Contract': 'v1.0',
+      'X-Voyagent-Contract': 'v1.0-draft',
       'X-Voyagent-Trace-Id': crypto.randomUUID(),
       ...(process.env.AGENT_TOKEN ? { Authorization: `Bearer ${process.env.AGENT_TOKEN}` } : {}),
     },
@@ -273,12 +273,12 @@ npm run dev   # localhost:3000
 
 ## 4. 작업 단위 점진 전환
 
-⛔ **5개 작업을 한꺼번에 live로 바꾸지 않는다.** 하나가 깨지면 전체 흐름이 막히고 원인을 좁힐 수 없다.
+⛔ **6개 작업을 한꺼번에 live로 바꾸지 않는다.** 하나가 깨지면 전체 흐름이 막히고 원인을 좁힐 수 없다.
 
 ### 4.1 전환 순서
 
 ```
-M0  스텁 서버        5개 작업이 계약을 지키는 이벤트를 낸다 (내용은 목 데이터 그대로)
+M0  스텁 서버        6개 작업이 계약을 지키는 이벤트를 낸다 (내용은 목 데이터 그대로)
      ↓
 M1  placeDiscovery   입력이 가장 단순(cityId + persona + dayCount)하고 UX 임팩트가 가장 크다
      ↓
@@ -286,7 +286,7 @@ M2  itineraryGenerate 입력에 Place[]가 들어온다. 배치 알고리즘 검
      ↓
 M3  itineraryVerify   규칙 엔진 + 서술. 가장 복잡하다
      ↓
-M4  flightSearch / staySearch  독립적이라 마지막에 붙여도 흐름을 막지 않는다
+M4  cityInfo / flightSearch / staySearch  서로 독립적이라 마지막에 붙여도 흐름을 막지 않는다
      ↓
 M5  폴백 · 관측성 · 캐시
 ```
@@ -354,7 +354,7 @@ NEXT_PUBLIC_AGENT_TASK_FLAGS=placeDiscovery
 ### 5.1 실행
 
 ```bash
-# 5개 작업 전부
+# 6개 작업 전부
 node agent/tools/conformance.mjs http://localhost:8000
 
 # 하나만
@@ -393,7 +393,7 @@ node agent/tools/conformance.mjs --file agent/fixtures/golden.flightSearch.jsonl
 | `L2.*` | 스키마 — 필수 필드, 열거형, 텍스트 금지 문자 |
 | `L3.*` | 일반 불변식 — `partial`↔`done` 일관성, 개수, 필수 값 |
 | `L4.*` | 타이밍 |
-| `I-*` | [`contract.md` §5](./contract.md#5-작업별-계약-5개)의 작업별 불변식 |
+| `I-*` | [`contract.md` §5](./contract.md#5-작업별-계약-6개)의 작업별 불변식 |
 
 ### 5.3 규칙 일치 테스트
 
@@ -465,7 +465,7 @@ jobs:
   "durationMs": 10420,
   "eventCount": 128,
   "outcome": "done",
-  "resultCount": 40,
+  "resultCount": 20,
   "llmCalls": 2,
   "llmTokens": { "in": 4210, "out": 1880 },
   "toolCalls": ["search_places", "filter_by_persona", "fetch_details", "check_hours"],
@@ -504,6 +504,7 @@ jobs:
 
 | 작업 | 목표 | 소프트 상한 | 하드 |
 |---|---|---|---|
+| `cityInfo` | 5–8초 | 16초 | 40초 |
 | `flightSearch` | 8–10초 | 20초 | 40초 |
 | `staySearch` | 7–9초 | 18초 | 40초 |
 | `placeDiscovery` | 9–12초 | 24초 | 40초 |
@@ -525,12 +526,12 @@ jobs:
 |---|---|
 | 단일 이벤트 | ≤ 32KB |
 | `partial` 1건 (`Place`) | ≤ 8KB |
-| `done.payload` (`Place[]` 40건) | ≤ 400KB |
+| `done.payload` (`Place[]` 최대 20건) | ≤ 200KB |
 | 전체 스트림 | ≤ 1MB |
 
 ⛔ `tool_call.args`에 대용량을 넣지 않는다. 프론트는 표시하지도 않는다.
 
-> `Place` 40건은 프론트의 localStorage에 저장된다. 여행 1건이 1MB를 넘으면 프론트가 `reviews`를 잘라서 저장한다(`spec.md` 5.13). 서버가 리뷰를 장소당 10개씩 보내면 그 절단이 자주 일어난다. **장소당 3–5개**가 적정하다.
+> `Place` 최대 20건은 프론트의 localStorage에 저장된다. 여행 1건이 1MB를 넘으면 프론트가 `reviews`를 잘라서 저장한다(`spec.md` 5.13). 서버가 리뷰를 장소당 10개씩 보내면 그 절단이 자주 일어난다. **장소당 3–5개**가 적정하다.
 
 ### 7.3 LLM 호출
 
@@ -585,7 +586,7 @@ export const maxDuration = 60;   // 클라이언트 타임아웃 45초보다 여
 
 ```
 □ 에이전트 서버가 상시 배포되어 있다 (터널 아님)
-□ 계약 테스트 5개 작업 전부 통과
+□ 계약 테스트 6개 작업 전부 통과
 □ 골든 케이스 5개(G1~G5)를 실제로 실행해 봤다
 □ 응답 캐시 ON — 같은 입력이면 즉시 응답
 □ LLM 쿼터 잔량 확인
@@ -637,7 +638,7 @@ export const maxDuration = 60;   // 클라이언트 타임아웃 45초보다 여
 계약 테스트는 **형식**만 본다. 아래는 형식이 맞아도 나쁜 결과다.
 
 ```
-□ 40곳이 다 유명 관광지다 → 큐레이션이 아니다 (behavior.md 4.2절)
+□ 20곳이 다 유명 관광지다 → 큐레이션이 아니다 (behavior.md 4.2절)
 □ 한 카테고리가 절반을 넘는다 → 균형 실패
 □ 관심사에 없는 장소만 위에 있다 → 정렬 실패
 □ 추론 문장이 도구 이름 나열이다 → behavior.md 1.1절

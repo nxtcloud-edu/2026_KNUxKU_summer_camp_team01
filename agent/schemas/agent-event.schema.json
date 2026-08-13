@@ -160,7 +160,7 @@
         "payload": {
           "type": "object",
           "required": ["id"],
-          "description": "완전한 1건. flightSearch=FlightOffer, staySearch=StayOffer, placeDiscovery=Place, itineraryGenerate=ItineraryDay. itineraryVerify는 사용하지 않는다.",
+          "description": "완전한 1건. flightSearch=FlightOffer, staySearch=StayOffer, placeDiscovery=Place, itineraryGenerate=ItineraryDay. cityInfo와 itineraryVerify는 사용하지 않는다.",
           "properties": { "id": { "type": "string", "minLength": 1 } }
         }
       }
@@ -200,7 +200,7 @@
         "type": { "const": "done" },
         "payload": {
           "type": ["array", "object"],
-          "description": "작업별 출력 전체. 배열(FlightOffer[]/StayOffer[]/Place[]) 또는 객체(Itinerary/VerificationReport)."
+          "description": "작업별 출력 전체. 배열(FlightOffer[]/StayOffer[]/Place[]) 또는 객체(CityInfo/Itinerary/VerificationReport)."
         },
         "summary": {
           "allOf": [{ "$ref": "#/$defs/plainText" }],

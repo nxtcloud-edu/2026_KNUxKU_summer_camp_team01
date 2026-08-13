@@ -94,7 +94,7 @@
 □ 변경 유형: minor / major
 □ 왜 필요한가 (한 문장)
 □ 대안을 검토했는가 (계약을 안 바꾸고 해결할 방법)
-□ 영향받는 작업: flightSearch / staySearch / placeDiscovery / itineraryGenerate / itineraryVerify
+□ 영향받는 작업: cityInfo / flightSearch / staySearch / placeDiscovery / itineraryGenerate / itineraryVerify
 □ 영향받는 화면 (spec.md 화면 ID: S0~S9)
 □ contract.md 버전을 올렸다 (§11.1 규칙)
 □ schemas/*.json을 함께 수정했다
@@ -266,11 +266,11 @@ docs: behavior.md 카피 길이 상한 표 보강
 
 | # | 마일스톤 | 에이전트 산출물 | 프론트 전제 | DoD |
 |---|---|---|---|---|
-| **M0** | 계약 합의 + 스텁 서버 | 5개 작업이 계약을 지키는 이벤트를 낸다. 내용은 목 데이터 그대로 | 없음 (병렬 가능) | 계약 테스트 5개 전부 통과 |
+| **M0** | 계약 합의 + 스텁 서버 | 6개 작업이 계약을 지키는 이벤트를 낸다. 내용은 목 데이터 그대로 | 없음 (병렬 가능) | 계약 테스트 6개 전부 통과 |
 | **M1** | `placeDiscovery` | 실제 큐레이션 + 추론 | `spec.md` 14단계(S5 장소) | §5.1 |
 | **M2** | `itineraryGenerate` | 배치 알고리즘 + 이동시간 | `spec.md` 16단계(일정 생성) | §5.1 |
 | **M3** | `itineraryVerify` | 규칙 엔진 V1–V10 + 서술 + 자동 수정 | `spec.md` 21단계(S7 검증 UI) | §5.1 + 규칙 일치 테스트 |
-| **M4** | `flightSearch` · `staySearch` | 필터·순위·태그 | `spec.md` 11·13단계 | §5.1 |
+| **M4** | `cityInfo` · `flightSearch` · `staySearch` | 웹 조사·출처 + 필터·순위·태그 | `spec.md` 11·13단계 및 도시 정보 사용처 | §5.1 |
 | **M5** | 마감 | 폴백·캐시·관측성·부하 확인 | `spec.md` 25단계 | §5.2 + [`integration.md` §8.4](./integration.md#84-데모-준비) |
 
 ### 6.1 M0을 먼저 하는 이유
@@ -303,12 +303,13 @@ M0 → M1(placeDiscovery) → M2(itineraryGenerate) → M3(itineraryVerify)
 
 **이 표가 이 문서에서 가장 실용적인 부분이다.** 킥오프에서 위에서부터 훑는다.
 
+완료된 결정: live 장소 수집은 Google Places, 테스트·데모·장애 폴백은 공용 스냅샷을 사용하며 안정적인 내부 `Place.id` 매핑을 유지한다([`behavior.md` §1.5](./behavior.md#15-데이터-소스와-id-안정성)).
+
 | # | 항목 | 기본 제안 | 결정자 | 기한 |
 |---|---|---|---|---|
 | 1 | 추론 콘솔 로그 전달 방식 | `check.evidence` 접두 규약 ([`contract.md` §4.6](./contract.md#46-check_update-)) | 공동 | M3 착수 전 |
 | 2 | `ItineraryChange.payload` 스키마 | [`contract.md` 부록 B](./contract.md#부록-b-itinerarychangepayload-스키마-제안) | 공동 | M3 착수 전 |
 | 3 | `VerificationCheck.startedAt/finishedAt` 기준 | 스트림 시작 기준 ms | 공동 | M3 착수 전 |
-| 4 | **목 데이터 소유권과 `Place.id` 안정성** | 4개 도시 JSON을 공용 스냅샷으로 분리, 양측이 같은 파일 참조 ([`behavior.md` §1.5](./behavior.md#15-데이터-소스와-id-안정성)) | 공동 | **M1 착수 전** |
 | 5 | 인증 방식 | 캠프 범위는 없음. 프록시로 격리. 공개 URL이면 `AGENT_TOKEN` | 에이전트 | 배포 전 |
 | 6 | 요청 헤더 이름 | `X-Voyagent-Trace-Id` · `X-Voyagent-Contract` | 공동 | M0 |
 | 7 | `spec.md` 2.3 파일명 오타 (`stitchStaySearch.ts`) | `staySearch.ts`로 수정 | 프론트 | 프론트 구현 시 |
@@ -379,7 +380,7 @@ live 모드에서는 에이전트 서버가 판정한다. 프론트 구현은 �
 | 1 | **에이전트가 늦어 프론트가 막힌다** | M1 지연 | 목 계층이 있으므로 프론트는 막히지 않는다. 이 구조를 끝까지 유지한다 ([`integration.md` §4.4](./integration.md#44-목-계층은-끝까지-유지한다)) |
 | 2 | **계약이 조용히 어긋난다** | 통합 세션에서 처음 발견 | 계약 테스트를 CI에 넣는다. 주 2회 통합 세션 |
 | 3 | **LLM이 계산을 틀린다** | 검증 결과가 이상하다 | 계산은 결정론적 코드로 ([`behavior.md` §1.6](./behavior.md#16-llm과-결정론적-코드의-경계)) |
-| 4 | **`Place.id`가 달라 데이터가 어긋난다** | 공유 링크가 깨진다, 모드 전환 시 일정이 무효 | [§7-4](#7-결정-대기-목록)를 **M1 전에** 결정 |
+| 4 | **`Place.id`가 달라 데이터가 어긋난다** | 공유 링크가 깨진다, 모드 전환 시 일정이 무효 | Google Place ID 기반 내부 매핑과 안정적인 외부 slug를 유지하고 공용 snapshot으로 회귀 검사한다 ([`behavior.md` §1.5](./behavior.md#15-데이터-소스와-id-안정성)) |
 | 5 | **발표 중 LLM 장애·쿼터 초과** | — | 응답 캐시 + 목 폴백 + 리허설 3회 ([`integration.md` §8.4](./integration.md#84-데모-준비)) |
 | 6 | **스트리밍이 안 보인다** | 결과가 한 번에 나온다 | `X-Accel-Buffering: no`. M0에서 미리 확인 |
 | 7 | **결과 품질이 목보다 나쁘다** | 통합 세션에서 "목이 더 낫네" | 루브릭으로 조기에 측정. 3점 미만이면 릴리스하지 않는다 |
@@ -393,7 +394,7 @@ live 모드에서는 에이전트 서버가 판정한다. 프론트 구현은 �
 
 계약 테스트로 잡히지 않고, 단일 작업 테스트로도 안 보인다. **S5에서 고른 장소가 S6에서 사라지거나, 공유 링크를 열었을 때 이름만 나오는** 형태로 나타난다. 발견 시점이 늦으면 목 데이터 전체를 다시 만들어야 한다.
 
-M1 착수 전에 [§7-4](#7-결정-대기-목록)를 반드시 결정한다.
+M1 착수 전부터 [`behavior.md` §1.5](./behavior.md#15-데이터-소스와-id-안정성)의 매핑 규칙과 공용 snapshot 회귀 검사를 적용한다.
 
 ---
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Voyagent 계약 테스트 — 에이전트 서버가 contract.md v1.0을 지키는지 검사한다.
+ * Voyagent 계약 테스트 — 에이전트 서버가 contract.md v1.0-draft를 지키는지 검사한다.
  *
  * 사용법
  *   node agent/tools/conformance.mjs http://localhost:8000
@@ -25,10 +25,11 @@ import { dirname, resolve } from 'node:path';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURES = resolve(HERE, '../fixtures/inputs.json');
 
-const TASKS = ['flightSearch', 'staySearch', 'placeDiscovery', 'itineraryGenerate', 'itineraryVerify'];
+const TASKS = ['cityInfo', 'flightSearch', 'staySearch', 'placeDiscovery', 'itineraryGenerate', 'itineraryVerify'];
 
 /** contract.md 2.7절 — 목표 상한 x 2 */
 const SOFT_CAP_MS = {
+  cityInfo: 16_000,
   flightSearch: 20_000,
   staySearch: 18_000,
   placeDiscovery: 24_000,
@@ -123,7 +124,7 @@ async function fetchStream(baseUrl, task, input, report) {
       headers: {
         'Content-Type': 'application/json',
         Accept: 'text/event-stream',
-        'X-Voyagent-Contract': 'v1.0',
+        'X-Voyagent-Contract': 'v1.0-draft',
         'X-Voyagent-Trace-Id': `conformance-${task}-${t0}`,
       },
       body: JSON.stringify(input),
@@ -385,10 +386,10 @@ function checkEnvelope(events, report) {
 }
 
 function checkPartialConsistency(events, task, report) {
-  if (task === 'itineraryVerify') {
+  if (task === 'itineraryVerify' || task === 'cityInfo') {
     const partials = events.filter((e) => e.type === 'partial');
     report.check('I.P0', partials.length === 0,
-      `itineraryVerify는 partial을 쓰지 않는다. check_update로 대체한다. 받은 개수: ${partials.length}`);
+      `${task}는 partial을 쓰지 않는다. 받은 개수: ${partials.length}`);
     return;
   }
 
@@ -457,6 +458,8 @@ function checkTiming(arrivals, elapsed, task, report, offline) {
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 const isStr = (v) => typeof v === 'string' && v.length > 0;
+const isNonEmptyStringArray = (v) =>
+  Array.isArray(v) && v.length > 0 && v.every((item) => isStr(item));
 
 function checkLatLng(loc, where, report) {
   if (!loc || !isNum(loc.lat) || !isNum(loc.lng)) {
@@ -482,12 +485,56 @@ function checkMoney(m, where, report) {
   return true;
 }
 
+function checkCityInfo(info, input, report) {
+  if (!info || typeof info !== 'object' || Array.isArray(info)) {
+    report.check('L3.C1', false, 'cityInfo의 done.payload는 CityInfo 객체여야 한다');
+    return;
+  }
+
+  report.check('I-C1', isStr(info.cityId) && info.cityId === input?.cityId,
+    `cityId는 입력과 같아야 한다. 입력: ${input?.cityId}, 출력: ${info.cityId}`);
+  for (const field of ['cityName', 'countryName', 'timezone', 'overview']) {
+    report.check('I-C2', isStr(info[field]), `${field}가 비었다`);
+  }
+  report.check('I-C2', /^[A-Z]{3}$/.test(info.currency ?? ''),
+    `currency는 ISO 4217 세 글자 코드여야 한다. 받은 값: ${info.currency}`);
+  report.check('I-C2', isNonEmptyStringArray(info.languages),
+    'languages는 하나 이상의 비어 있지 않은 문자열 배열이어야 한다');
+
+  for (const section of ['weather', 'transport', 'safety']) {
+    report.check('I-C3', !!info[section] && isStr(info[section].summary),
+      `${section}.summary가 비었다`);
+  }
+  report.check('I-C3', isNonEmptyStringArray(info.weather?.packingTips),
+    'weather.packingTips는 하나 이상의 비어 있지 않은 문자열 배열이어야 한다');
+  report.check('I-C3', isNonEmptyStringArray(info.transport?.tips),
+    'transport.tips는 하나 이상의 비어 있지 않은 문자열 배열이어야 한다');
+  report.check('I-C3', isNonEmptyStringArray(info.safety?.tips) && isNonEmptyStringArray(info.safety?.emergencyNumbers),
+    'safety.tips와 safety.emergencyNumbers는 각각 하나 이상의 비어 있지 않은 문자열 배열이어야 한다');
+  report.check('I-C4', isNonEmptyStringArray(info.etiquetteTips) && isNonEmptyStringArray(info.practicalTips),
+    'etiquetteTips와 practicalTips는 각각 하나 이상의 비어 있지 않은 문자열 배열이어야 한다');
+
+  const sources = info.sources;
+  report.check('I-C5', Array.isArray(sources) && sources.length > 0,
+    '웹 조사 결과에는 출처가 최소 1건 있어야 한다');
+  for (const [i, source] of (Array.isArray(sources) ? sources : []).entries()) {
+    report.check('I-C5', isStr(source?.title) && isStr(source?.publisher) && /^https:\/\//.test(source?.url ?? ''),
+      `sources[${i}]는 title, publisher, HTTPS url을 가져야 한다`);
+    report.check('I-C5', /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/.test(source?.retrievedAt ?? ''),
+      `sources[${i}].retrievedAt은 ISO UTC timestamp여야 한다`);
+  }
+  report.check('I-C6', /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/.test(info.fetchedAt ?? ''),
+    'fetchedAt은 ISO UTC timestamp여야 한다');
+}
+
 function checkFlightOffers(offers, report) {
   if (!Array.isArray(offers)) {
     report.check('L3.4', false, 'flightSearch의 done.payload는 배열이어야 한다');
     return;
   }
-  report.warn('L3.5', offers.length >= 1, '결과가 0건이면 done이 아니라 error(no_results)를 보낸다');
+  report.check('L3.5', offers.length >= 1, '결과가 0건이면 done이 아니라 error(no_results)를 보낸다');
+  report.check('L3.5a', offers.length <= 20,
+    `flightSearch 결과는 최대 20건이다. 받은 개수: ${offers.length}`);
 
   const tagCount = { recommended: 0, cheapest: 0, fastest: 0 };
   const ids = new Set();
@@ -547,7 +594,9 @@ function checkStayOffers(offers, report) {
     report.check('L3.7', false, 'staySearch의 done.payload는 배열이어야 한다');
     return;
   }
-  report.warn('L3.8', offers.length >= 1, '결과가 0건이면 error(no_results)를 보낸다');
+  report.check('L3.8', offers.length >= 1, '결과가 0건이면 error(no_results)를 보낸다');
+  report.check('L3.8a', offers.length <= 20,
+    `staySearch 결과는 최대 20건이다. 받은 개수: ${offers.length}`);
 
   for (const [i, s] of offers.entries()) {
     const at = `offers[${i}]`;
@@ -573,10 +622,10 @@ function checkPlaces(places, report) {
     report.check('L3.9', false, 'placeDiscovery의 done.payload는 배열이어야 한다');
     return;
   }
-  report.warn('L3.10', places.length >= 20,
-    `장소가 ${places.length}건이다. 20건 미만이면 고를 게 없다 (권고 40건)`);
-  report.warn('L3.11', places.length <= 60,
-    `장소가 ${places.length}건이다. 60건 초과면 훑을 수 없다 (권고 40건)`);
+  report.check('L3.10', places.length >= 1,
+    '결과가 0건이면 done이 아니라 error(no_results)를 보낸다');
+  report.check('L3.11', places.length <= 20,
+    `placeDiscovery 결과는 최대 20건이다. 받은 개수: ${places.length}`);
 
   const ids = new Set();
   const coordKeys = new Set();
@@ -921,6 +970,7 @@ async function runTask({ task, baseUrl, file, input }) {
   const done = events.find((e) => e.type === 'done');
   if (!done) return report;
 
+  if (task === 'cityInfo') checkCityInfo(done.payload, input, report);
   if (task === 'flightSearch') checkFlightOffers(done.payload, report);
   if (task === 'staySearch') checkStayOffers(done.payload, report);
   if (task === 'placeDiscovery') checkPlaces(done.payload, report);
@@ -954,7 +1004,7 @@ function printReport(r) {
 // ─────────────────────────────────────────────────────────────
 
 function usage() {
-  console.log(`Voyagent 계약 테스트 (contract.md v1.0)
+  console.log(`Voyagent 계약 테스트 (contract.md v1.0-draft)
 
   node agent/tools/conformance.mjs <baseUrl> [task]
   node agent/tools/conformance.mjs --file <golden.jsonl> <task>
@@ -962,7 +1012,7 @@ function usage() {
   baseUrl   에이전트 서버 주소. 예: http://localhost:8000
             (POST {baseUrl}/agent/{task}로 요청한다)
   task      ${TASKS.join(' | ')}
-            생략하면 5개 전부 실행한다.
+            생략하면 6개 전부 실행한다.
 
 예시
   node agent/tools/conformance.mjs http://localhost:8000

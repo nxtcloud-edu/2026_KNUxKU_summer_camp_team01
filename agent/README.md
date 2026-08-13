@@ -7,12 +7,13 @@
 
 ## 5분 요약
 
-**만들어야 하는 것은 HTTP 엔드포인트 5개다.**
+**만들어야 하는 것은 HTTP 엔드포인트 6개다.**
 
 ```
-POST /agent/flightSearch        항공권 후보를 찾는다
-POST /agent/staySearch          숙소 후보를 찾는다
-POST /agent/placeDiscovery      관광지 40곳을 큐레이션한다
+POST /agent/cityInfo           도시의 날씨·교통·안전·여행 팁을 출처와 함께 조사한다
+POST /agent/flightSearch        항공권 후보를 최대 20건 찾는다
+POST /agent/staySearch          숙소 후보를 최대 20건 찾는다
+POST /agent/placeDiscovery      관광지를 최대 20곳 큐레이션한다
 POST /agent/itineraryGenerate   선택된 장소를 일자별로 배치한다
 POST /agent/itineraryVerify      완성된 일정을 10개 규칙으로 검증한다
 ```
@@ -74,7 +75,8 @@ NEXT_PUBLIC_AGENT_MODE=live   →   SseTransport  →  당신의 서버
 | [`collaboration.md`](./collaboration.md) | 협업 규칙. 역할 경계, 계약 변경 절차, DoD, 마일스톤, **결정 대기 목록** | 킥오프에서 함께 |
 | [`schemas/`](./schemas/) | 기계 판독 계약. `agent-event.schema.json` · `task-io.schema.json` | 검증 코드를 붙일 때 |
 | [`fixtures/inputs.json`](./fixtures/inputs.json) | 작업별 입력 픽스처 + 골든 케이스 G1~G5 | 테스트할 때 |
-| [`fixtures/golden.flightSearch.jsonl`](./fixtures/golden.flightSearch.jsonl) | 계약을 만족하는 이벤트 스트림 정답 예시 | 형식을 눈으로 익힐 때 |
+| [`fixtures/golden.flightSearch.jsonl`](./fixtures/golden.flightSearch.jsonl) | 계약을 만족하는 항공권 이벤트 스트림 정답 예시 | 형식을 눈으로 익힐 때 |
+| [`fixtures/golden.cityInfo.jsonl`](./fixtures/golden.cityInfo.jsonl) | 계약을 만족하는 도시 정보 이벤트 스트림 정답 예시 | `cityInfo` 형식을 검증할 때 |
 | [`tools/conformance.mjs`](./tools/conformance.mjs) | 계약 테스트 러너 (의존성 없음) | 매 커밋 |
 
 ### 상위 문서에서 볼 것
@@ -147,7 +149,7 @@ node agent/tools/conformance.mjs --file agent/fixtures/golden.flightSearch.jsonl
 node agent/tools/conformance.mjs http://localhost:8000
 ```
 
-5개 작업이 전부 통과하면 M0 완료다. 이 시점에 프론트는 이미 `live` 모드로 붙여볼 수 있고, **전송 계층 문제(SSE 버퍼링·취소·타임아웃)를 품질 문제와 분리해서** 잡을 수 있다.
+6개 작업이 전부 통과하면 M0 완료다. 이 시점에 프론트는 이미 `live` 모드로 붙여볼 수 있고, **전송 계층 문제(SSE 버퍼링·취소·타임아웃)를 품질 문제와 분리해서** 잡을 수 있다.
 
 > M0를 건너뛰고 바로 실제 구현에 들어가면, 문제가 생겼을 때 그게 전송 문제인지 오케스트레이션 문제인지 알 수 없다. [`collaboration.md` §6.1](./collaboration.md#61-m0을-먼저-하는-이유)
 
@@ -190,7 +192,6 @@ node agent/tools/conformance.mjs http://localhost:8000 placeDiscovery
 
 | # | 항목 | 왜 먼저인가 |
 |---|---|---|
-| 4 | **목 데이터 소유권과 `Place.id` 안정성** | 나중에 발견하면 목 데이터 전체를 다시 만들어야 한다. [`collaboration.md` §9.1](./collaboration.md#91-가장-위험한-것) |
 | 11 | 저장소 구조 (단일 vs 분리) | 계약 문서 동기화 방식이 여기서 갈린다 |
 
 ---
@@ -201,7 +202,7 @@ node agent/tools/conformance.mjs http://localhost:8000 placeDiscovery
 
 | 한국어 | 코드 식별자 | 의미 |
 |---|---|---|
-| 작업 | `AgentTaskId` | 5개 엔드포인트 각각 |
+| 작업 | `AgentTaskId` | 6개 엔드포인트 각각 |
 | 에이전트 이벤트 | `AgentEvent` | 스트림으로 내려가는 단위 메시지 |
 | 페르소나 | `Persona` | 사용자의 여행 성향·조건 응답 묶음 |
 | 후보 장소 | `candidatePlaces` | `placeDiscovery`가 발견한 장소들 |
@@ -237,7 +238,8 @@ agent/
 │   └── task-io.schema.json          작업 입출력 · 도메인 타입 스키마
 ├── fixtures/
 │   ├── inputs.json                  작업별 입력 + 골든 케이스 G1~G5
-│   └── golden.flightSearch.jsonl    계약 통과 스트림 정답 예시
+│   ├── golden.flightSearch.jsonl    항공권 계약 통과 스트림 정답 예시
+│   └── golden.cityInfo.jsonl        도시 정보 계약 통과 스트림 정답 예시
 └── tools/
     └── conformance.mjs              계약 테스트 러너
 ```

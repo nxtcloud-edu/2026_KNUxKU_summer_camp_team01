@@ -1,9 +1,9 @@
 {
   "title": "Voyagent AgentTaskIO",
-  "description": "5개 에이전트 작업의 입력·출력 스키마. JSON Schema draft 2020-12 문법. 전체 필드 정의는 spec.md 5장이 원본이고, 이 스키마는 경계에서 반드시 지켜야 하는 필수 필드와 형식 제약만 검증한다(fail-fast 목적). 여기서 통과했다고 완전한 데이터라는 뜻은 아니다. 선택 필드의 의미는 contract.md 6절의 등급 표를 본다.",
+  "description": "6개 에이전트 작업의 입력·출력 스키마. JSON Schema draft 2020-12 문법. 도메인 타입은 spec.md 5장, AgentTaskIO와 CityInfo 경계 타입은 spec.md 6.3이 원본이다. 이 스키마는 경계에서 반드시 지켜야 하는 필수 필드와 형식 제약만 검증한다(fail-fast 목적). 여기서 통과했다고 완전한 데이터라는 뜻은 아니다. 선택 필드의 의미는 contract.md 6절의 등급 표를 본다.",
   "x-contract-version": "v1.0-draft",
   "x-dialect": "draft/2020-12",
-  "x-source-of-truth": "spec.md 5장",
+  "x-source-of-truth": "spec.md 5장 및 6.3절",
 
   "$defs": {
     "__comment_common__": "───────── 공통 스칼라 ─────────",
@@ -277,6 +277,21 @@
         "dayCount": { "type": "integer", "minimum": 1, "maximum": 30 }
       }
     },
+    "CityInfoInput": {
+      "type": "object",
+      "required": ["cityId"],
+      "properties": {
+        "cityId": { "type": "string", "minLength": 1 },
+        "dateRange": {
+          "type": "object",
+          "required": ["start", "end"],
+          "properties": {
+            "start": { "$ref": "#/$defs/ISODate" },
+            "end": { "$ref": "#/$defs/ISODate" }
+          }
+        }
+      }
+    },
     "ItineraryGenInput": {
       "type": "object",
       "required": ["cityId", "dateRange", "persona", "places"],
@@ -309,6 +324,65 @@
         },
         "flight": { "oneOf": [{ "$ref": "#/$defs/FlightOffer" }, { "type": "null" }] },
         "stay": { "oneOf": [{ "$ref": "#/$defs/StayOffer" }, { "type": "null" }] }
+      }
+    },
+
+    "__comment_city_info__": "───────── 출력: CityInfo ─────────",
+
+    "WebSource": {
+      "type": "object",
+      "required": ["title", "url", "publisher", "retrievedAt"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "url": { "type": "string", "format": "uri" },
+        "publisher": { "type": "string", "minLength": 1 },
+        "retrievedAt": { "$ref": "#/$defs/Timestamp" }
+      }
+    },
+    "CityInfo": {
+      "type": "object",
+      "required": [
+        "cityId", "cityName", "countryName", "timezone", "currency", "languages",
+        "overview", "weather", "transport", "safety", "etiquetteTips",
+        "practicalTips", "sources", "fetchedAt"
+      ],
+      "properties": {
+        "cityId": { "type": "string", "minLength": 1 },
+        "cityName": { "type": "string", "minLength": 1 },
+        "countryName": { "type": "string", "minLength": 1 },
+        "timezone": { "type": "string", "minLength": 1 },
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "languages": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 },
+        "overview": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "weather": {
+          "type": "object",
+          "required": ["summary", "packingTips"],
+          "properties": {
+            "summary": { "type": "string", "minLength": 1, "maxLength": 400 },
+            "packingTips": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 }
+          }
+        },
+        "transport": {
+          "type": "object",
+          "required": ["summary", "tips"],
+          "properties": {
+            "summary": { "type": "string", "minLength": 1, "maxLength": 400 },
+            "tips": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 }
+          }
+        },
+        "safety": {
+          "type": "object",
+          "required": ["summary", "emergencyNumbers", "tips"],
+          "properties": {
+            "summary": { "type": "string", "minLength": 1, "maxLength": 400 },
+            "emergencyNumbers": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 },
+            "tips": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 }
+          }
+        },
+        "etiquetteTips": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 },
+        "practicalTips": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 },
+        "sources": { "type": "array", "items": { "$ref": "#/$defs/WebSource" }, "minItems": 1 },
+        "fetchedAt": { "$ref": "#/$defs/Timestamp" }
       }
     },
 
@@ -810,6 +884,7 @@
         "flightSearch": { "input": "FlightSearchInput", "output": "FlightOffer[]", "partial": "FlightOffer" },
         "staySearch": { "input": "StaySearchInput", "output": "StayOffer[]", "partial": "StayOffer" },
         "placeDiscovery": { "input": "PlaceDiscoveryInput", "output": "Place[]", "partial": "Place" },
+        "cityInfo": { "input": "CityInfoInput", "output": "CityInfo", "partial": null },
         "itineraryGenerate": { "input": "ItineraryGenInput", "output": "Itinerary", "partial": "ItineraryDay" },
         "itineraryVerify": { "input": "VerifyInput", "output": "VerificationReport", "partial": null }
       }

@@ -481,6 +481,7 @@ voyagent/
 │   │   │       ├── flightSearch.ts
 │   │   │       ├── stitchStaySearch.ts
 │   │   │       ├── placeDiscovery.ts
+│   │   │       ├── cityInfo.ts
 │   │   │       ├── itineraryGenerate.ts
 │   │   │       └── itineraryVerify.ts
 │   │   │
@@ -2723,7 +2724,7 @@ AgentTransport (인터페이스)
 | `mocks/airlines.json` | **28** | 항공사 필터·로고 | IATA 코드, 한글명, 로고 경로 |
 | `mocks/flights/{city}.json` | 도시당 **24** | 항공권 검색 결과 | ICN 출발 기준. 다른 출발지는 가격 계수만 조정 |
 | `mocks/stays/{city}.json` | 도시당 **18** | 숙소 검색 결과 | 유형·가격대·지역 분산 |
-| `mocks/places/{city}.json` | 도시당 **40** | 관광지 후보 | 카테고리 균형 배분 |
+| `mocks/places/{city}.json` | 도시당 **40** | 관광지 원본 후보 | 에이전트가 카테고리 균형 후 최대 20건 반환 |
 | `mocks/reviews/{city}.json` | 도시당 **200** | 장소 리뷰 | `placeId`로 그룹. 장소당 5개 |
 
 **목데이터 완비 도시 (4곳)**
@@ -2817,6 +2818,7 @@ export type AgentTaskId =
   | 'flightSearch'
   | 'staySearch'
   | 'placeDiscovery'
+  | 'cityInfo'
   | 'itineraryGenerate'
   | 'itineraryVerify';
 
@@ -2866,6 +2868,7 @@ export type AgentTaskIO = {
   flightSearch:      { input: FlightSearchInput;   output: FlightOffer[] };
   staySearch:        { input: StaySearchInput;     output: StayOffer[] };
   placeDiscovery:    { input: PlaceDiscoveryInput; output: Place[] };
+  cityInfo:          { input: CityInfoInput;       output: CityInfo };
   itineraryGenerate: { input: ItineraryGenInput;   output: Itinerary };
   itineraryVerify:   { input: VerifyInput;         output: VerificationReport };
 };
@@ -2884,6 +2887,23 @@ export type StaySearchInput = {
 };
 export type PlaceDiscoveryInput = {
   cityId: string; persona: Persona; dayCount: number;
+};
+export type CityInfoInput = {
+  cityId: string;
+  dateRange?: { start: ISODate; end: ISODate };
+};
+export type WebSource = {
+  title: string; url: string; publisher: string; retrievedAt: Timestamp;
+};
+export type CityInfo = {
+  cityId: string; cityName: string; countryName: string;
+  timezone: string; currency: string; languages: string[];
+  overview: string;
+  weather: { summary: string; packingTips: string[] };
+  transport: { summary: string; tips: string[] };
+  safety: { summary: string; emergencyNumbers: string[]; tips: string[] };
+  etiquetteTips: string[]; practicalTips: string[];
+  sources: WebSource[]; fetchedAt: Timestamp;
 };
 export type ItineraryGenInput = {
   cityId: string; dateRange: { start: ISODate; end: ISODate };
@@ -2954,7 +2974,7 @@ export type AgentScript = {
 |---|---|
 | 지터 | 모든 `ms`에 **±15% 랜덤**을 적용해 기계적인 느낌을 없앤다 |
 | 타이핑 속도 | 기본 42 cps. 문장 끝(`.`, `요`, `다`)에서 **120ms 추가 정지** |
-| 총 소요 | 작업별 목표: 항공 8~10초, 숙소 7~9초, 장소 발견 9~12초, 일정 생성 10~14초, 검증 11~15초 |
+| 총 소요 | 작업별 목표: 도시 정보 5~8초, 항공 8~10초, 숙소 7~9초, 장소 발견 9~12초, 일정 생성 10~14초, 검증 11~15초 |
 | `partial` 방출 | `resolve()` 결과 배열에서 앞에서부터 `take`개씩. 카드가 순차로 쌓이는 연출 |
 | 취소 | `signal.aborted` 감지 시 즉시 `{type:'error', code:'aborted'}` 방출 후 종료 |
 | 결정성 | `MOCK_SEED` 환경변수가 있으면 지터·랜덤을 시드 고정 → **E2E 테스트 안정화** |
@@ -3023,11 +3043,11 @@ async function* runScript(script: AgentScript, input: unknown, signal: AbortSign
 | 4 | thought | `관심사에 맞는 장소를 먼저 골랐어요. {제외이유}` (예: `유아차 이용을 고려해 계단이 많은 곳은 뒤로 미뤘어요.`) | 타이핑 |
 | 5 | tool | `filter_by_persona` · **여행 스타일 매칭 중** → **{n}곳 선별** | 1,400ms, count 86 |
 | 6 | thought | `평점과 리뷰 수, 방문객 후기의 최신성을 함께 봤습니다.` | 타이핑 |
-| 7 | tool | `fetch_details` · **소개 · 리뷰 · 사진 가져오는 중** → **{n}곳 상세 완료** | 1,800ms, count 40 |
-| 8 | partial | 8건 | 간격 150ms |
+| 7 | tool | `fetch_details` · **소개 · 리뷰 · 사진 가져오는 중** → **{n}곳 상세 완료** | 1,800ms, count 20 |
+| 8 | partial | 상위 5건 | 간격 150ms |
 | 9 | progress | 0.6 | — |
-| 10 | tool | `check_hours` · **영업시간 확인 중** → **{n}곳 확인** | 900ms, count 40 |
-| 11 | partial | 나머지 32건 | 간격 90ms |
+| 10 | tool | `check_hours` · **영업시간 확인 중** → **{n}곳 확인** | 900ms, count 20 |
+| 11 | partial | 나머지 최대 15건 | 간격 90ms |
 | 12 | done | **{도시}에서 {n}곳을 찾았어요. 관심사에 맞는 곳을 위로 올려뒀습니다.** | — |
 
 ### 6.6.4 `itineraryGenerate` (목표 10~14초)
@@ -3083,6 +3103,19 @@ check_update { status:'running', severity:'pass' }   ← 스피너 시작
   ... runMs 대기 (그 사이 추론 콘솔에 근거 로그 2~4줄 출력)
 check_update { status:'done', severity: 실제결과, message, evidence }   ← 배지 확정 + check-draw 애니메이션
 ```
+
+### 6.6.6 `cityInfo` (목표 5~8초)
+
+완성된 정보와 출처가 함께 있어야 하므로 `partial`은 사용하지 않는다.
+
+| # | 종류 | 내용 | 시간 |
+|---|---|---|---|
+| 1 | status | **도시 정보를 확인하고 있어요** | 400ms |
+| 2 | thought | `{도시}의 교통과 여행 시기 정보를 공식 출처부터 확인합니다.` | 타이핑 |
+| 3 | tool | `web_search` · **공식 도시 정보 검색 중** → **출처 {n}건 확인** | 1,500ms, count 3 |
+| 4 | thought | `날씨, 교통, 안전 정보를 교차 확인해 여행 준비 팁으로 정리합니다.` | 타이핑 |
+| 5 | tool | `verify_sources` · **출처와 최신성 확인 중** → **공식 출처 우선 정리** | 900ms |
+| 6 | done | **{도시} 여행에 필요한 날씨·교통·안전 정보를 정리했어요.** | — |
 
 ## 6.7 `useAgentStream`
 
@@ -3151,7 +3184,7 @@ export function useAgentStream<K extends AgentTaskId>(task: K): UseAgentStreamRe
 
 ```
 POST /api/agent/{task}
-  task ∈ flightSearch | staySearch | placeDiscovery | itineraryGenerate | itineraryVerify
+  task ∈ cityInfo | flightSearch | staySearch | placeDiscovery | itineraryGenerate | itineraryVerify
 
 Request:
   Content-Type: application/json
@@ -4652,12 +4685,12 @@ S3와 동일한 패턴에 아래를 추가한다.
 ├────────────────────────────────────────────────────────────────────────────┤
 │ ✓도시 ─ ✓여행 스타일 ─ ✓항공권 ─ ✓숙소 ─ ⑤가고 싶은 곳 ─ ⑥일정 ─ ⑦검증    │
 ├────────────────────────────────────────────────────────────────────────────┤
-│ ✦ 도쿄에서 40곳을 찾았어요. 관심사에 맞는 곳을 위로 올려뒀습니다. [추론 ▾]   │  44px
+│ ✦ 도쿄에서 20곳을 찾았어요. 관심사에 맞는 곳을 위로 올려뒀습니다. [추론 ▾]   │  44px
 ├───────────────────────────────────────────┬────────────────────────────────┤
 │ ┌───────────────────────────────────────┐ │                                │
 │ │🔍 장소 검색                            │ │        ○      ○                │
 │ └───────────────────────────────────────┘ │           ●                    │
-│ 전체 40 │ 맛집 7 │ 관광 6 │ 자연 4 │ 미술관 4 │ ▸│      ○   ●  ○                │
+│ 전체 20 │ 맛집 4 │ 관광 4 │ 자연 3 │ 미술관 3 │ ▸│      ○   ●  ○                │
 │                          [추천순 ▾] [+ 링크로 추가]│    ●                        │
 ├───────────────────────────────────────────┤   ○      ●   ○                 │
 │ ┌───────────────────────────────────────┐ │            ▣ 숙소              │
@@ -7217,7 +7250,7 @@ jobs:
 | 6 | **S1 도시·날짜** | `CityCombobox`, `FlagBadge`, `CityHeroPreview`, `TripDateRangePicker` | 수용 기준 S1 통과 | 7 S1 |
 | 7 | **S0 홈** | 히어로, `QuickStartForm`, 여행 목록 카드, 빈 상태 | 수용 기준 S0 통과 | 7 S0 |
 | 8 | **S2 페르소나** | 전체 문항 컴포넌트, 진행 표시, 조건부 노출 | 수용 기준 S2 통과 | 7 S2 |
-| 9 | **에이전트 계층** | `contracts`, `AgentTransport`, `MockTransport`, 5개 스크립트, `useAgentStream` | 콘솔에서 이벤트 시퀀스 확인 + 스크립트 타이밍 측정 | 6.3~6.7 |
+| 9 | **에이전트 계층** | `contracts`, `AgentTransport`, `MockTransport`, 6개 스크립트, `useAgentStream` | 콘솔에서 이벤트 시퀀스 확인 + 스크립트 타이밍 측정 | 6.3~6.7 |
 | 10 | **스트림 UI** | `AgentStreamPanel`, `ThoughtStream`, `ToolCallCard`, 스켈레톤 | S3 설문 후 스트리밍 연출 확인 | 7 S3 페이즈2 |
 | 11 | **S3 항공권** | 설문 폼, 필터 사이드바, 정렬, 카드, 타임라인, 선택 바 | 수용 기준 S3 통과 | 7 S3 |
 | 12 | **지도 기반** | `MapCanvas`(동적 임포트), `MapSyncProvider`, 마커 컴포넌트, `MapControls`, 8.1 동기화 | 마커 hover·클릭 양방향 동작 | 8.1, 7 S6 지도 |

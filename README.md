@@ -30,7 +30,7 @@
 | 파일 | 내용 |
 |---|---|
 | [`agent/README.md`](./agent/README.md) | 진입점. 5분 요약 · 문서 지도 · 시작하기 · 흔한 실수 5개 |
-| [`agent/contract.md`](./agent/contract.md) | **계약서.** SSE 전송 계층, `AgentEvent` 9종, 작업 5개의 입출력, 필수 필드 등급, 불변식, 에러, 버전 관리 |
+| [`agent/contract.md`](./agent/contract.md) | **계약서.** SSE 전송 계층, `AgentEvent` 9종, 작업 6개의 입출력, 필수 필드 등급, 불변식, 에러, 버전 관리 |
 | [`agent/behavior.md`](./agent/behavior.md) | 행동 명세. 추론 노출 원칙, 한국어 카피 규칙, 페르소나 반영 매핑, LLM↔결정론 경계, 작업별 판단 기준, 품질 루브릭 |
 | [`agent/integration.md`](./agent/integration.md) | 연동 가이드. 프록시 참고 구현, 환경 변수, 작업 단위 점진 전환(M0~M5), 관측성, 트러블슈팅 |
 | [`agent/collaboration.md`](./agent/collaboration.md) | 협업 규칙. 소유권 경계, 계약 변경 절차, DoD, 마일스톤, **결정 대기 목록 16건**, 리스크 |
