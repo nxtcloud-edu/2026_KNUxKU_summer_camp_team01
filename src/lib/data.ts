@@ -32,9 +32,9 @@ export const FLIGHTS: FlightOffer[] = [
 ];
 
 export const STAYS: StayOffer[] = [
-  { id: 'gracery', name: '호텔 그레이스리 신주쿠', area: '신주쿠', rating: 8.7, reviews: 2431, price: 180000, total: 720000, station: '신주쿠역 도보 6분', tag: '위치 최고', image: 'https://picsum.photos/seed/gracery/640/420', x: 39, y: 37 },
-  { id: 'granbell', name: '신주쿠 그란벨 호텔', area: '신주쿠', rating: 8.2, reviews: 1180, price: 112000, total: 448000, station: '신주쿠산초메역 도보 4분', tag: '가성비', image: 'https://picsum.photos/seed/granbell/640/420', x: 43, y: 40 },
-  { id: 'park-hyatt', name: '파크 하이엇 도쿄', area: '니시신주쿠', rating: 9.2, reviews: 3902, price: 480000, total: 1920000, station: '도초마에역 도보 8분', tag: '평점 높음', image: 'https://picsum.photos/seed/park-hyatt/640/420', x: 34, y: 34 },
+  { id: 'gracery', type: 'hotel', features: ['central', 'station', 'attraction'], name: '호텔 그레이스리 신주쿠', area: '신주쿠', rating: 8.7, reviews: 2431, price: 180000, total: 720000, station: '신주쿠역 도보 6분', tag: '위치 최고', image: 'https://picsum.photos/seed/gracery/640/420', x: 39, y: 37 },
+  { id: 'granbell', type: 'hotel', features: ['station', 'quiet'], name: '신주쿠 그란벨 호텔', area: '신주쿠', rating: 8.2, reviews: 1180, price: 112000, total: 448000, station: '신주쿠산초메역 도보 4분', tag: '가성비', image: 'https://picsum.photos/seed/granbell/640/420', x: 43, y: 40 },
+  { id: 'park-hyatt', type: 'hotel', features: ['central', 'quiet'], name: '파크 하이엇 도쿄', area: '니시신주쿠', rating: 9.2, reviews: 3902, price: 480000, total: 1920000, station: '도초마에역 도보 8분', tag: '평점 높음', image: 'https://picsum.photos/seed/park-hyatt/640/420', x: 34, y: 34 },
 ];
 
 export const VERIFICATION_CHECKS: VerificationCheck[] = [

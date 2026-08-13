@@ -7,7 +7,8 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { BrandHeader } from '@/components/AppShell';
 import { MapPanel } from '@/components/MapPanel';
-import { CITIES, FLIGHTS, PLACES, STAYS } from '@/lib/data';
+import { CITIES, FLIGHTS, STAYS } from '@/lib/data';
+import { getTripPlace, getTripPlaces } from '@/lib/places';
 import { useTripStore } from '@/lib/store';
 import type { Trip } from '@/lib/types';
 
@@ -31,7 +32,8 @@ export function SharePrintScreen({ mode }: { mode: 'share' | 'print' }) {
   const city = CITIES.find((item) => item.id === trip?.destinationId);
   const flight = FLIGHTS.find((item) => item.id === trip?.selectedFlightId);
   const stay = STAYS.find((item) => item.id === trip?.selectedStayId);
-  const selectedPlaces = useMemo(() => trip ? PLACES.filter((place) => trip.selectedPlaceIds.includes(place.id)) : [], [trip]);
+  const allPlaces = useMemo(() => trip ? getTripPlaces(trip) : [], [trip]);
+  const selectedPlaces = useMemo(() => trip ? allPlaces.filter((place) => trip.selectedPlaceIds.includes(place.id)) : [], [allPlaces, trip]);
 
   if (!trip || !trip.itinerary) return <div className="share-empty"><Sparkles size={30} /><h1>일정을 불러올 수 없어요</h1><p>링크가 잘렸거나 아직 일정이 완성되지 않았어요.</p><Link href="/" className="button button--primary">홈으로</Link></div>;
 
@@ -54,13 +56,13 @@ export function SharePrintScreen({ mode }: { mode: 'share' | 'print' }) {
             <section className="readonly-day" key={day.id}>
               <header><span>DAY {dayIndex + 1}</span><div><h2>{day.title}</h2><p>{day.date}</p></div></header>
               {day.items.map((item, index) => {
-                const place = PLACES.find((value) => value.id === item.placeId);
-                return <div className="readonly-item" key={item.id}><time>{item.time}</time><span className="readonly-item__number">{item.kind === 'place' ? index + 1 : '·'}</span><div><strong>{item.title}</strong><small>{place ? `${place.category} · ${place.area} · ${place.price}` : item.kind}</small>{item.travelMinutes && <em>다음 장소까지 {item.travelMode} {item.travelMinutes}분</em>}</div></div>;
+                const place = getTripPlace(trip, item.placeId ?? '');
+                return <div className="readonly-item" key={item.id}><time>{item.time}</time><span className="readonly-item__number">{item.kind === 'place' ? index + 1 : '·'}</span><div><strong>{item.title}</strong><small>{place ? `${place.category} · ${place.area}${place.price ? ` · ${place.price}` : ''}` : item.kind}</small>{item.travelMinutes && <em>다음 장소까지 {item.travelMode} {item.travelMinutes}분</em>}</div></div>;
               })}
             </section>
           ))}
         </div>
-        {mode === 'share' && <aside><MapPanel selectedIds={selectedPlaces.map((place) => place.id)} showRoute stay={stay ?? null} /></aside>}
+        {mode === 'share' && <aside><MapPanel places={allPlaces} selectedIds={selectedPlaces.map((place) => place.id)} showRoute stay={stay ?? null} /></aside>}
       </div>
       {mode === 'share' && <footer className="readonly-footer"><span>Voyagent로 만든 일정입니다.</span><Link href="/" className="button button--primary">나도 만들어보기</Link></footer>}
     </div>

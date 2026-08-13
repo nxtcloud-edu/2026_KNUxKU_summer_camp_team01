@@ -3,8 +3,9 @@
 import { create, type StateCreator } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { FLIGHTS, PLACES, VERIFICATION_CHECKS } from '@/lib/data';
-import { createTrip, type ItineraryDay, type StepId, type Trip } from '@/lib/types';
+import { FLIGHTS, PLACES, STAYS, VERIFICATION_CHECKS } from '@/lib/data';
+import { getTripPlace } from '@/lib/places';
+import { createTrip, type ImportedPlace, type ItineraryDay, type StepId, type Trip } from '@/lib/types';
 
 type TripPatch = Partial<Omit<Trip, 'persona'>> & { persona?: Partial<Trip['persona']> };
 
@@ -16,7 +17,11 @@ type TripStore = {
   updateTrip: (id: string, patch: TripPatch) => void;
   completeStep: (id: string, step: StepId, next: StepId) => void;
   togglePlace: (id: string, placeId: string) => void;
+  importPlaces: (id: string, places: ImportedPlace[], selectedIds: string[], durations: Record<string, number>) => void;
   generateItinerary: (id: string) => void;
+  moveItineraryItem: (id: string, sourceDayId: string, itemId: string, targetDayId: string, targetIndex: number) => void;
+  addPlacesToItinerary: (id: string, dayId: string, placeIds: string[]) => void;
+  removeItineraryItem: (id: string, dayId: string, itemId: string) => void;
   verifyItinerary: (id: string) => void;
   removeTrip: (id: string) => void;
 };
@@ -27,10 +32,16 @@ const addDays = (iso: string, amount: number) => {
   return base.toISOString().slice(0, 10);
 };
 
+const preferredTravelMode = (trip: Trip, index: number): '도보' | '대중교통' => {
+  const modes = trip.persona.preferredTransportModes ?? [];
+  if (modes.length === 1) return modes[0] === 'publicTransit' ? '대중교통' : '도보';
+  return index % 2 === 0 ? '도보' : '대중교통';
+};
+
 const buildItinerary = (trip: Trip): ItineraryDay[] => {
   const selected = trip.selectedPlaceIds
-    .map((id) => PLACES.find((place) => place.id === id))
-    .filter((place): place is (typeof PLACES)[number] => Boolean(place));
+    .map((id) => getTripPlace(trip, id))
+    .filter((place): place is NonNullable<typeof place> => Boolean(place));
   const places = selected.length > 0 ? selected : PLACES.slice(0, 5);
   const dayCount = Math.max(1, Math.min(5, trip.startDate && trip.endDate
     ? Math.round((new Date(trip.endDate).getTime() - new Date(trip.startDate).getTime()) / 86400000) + 1
@@ -46,8 +57,9 @@ const buildItinerary = (trip: Trip): ItineraryDay[] => {
     const arrival = selectedFlight.outbound.split(' → ')[1]?.split(' ') ?? [];
     days[0].items.push({ id: 'arrival', kind: 'flight', time: arrival[0] ?? '11:20', title: `${arrival[1] ?? '목적지'} 공항 도착`, duration: 80, travelMinutes: 78, travelMode: '대중교통' });
   }
-  if (trip.selectedStayId) {
-    days[0].items.push({ id: 'checkin', kind: 'stay', time: '14:00', title: '호텔 체크인', duration: 30, travelMinutes: 8, travelMode: '도보' });
+  const selectedStay = STAYS.find((stay) => stay.id === trip.selectedStayId);
+  if (selectedStay) {
+    days[0].items.push({ id: 'checkin', kind: 'stay', time: '14:00', title: `${selectedStay.name} 체크인`, duration: 30, travelMinutes: 8, travelMode: '도보' });
   }
   places.forEach((place, index) => {
     const dayIndex = index % dayCount;
@@ -59,12 +71,27 @@ const buildItinerary = (trip: Trip): ItineraryDay[] => {
       kind: 'place',
       time: `${String(Math.min(hour, 20)).padStart(2, '0')}:00`,
       title: place.name,
-      duration: place.duration,
+      duration: trip.placeDurations?.[place.id] ?? place.duration,
       travelMinutes: 8 + ((index * 7) % 23),
-      travelMode: index % 2 === 0 ? '도보' : '대중교통',
+      travelMode: preferredTravelMode(trip, index),
     });
   });
   return days;
+};
+
+const resequenceItems = (items: ItineraryDay['items']) => {
+  let cursor = 9 * 60;
+  const formatTime = (minutes: number) => `${String(Math.floor(minutes / 60) % 24).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+  return items.map((item) => {
+    if (item.kind !== 'place') {
+      const [hour, minute] = item.time.split(':').map(Number);
+      if (Number.isFinite(hour) && Number.isFinite(minute)) cursor = Math.max(cursor, hour * 60 + minute + item.duration + (item.travelMinutes ?? 0));
+      return item;
+    }
+    const next = { ...item, time: formatTime(cursor) };
+    cursor += item.duration + (item.travelMinutes ?? 12);
+    return next;
+  });
 };
 
 const tripStoreCreator: StateCreator<TripStore> = (set) => ({
@@ -74,8 +101,10 @@ const tripStoreCreator: StateCreator<TripStore> = (set) => ({
   ensureTrip: (id) => set((state) => {
     const current = state.trips[id];
     if (!current) return { trips: { ...state.trips, [id]: createTrip(id) } };
-    if (typeof current.originId === 'undefined') {
-      return { trips: { ...state.trips, [id]: { ...current, originId: 'seoul' } } };
+    const needsOriginMigration = typeof current.originId === 'undefined';
+    const needsImportedPlacesMigration = typeof current.importedPlaces === 'undefined';
+    if (needsOriginMigration || needsImportedPlacesMigration) {
+      return { trips: { ...state.trips, [id]: { ...current, originId: needsOriginMigration ? 'seoul' : current.originId, importedPlaces: current.importedPlaces ?? {} } } };
     }
     return state;
   }),
@@ -101,9 +130,81 @@ const tripStoreCreator: StateCreator<TripStore> = (set) => ({
       : [...current.selectedPlaceIds, placeId];
     return { trips: { ...state.trips, [id]: { ...current, selectedPlaceIds, itinerary: null, verification: null, updatedAt: new Date().toISOString() } } };
   }),
+  importPlaces: (id, places, selectedIds, durations) => set((state) => {
+    const current = state.trips[id] ?? createTrip(id);
+    const importedPlaces = { ...(current.importedPlaces ?? {}) };
+    places.forEach((place) => { importedPlaces[place.id] = place; });
+    return {
+      trips: {
+        ...state.trips,
+        [id]: {
+          ...current,
+          importedPlaces,
+          selectedPlaceIds: Array.from(new Set([...current.selectedPlaceIds, ...selectedIds])),
+          placeDurations: { ...(current.placeDurations ?? {}), ...durations },
+          itinerary: null,
+          verification: null,
+          updatedAt: new Date().toISOString(),
+        },
+      },
+    };
+  }),
   generateItinerary: (id) => set((state) => {
     const current = state.trips[id] ?? createTrip(id);
     return { trips: { ...state.trips, [id]: { ...current, itinerary: buildItinerary(current), verification: null, updatedAt: new Date().toISOString() } } };
+  }),
+  moveItineraryItem: (id, sourceDayId, itemId, targetDayId, targetIndex) => set((state) => {
+    const current = state.trips[id] ?? createTrip(id);
+    if (!current.itinerary) return state;
+    const days = current.itinerary.map((day) => ({ ...day, items: [...day.items] }));
+    const sourceDay = days.find((day) => day.id === sourceDayId);
+    const targetDay = days.find((day) => day.id === targetDayId);
+    if (!sourceDay || !targetDay) return state;
+    const sourceIndex = sourceDay.items.findIndex((item) => item.id === itemId);
+    if (sourceIndex < 0 || sourceDay.items[sourceIndex].kind !== 'place') return state;
+    const [movedItem] = sourceDay.items.splice(sourceIndex, 1);
+    const adjustedIndex = sourceDayId === targetDayId && sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+    targetDay.items.splice(Math.max(0, Math.min(adjustedIndex, targetDay.items.length)), 0, movedItem);
+    const itinerary = days.map((day) => ({ ...day, items: resequenceItems(day.items) }));
+    return { trips: { ...state.trips, [id]: { ...current, itinerary, verification: null, updatedAt: new Date().toISOString() } } };
+  }),
+  addPlacesToItinerary: (id, dayId, placeIds) => set((state) => {
+    const current = state.trips[id] ?? createTrip(id);
+    if (!current.itinerary) return state;
+    const existingPlaceIds = new Set(current.itinerary.flatMap((day) => day.items.map((item) => item.placeId).filter(Boolean)));
+    const existingPlaceCount = existingPlaceIds.size;
+    const additions = placeIds
+      .filter((placeId) => !existingPlaceIds.has(placeId))
+      .map((placeId, index) => {
+        const place = getTripPlace(current, placeId);
+        return place ? { placeId, place, index } : null;
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+      .map(({ placeId, place, index }) => ({
+        id: `item-${placeId}-${Date.now()}-${index}`,
+        placeId,
+        kind: 'place' as const,
+        time: '10:00',
+        title: place.name,
+        duration: current.placeDurations?.[placeId] ?? place.duration,
+        travelMinutes: 12,
+        travelMode: preferredTravelMode(current, existingPlaceCount + index),
+      }));
+    if (additions.length === 0) return state;
+    const itinerary = current.itinerary.map((day) => day.id === dayId ? { ...day, items: resequenceItems([...day.items, ...additions]) } : day);
+    return { trips: { ...state.trips, [id]: { ...current, itinerary, verification: null, updatedAt: new Date().toISOString() } } };
+  }),
+  removeItineraryItem: (id, dayId, itemId) => set((state) => {
+    const current = state.trips[id] ?? createTrip(id);
+    if (!current.itinerary) return state;
+    const targetItem = current.itinerary.find((day) => day.id === dayId)?.items.find((item) => item.id === itemId);
+    if (!targetItem || targetItem.kind !== 'place') return state;
+    const itinerary = current.itinerary.map((day) => day.id === dayId
+      ? { ...day, items: resequenceItems(day.items.filter((item) => item.id !== itemId)) }
+      : day);
+    const remainingPlaceIds = new Set(itinerary.flatMap((day) => day.items.map((item) => item.placeId).filter((placeId): placeId is string => Boolean(placeId))));
+    const selectedPlaceIds = current.selectedPlaceIds.filter((placeId) => remainingPlaceIds.has(placeId));
+    return { trips: { ...state.trips, [id]: { ...current, itinerary, selectedPlaceIds, verification: null, updatedAt: new Date().toISOString() } } };
   }),
   verifyItinerary: (id) => set((state) => {
     const current = state.trips[id] ?? createTrip(id);
