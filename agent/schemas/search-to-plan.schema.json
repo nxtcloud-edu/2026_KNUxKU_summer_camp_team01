@@ -1,814 +1,2832 @@
-{
-  "title": "SearchToPlanInput",
-  "description": "Search Agent가 취합한 항공권·숙소·장소 정보를 Plan Agent에 전달하는 입력 스키마. plan-to-verification.schema.json과 같은 규약(snake_case · 모든 필드 required · additionalProperties false · $ref 없음 · 타임존 없음)을 따른다. Plan Agent는 여기 있는 사실만으로 일정을 만든다. 없는 값을 추측해 채우지 않는다.",
-  "type": "object",
-  "additionalProperties": false,
-  "required": ["trip_info", "search_result"],
-  "properties": {
-    "trip_info": {
+--- user-task-io.schema.normalized.json	2026-08-13 06:37:22.421822746 +0000
++++ task-io.schema.improved.json	2026-08-13 06:35:34.265921425 +0000
+@@ -1,11 +1,14 @@
+ {
++  "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "title": "Voyagent AgentTaskIO",
+   "description": "5개 에이전트 작업의 입력·출력 스키마. JSON Schema draft 2020-12 문법. 전체 필드 정의는 spec.md 5장이 원본이고, 이 스키마는 경계에서 반드시 지켜야 하는 필수 필드와 형식 제약만 검증한다(fail-fast 목적). 여기서 통과했다고 완전한 데이터라는 뜻은 아니다. 선택 필드의 의미는 contract.md 6절의 등급 표를 본다.",
+   "x-contract-version": "v1.0-draft",
+   "x-dialect": "draft/2020-12",
+   "x-source-of-truth": "spec.md 5장",
+   "$defs": {
+-    "__comment_common__": "───────── 공통 스칼라 ─────────",
++    "__comment_common__": {
++      "$comment": "───────── 공통 스칼라 ─────────"
++    },
+     "ISODate": {
+       "type": "string",
+       "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+@@ -63,7 +66,33 @@
+         "currency": {
+           "$ref": "#/$defs/CurrencyCode"
+         }
+-      }
++      },
++      "allOf": [
++        {
++          "description": "contract.md 7.2절: KRW·JPY는 소수점 없는 정수가 필수다.",
++          "if": {
++            "properties": {
++              "currency": {
++                "enum": [
++                  "KRW",
++                  "JPY"
++                ]
++              }
++            },
++            "required": [
++              "currency"
++            ]
++          },
++          "then": {
++            "properties": {
++              "amount": {
++                "multipleOf": 1
++              }
++            }
++          }
++        }
++      ],
++      "additionalProperties": false
+     },
+     "LatLng": {
+       "type": "object",
+@@ -82,7 +111,8 @@
+           "minimum": -180,
+           "maximum": 180
+         }
+-      }
++      },
++      "additionalProperties": false
+     },
+     "TimeWindow": {
+       "enum": [
+@@ -101,7 +131,9 @@
+       "pattern": "^[a-z0-9]+(-[a-z0-9]+)+$",
+       "description": "{cityId}-{slug}. 예: tokyo-sensoji. 재실행 간 안정적이어야 한다."
+     },
+-    "__comment_enums__": "───────── 열거형 (contract.md 7.5절) ─────────",
++    "__comment_enums__": {
++      "$comment": "───────── 열거형 (contract.md 7.5절) ─────────"
++    },
+     "PlaceCategory": {
+       "enum": [
+         "attraction",
+@@ -280,7 +312,9 @@
+         "V10"
+       ]
+     },
+-    "__comment_persona__": "───────── 페르소나 ─────────",
++    "__comment_persona__": {
++      "$comment": "───────── 페르소나 ─────────"
++    },
+     "Travelers": {
+       "type": "object",
+       "required": [
+@@ -318,7 +352,8 @@
+         "pets": {
+           "type": "boolean"
+         }
+-      }
++      },
++      "additionalProperties": false
+     },
+     "AccessibilityNeeds": {
+       "type": "object",
+@@ -341,7 +376,8 @@
+         "avoidStairs": {
+           "type": "boolean"
+         }
+-      }
++      },
++      "additionalProperties": false
+     },
+     "BudgetPref": {
+       "type": "object",
+@@ -375,7 +411,8 @@
+         "includesStay": {
+           "type": "boolean"
+         }
+-      }
++      },
++      "additionalProperties": false
+     },
+     "Airport": {
+       "type": "object",
+@@ -417,7 +454,8 @@
+         "isPrimary": {
+           "type": "boolean"
+         }
+-      }
++      },
++      "additionalProperties": false
+     },
+     "Persona": {
+       "type": "object",
+@@ -500,9 +538,12 @@
+             "null"
+           ]
+         }
+-      }
++      },
++      "additionalProperties": false
++    },
++    "__comment_inputs__": {
++      "$comment": "───────── 작업 입력 5종 ─────────"
+     },
+-    "__comment_inputs__": "───────── 작업 입력 5종 ─────────",
+     "FlightSurvey": {
+       "type": "object",
+       "required": [
+@@ -584,7 +625,8 @@
+             "null"
+           ]
+         }
+-      }
++      },
++      "additionalProperties": false
+     },
+     "StaySurvey": {
+       "type": "object",
+@@ -627,7 +669,8 @@
+                   "type": "number",
+                   "minimum": 0
+                 }
+-              }
++              },
++              "additionalProperties": false
+             },
+             {
+               "type": "null"
+@@ -671,7 +714,8 @@
+             "null"
+           ]
+         }
+-      }
++      },
++      "additionalProperties": false
+     },
+     "FlightSearchInput": {
+       "type": "object",
+@@ -710,7 +754,8 @@
+         "survey": {
+           "$ref": "#/$defs/FlightSurvey"
+         }
+-      }
++      },
++      "additionalProperties": false
+     },
+     "StaySearchInput": {
+       "type": "object",
+@@ -744,7 +789,8 @@
+         "arrivalTime": {
+           "$ref": "#/$defs/TimeHHMM"
+         }
+-      }
++      },
++      "additionalProperties": false
+     },
+     "PlaceDiscoveryInput": {
+       "type": "object",
+@@ -766,7 +812,8 @@
+           "minimum": 1,
+           "maximum": 30
+         }
+-      }
++      },
++      "additionalProperties": false
+     },
+     "ItineraryGenInput": {
+       "type": "object",
+@@ -794,7 +841,8 @@
+             "end": {
+               "$ref": "#/$defs/ISODate"
+             }
+-          }
++          },
++          "additionalProperties": false
+         },
+         "persona": {
+           "$ref": "#/$defs/Persona"
+@@ -826,7 +874,8 @@
+             }
+           ]
+         }
+-      }
++      },
++      "additionalProperties": false
+     },
+     "VerifyInput": {
+       "type": "object",
+@@ -869,9 +918,12 @@
+             }
+           ]
+         }
+-      }
++      },
++      "additionalProperties": false
++    },
++    "__comment_place__": {
++      "$comment": "───────── 출력: Place ─────────"
+     },
+-    "__comment_place__": "───────── 출력: Place ─────────",
+     "OpeningHoursEntry": {
+       "type": "object",
+       "required": [
+@@ -911,7 +963,8 @@
+           "type": "string",
+           "maxLength": 60
+         }
+-      }
++      },
++      "additionalProperties": false
+     },
+     "PlaceReview": {
+       "type": "object",
+@@ -973,7 +1026,8 @@
+             "agent-summary"
+           ]
+         }
+-      }
++      },
++      "additionalProperties": false
+     },
+     "Place": {
+       "type": "object",
+@@ -1077,7 +1131,8 @@
+               "url": {
+                 "type": "string"
+               }
+-            }
++            },
++            "additionalProperties": false
+           }
+         },
+         "openingHours": {
+@@ -1117,7 +1172,8 @@
+               "type": "string",
+               "maxLength": 60
+             }
+-          }
++          },
++          "additionalProperties": false
+         },
+         "needsReservation": {
+           "type": "boolean"
+@@ -1153,7 +1209,8 @@
+                 "null"
+               ]
+             }
+-          }
++          },
++          "additionalProperties": false
+         },
+         "bestTimeToVisit": {
+           "type": "string",
+@@ -1191,9 +1248,12 @@
+           "type": "string",
+           "maxLength": 60
+         }
+-      }
++      },
++      "additionalProperties": false
++    },
++    "__comment_flight__": {
++      "$comment": "───────── 출력: FlightOffer ─────────"
+     },
+-    "__comment_flight__": "───────── 출력: FlightOffer ─────────",
+     "FlightSegment": {
+       "type": "object",
+       "required": [
+@@ -1247,7 +1307,8 @@
+             "terminal": {
+               "type": "string"
+             }
+-          }
++          },
++          "additionalProperties": false
+         },
+         "to": {
+           "type": "object",
+@@ -1265,7 +1326,8 @@
+             "terminal": {
+               "type": "string"
+             }
+-          }
++          },
++          "additionalProperties": false
+         },
+         "departAt": {
+           "$ref": "#/$defs/ISODateTime"
+@@ -1276,7 +1338,8 @@
+         "durationMinutes": {
+           "$ref": "#/$defs/Minutes"
+         }
+-      }
++      },
++      "additionalProperties": false
+     },
+     "FlightLeg": {
+       "type": "object",
+@@ -1336,7 +1399,8 @@
+               "minutes": {
+                 "$ref": "#/$defs/Minutes"
+               }
+-            }
++            },
++            "additionalProperties": false
+           },
+           "description": "길이가 stops와 같아야 한다. 불변식 I-F4."
+         },
+@@ -1345,7 +1409,8 @@
+           "minimum": 0,
+           "maximum": 2
+         }
+-      }
++      },
++      "additionalProperties": false
+     },
+     "FlightOffer": {
+       "type": "object",
+@@ -1402,7 +1467,8 @@
+               "type": "number",
+               "minimum": 0
+             }
+-          }
++          },
++          "additionalProperties": false
+         },
+         "refundable": {
+           "type": "boolean"
+@@ -1425,9 +1491,12 @@
+           "type": "string",
+           "maxLength": 60
+         }
+-      }
++      },
++      "additionalProperties": false
++    },
++    "__comment_stay__": {
++      "$comment": "───────── 출력: StayOffer ─────────"
+     },
+-    "__comment_stay__": "───────── 출력: StayOffer ─────────",
+     "StayOffer": {
+       "type": "object",
+       "required": [
+@@ -1524,7 +1593,8 @@
+             "walkMinutes": {
+               "$ref": "#/$defs/Minutes"
+             }
+-          }
++          },
++          "additionalProperties": false
+         },
+         "distanceToPlacesKm": {
+           "type": "number",
+@@ -1589,7 +1659,8 @@
+                 "minimum": 0,
+                 "maximum": 10
+               }
+-            }
++            },
++            "additionalProperties": false
+           },
+           "description": "4개 전부 채우거나 빈 배열. 2개만 오면 드로어 게이지 4행이 깨진다 (불변식 I-S7)."
+         },
+@@ -1615,9 +1686,12 @@
+           "type": "string",
+           "minLength": 1
+         }
+-      }
++      },
++      "additionalProperties": false
++    },
++    "__comment_itinerary__": {
++      "$comment": "───────── 출력: Itinerary ─────────"
+     },
+-    "__comment_itinerary__": "───────── 출력: Itinerary ─────────",
+     "TravelLeg": {
+       "type": "object",
+       "required": [
+@@ -1651,7 +1725,8 @@
+               "minutes": {
+                 "$ref": "#/$defs/Minutes"
+               }
+-            }
++            },
++            "additionalProperties": false
+           },
+           "maxItems": 3
+         },
+@@ -1665,7 +1740,8 @@
+           "type": "string",
+           "maxLength": 40
+         }
+-      }
++      },
++      "additionalProperties": false
+     },
+     "ItineraryItem": {
+       "type": "object",
+@@ -1714,7 +1790,8 @@
+                 "inbound"
+               ]
+             }
+-          }
++          },
++          "additionalProperties": false
+         },
+         "title": {
+           "type": "string",
+@@ -1787,7 +1864,8 @@
+             ]
+           }
+         }
+-      ]
++      ],
++      "additionalProperties": false
+     },
+     "ItineraryDay": {
+       "type": "object",
+@@ -1855,7 +1933,8 @@
+         "collapsed": {
+           "type": "boolean"
+         }
+-      }
++      },
++      "additionalProperties": false
+     },
+     "Itinerary": {
+       "type": "object",
+@@ -1919,9 +1998,12 @@
+           },
+           "maxItems": 5
+         }
+-      }
++      },
++      "additionalProperties": false
++    },
++    "__comment_verification__": {
++      "$comment": "───────── 출력: VerificationReport ─────────"
+     },
+-    "__comment_verification__": "───────── 출력: VerificationReport ─────────",
+     "ItineraryChange": {
+       "type": "object",
+       "required": [
+@@ -1959,7 +2041,8 @@
+           "type": "object",
+           "description": "op별 스키마는 contract.md 부록 B (합의 대기)."
+         }
+-      }
++      },
++      "additionalProperties": false
+     },
+     "AutoFixProposal": {
+       "type": "object",
+@@ -1992,7 +2075,8 @@
+           "type": "string",
+           "maxLength": 40
+         }
+-      }
++      },
++      "additionalProperties": false
+     },
+     "VerificationIssue": {
+       "type": "object",
+@@ -2056,7 +2140,8 @@
+               "minLength": 1
+             }
+           },
+-          "description": "입력 일정에 실재해야 한다 (불변식 I-V5)."
++          "description": "입력 일정에 실재해야 한다 (불변식 I-V5).",
++          "additionalProperties": false
+         },
+         "autoFix": {
+           "oneOf": [
+@@ -2072,7 +2157,8 @@
+           "const": "open",
+           "description": "fixed/ignored는 프론트가 관리 (불변식 I-V6)."
+         }
+-      }
++      },
++      "additionalProperties": false
+     },
+     "VerificationReport": {
+       "type": "object",
+@@ -2148,7 +2234,8 @@
+               "minimum": 0
+             }
+           },
+-          "description": "4개 합이 10이어야 한다 (불변식 I-V3)."
++          "description": "4개 합이 10이어야 한다 (불변식 I-V3).",
++          "additionalProperties": false
+         },
+         "overall": {{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Voyagent AgentTaskIO",
+  "description": "5개 에이전트 작업의 입력·출력 스키마. JSON Schema draft 2020-12 문법. 전체 필드 정의는 spec.md 5장이 원본이고, 이 스키마는 경계에서 반드시 지켜야 하는 필수 필드와 형식 제약만 검증한다(fail-fast 목적). 여기서 통과했다고 완전한 데이터라는 뜻은 아니다. 선택 필드의 의미는 contract.md 6절의 등급 표를 본다.",
+  "x-contract-version": "v1.0-draft",
+  "x-dialect": "draft/2020-12",
+  "x-source-of-truth": "spec.md 5장",
+  "$defs": {
+    "__comment_common__": {
+      "$comment": "───────── 공통 스칼라 ─────────"
+    },
+    "ISODate": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "YYYY-MM-DD"
+    },
+    "ISODateTime": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$",
+      "description": "YYYY-MM-DDTHH:mm. 타임존 없음. 항상 현지 시각. Z나 +09:00을 붙이면 프론트에서 시각이 밀린다."
+    },
+    "TimeHHMM": {
+      "type": "string",
+      "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+      "description": "HH:mm 24시간"
+    },
+    "Timestamp": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$",
+      "description": "ISO 8601 UTC. 생성·수정 시각 전용."
+    },
+    "Weekday": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 6,
+      "description": "0=일요일 (Date.getDay()와 동일)"
+    },
+    "Minutes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "Meters": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "CurrencyCode": {
+      "enum": [
+        "KRW",
+        "USD",
+        "JPY",
+        "EUR",
+        "THB"
+      ]
+    },
+    "Money": {
       "type": "object",
-      "description": "plan-to-verification.schema.json의 trip_info와 동일한 구조. Plan Agent는 이 객체를 그대로 검증 Agent에 넘긴다. 값을 바꾸지 않는다.",
-      "additionalProperties": false,
       "required": [
-        "destination",
-        "start_date",
-        "end_date",
-        "num_travelers",
-        "budget_total",
-        "budget_currency",
-        "budget_includes",
-        "transport_mode",
-        "day_start_time",
-        "day_end_time",
-        "persona"
+        "amount",
+        "currency"
       ],
       "properties": {
-        "destination": {
-          "type": "string"
-        },
-        "start_date": {
-          "type": "string",
-          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
-        },
-        "end_date": {
-          "type": "string",
-          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
-        },
-        "num_travelers": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "budget_total": {
+        "amount": {
           "type": "number",
           "minimum": 0
         },
-        "budget_currency": {
+        "currency": {
+          "$ref": "#/$defs/CurrencyCode"
+        }
+      },
+      "allOf": [
+        {
+          "description": "contract.md 7.2절: KRW·JPY는 소수점 없는 정수가 필수다.",
+          "if": {
+            "properties": {
+              "currency": {
+                "enum": [
+                  "KRW",
+                  "JPY"
+                ]
+              }
+            },
+            "required": [
+              "currency"
+            ]
+          },
+          "then": {
+            "properties": {
+              "amount": {
+                "multipleOf": 1
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "LatLng": {
+      "type": "object",
+      "required": [
+        "lat",
+        "lng"
+      ],
+      "properties": {
+        "lat": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "lng": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        }
+      },
+      "additionalProperties": false
+    },
+    "TimeWindow": {
+      "enum": [
+        "dawn",
+        "morning",
+        "afternoon",
+        "evening"
+      ]
+    },
+    "IATA": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "PlaceId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)+$",
+      "description": "{cityId}-{slug}. 예: tokyo-sensoji. 재실행 간 안정적이어야 한다."
+    },
+    "__comment_enums__": {
+      "$comment": "───────── 열거형 (contract.md 7.5절) ─────────"
+    },
+    "PlaceCategory": {
+      "enum": [
+        "attraction",
+        "museum",
+        "nature",
+        "temple",
+        "history",
+        "food",
+        "cafe",
+        "shopping",
+        "nightlife",
+        "activity",
+        "viewpoint",
+        "relax",
+        "other"
+      ]
+    },
+    "InterestId": {
+      "enum": [
+        "food",
+        "cafe",
+        "nature",
+        "museum",
+        "history",
+        "shopping",
+        "nightlife",
+        "activity",
+        "photo",
+        "relax"
+      ]
+    },
+    "TransportId": {
+      "enum": [
+        "walk",
+        "transit",
+        "car",
+        "taxi"
+      ]
+    },
+    "TravelMode": {
+      "enum": [
+        "walk",
+        "transit",
+        "car",
+        "taxi",
+        "bike"
+      ]
+    },
+    "CompanionType": {
+      "enum": [
+        "solo",
+        "couple",
+        "family",
+        "friends",
+        "colleagues"
+      ]
+    },
+    "Pace": {
+      "enum": [
+        "relaxed",
+        "balanced",
+        "packed"
+      ]
+    },
+    "CabinClass": {
+      "enum": [
+        "economy",
+        "premium",
+        "business",
+        "first"
+      ]
+    },
+    "StayType": {
+      "enum": [
+        "hotel",
+        "apartment",
+        "hostel",
+        "ryokan",
+        "guesthouse"
+      ]
+    },
+    "LocationPriority": {
+      "enum": [
+        "downtown",
+        "nearStation",
+        "nearAttractions",
+        "quiet"
+      ]
+    },
+    "AmenityId": {
+      "enum": [
+        "wifi",
+        "breakfast",
+        "kitchen",
+        "laundry",
+        "parking",
+        "pool",
+        "gym",
+        "ac",
+        "luggage",
+        "petFriendly",
+        "nonSmoking",
+        "accessible"
+      ]
+    },
+    "ItineraryItemKind": {
+      "enum": [
+        "place",
+        "flight",
+        "stay-checkin",
+        "stay-checkout",
+        "meal",
+        "free",
+        "buffer"
+      ]
+    },
+    "FlightTag": {
+      "enum": [
+        "cheapest",
+        "fastest",
+        "recommended",
+        "nonstop",
+        "best-value"
+      ]
+    },
+    "StayTag": {
+      "enum": [
+        "best-location",
+        "best-value",
+        "recommended",
+        "top-rated"
+      ]
+    },
+    "AutoFixKind": {
+      "enum": [
+        "move-to-other-day",
+        "shift-time",
+        "swap-order",
+        "replace-place",
+        "remove-item",
+        "add-buffer",
+        "add-todo",
+        "add-indoor-alternative",
+        "split-day"
+      ]
+    },
+    "CheckSeverity": {
+      "enum": [
+        "pass",
+        "warning",
+        "conflict",
+        "skipped"
+      ]
+    },
+    "VerificationOverall": {
+      "enum": [
+        "idle",
+        "running",
+        "verified",
+        "has-warnings",
+        "has-conflicts",
+        "stale"
+      ]
+    },
+    "VerificationRuleId": {
+      "enum": [
+        "V1",
+        "V2",
+        "V3",
+        "V4",
+        "V5",
+        "V6",
+        "V7",
+        "V8",
+        "V9",
+        "V10"
+      ]
+    },
+    "__comment_persona__": {
+      "$comment": "───────── 페르소나 ─────────"
+    },
+    "Travelers": {
+      "type": "object",
+      "required": [
+        "adults",
+        "children",
+        "childAges",
+        "seniors",
+        "pets"
+      ],
+      "properties": {
+        "adults": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "children": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "childAges": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 17
+          },
+          "description": "children과 길이가 같아야 한다."
+        },
+        "seniors": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "pets": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AccessibilityNeeds": {
+      "type": "object",
+      "required": [
+        "longWalkOk",
+        "stroller",
+        "wheelchair",
+        "avoidStairs"
+      ],
+      "properties": {
+        "longWalkOk": {
+          "type": "boolean"
+        },
+        "stroller": {
+          "type": "boolean"
+        },
+        "wheelchair": {
+          "type": "boolean"
+        },
+        "avoidStairs": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "BudgetPref": {
+      "type": "object",
+      "required": [
+        "currency",
+        "amount",
+        "basis",
+        "includesFlight",
+        "includesStay"
+      ],
+      "properties": {
+        "currency": {
+          "$ref": "#/$defs/CurrencyCode"
+        },
+        "amount": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "basis": {
+          "enum": [
+            "perPerson",
+            "total"
+          ]
+        },
+        "includesFlight": {
+          "type": "boolean"
+        },
+        "includesStay": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Airport": {
+      "type": "object",
+      "required": [
+        "code",
+        "name",
+        "cityId",
+        "cityName",
+        "countryCode",
+        "location",
+        "isPrimary"
+      ],
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/IATA"
+        },
+        "name": {
           "type": "string"
         },
-        "budget_includes": {
+        "nameEn": {
+          "type": "string"
+        },
+        "cityId": {
+          "type": "string"
+        },
+        "cityName": {
+          "type": "string"
+        },
+        "countryCode": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$"
+        },
+        "flag": {
+          "type": "string"
+        },
+        "location": {
+          "$ref": "#/$defs/LatLng"
+        },
+        "isPrimary": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Persona": {
+      "type": "object",
+      "required": [
+        "includeFlights",
+        "includeStays",
+        "travelers",
+        "pace",
+        "interests",
+        "transports",
+        "accessibility",
+        "budget",
+        "freeNote"
+      ],
+      "properties": {
+        "includeFlights": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "includeStays": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "originAirport": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Airport"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "travelers": {
+          "$ref": "#/$defs/Travelers"
+        },
+        "companionType": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/CompanionType"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pace": {
+          "$ref": "#/$defs/Pace"
+        },
+        "interests": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/InterestId"
+          },
+          "minItems": 1
+        },
+        "transports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TransportId"
+          }
+        },
+        "accessibility": {
+          "$ref": "#/$defs/AccessibilityNeeds"
+        },
+        "budget": {
+          "$ref": "#/$defs/BudgetPref"
+        },
+        "freeNote": {
+          "type": "string",
+          "description": "자유 입력. 프롬프트에 그대로 전달하고, 반영했으면 thought에서 언급한다 (behavior.md 1.3절)."
+        },
+        "completedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "__comment_inputs__": {
+      "$comment": "───────── 작업 입력 5종 ─────────"
+    },
+    "FlightSurvey": {
+      "type": "object",
+      "required": [
+        "preferredAirlines",
+        "excludedAirlines",
+        "nonstopOnly",
+        "outboundWindows",
+        "inboundWindows",
+        "cabinClass",
+        "checkedBags"
+      ],
+      "properties": {
+        "preferredAirlines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "비어 있으면 무관. 값이 있으면 가점(하드 제외 아님)."
+        },
+        "excludedAirlines": {
           "type": "array",
           "items": {
             "type": "string"
           }
         },
-        "transport_mode": {
-          "type": "string"
+        "nonstopOnly": {
+          "type": "boolean"
         },
-        "day_start_time": {
-          "type": "string",
-          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
-        },
-        "day_end_time": {
-          "type": "string",
-          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
-        },
-        "persona": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "description",
-            "must_visit",
-            "avoid",
-            "pace",
-            "max_walking_level"
+        "maxLayoverMinutes": {
+          "type": [
+            "integer",
+            "null"
           ],
-          "properties": {
-            "description": {
-              "type": "string"
-            },
-            "must_visit": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "avoid": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "pace": {
-              "type": "string"
-            },
-            "max_walking_level": {
-              "type": "string"
-            }
+          "minimum": 0
+        },
+        "outboundWindows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TimeWindow"
+          },
+          "description": "비어 있으면 무관(전부 통과). 빈 배열을 '아무것도 통과 안 함'으로 해석하지 않는다."
+        },
+        "inboundWindows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TimeWindow"
           }
+        },
+        "cabinClass": {
+          "$ref": "#/$defs/CabinClass"
+        },
+        "checkedBags": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "maxPrice": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "originAirportCodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/IATA"
+          }
+        },
+        "destinationAirportCodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/IATA"
+          }
+        },
+        "completedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
-      }
+      },
+      "additionalProperties": false
     },
-    "search_result": {
+    "StaySurvey": {
       "type": "object",
-      "description": "Search Agent가 취합한 결과. flights·stays·places 세 갈래와 공통 메타로 나뉜다.",
-      "additionalProperties": false,
       "required": [
-        "city_id",
-        "local_currency",
-        "searched_at",
-        "flights",
-        "stays",
-        "places",
-        "area_info",
-        "cost_baseline"
+        "types",
+        "locationPriority",
+        "amenities",
+        "rooms",
+        "bedPreference",
+        "considerFlightArrival"
       ],
       "properties": {
-        "city_id": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9-]*$",
-          "description": "목적지 도시 식별자. 예: tokyo. 모든 장소 id의 접두어와 일치해야 한다."
+        "types": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StayType"
+          }
         },
-        "local_currency": {
-          "type": "string",
-          "pattern": "^[A-Z]{3}$",
-          "description": "이 문서 안 모든 price·total_price 필드의 통화. 환율 변환을 하지 않고 현지 통화 그대로 보낸다. trip_info.budget_currency와 다를 수 있고, 환산은 예산 판정 단계에서 한다."
+        "locationPriority": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LocationPriority"
+          },
+          "maxItems": 2
         },
-        "searched_at": {
-          "type": "string",
-          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$",
-          "description": "검색을 완료한 시각. ISO 8601 UTC. 이 필드만 Z를 붙인다. 나머지 모든 날짜·시각 필드는 타임존 없는 현지 시각이다."
+        "nightlyBudget": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "min",
+                "max"
+              ],
+              "properties": {
+                "min": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "max": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
-        "flights": {
+        "minRating": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10
+        },
+        "amenities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AmenityId"
+          },
+          "description": "하드 조건. '꼭 있어야 하는 것'이라고 물었다."
+        },
+        "rooms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "bedPreference": {
+          "enum": [
+            "any",
+            "twin",
+            "double",
+            "multiple"
+          ]
+        },
+        "considerFlightArrival": {
+          "type": "boolean"
+        },
+        "completedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "FlightSearchInput": {
+      "type": "object",
+      "required": [
+        "origin",
+        "destination",
+        "departDate",
+        "returnDate",
+        "travelers",
+        "survey"
+      ],
+      "properties": {
+        "origin": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/IATA"
+          },
+          "minItems": 1
+        },
+        "destination": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/IATA"
+          },
+          "minItems": 1
+        },
+        "departDate": {
+          "$ref": "#/$defs/ISODate"
+        },
+        "returnDate": {
+          "$ref": "#/$defs/ISODate"
+        },
+        "travelers": {
+          "$ref": "#/$defs/Travelers"
+        },
+        "survey": {
+          "$ref": "#/$defs/FlightSurvey"
+        }
+      },
+      "additionalProperties": false
+    },
+    "StaySearchInput": {
+      "type": "object",
+      "required": [
+        "cityId",
+        "checkIn",
+        "checkOut",
+        "travelers",
+        "survey"
+      ],
+      "properties": {
+        "cityId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "checkIn": {
+          "$ref": "#/$defs/ISODate"
+        },
+        "checkOut": {
+          "$ref": "#/$defs/ISODate"
+        },
+        "travelers": {
+          "$ref": "#/$defs/Travelers"
+        },
+        "survey": {
+          "$ref": "#/$defs/StaySurvey"
+        },
+        "placesCentroid": {
+          "$ref": "#/$defs/LatLng"
+        },
+        "arrivalTime": {
+          "$ref": "#/$defs/TimeHHMM"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PlaceDiscoveryInput": {
+      "type": "object",
+      "required": [
+        "cityId",
+        "persona",
+        "dayCount"
+      ],
+      "properties": {
+        "cityId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "persona": {
+          "$ref": "#/$defs/Persona"
+        },
+        "dayCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        }
+      },
+      "additionalProperties": false
+    },
+    "ItineraryGenInput": {
+      "type": "object",
+      "required": [
+        "cityId",
+        "dateRange",
+        "persona",
+        "places"
+      ],
+      "properties": {
+        "cityId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dateRange": {
           "type": "object",
-          "description": "항공권. is_included가 false면 candidates는 빈 배열이고 도착·출발 시각은 모두 null이다.",
-          "additionalProperties": false,
           "required": [
-            "is_included",
-            "selected_id",
-            "arrival_at",
-            "departure_at",
-            "first_day_available_from",
-            "last_day_available_until",
-            "candidates"
+            "start",
+            "end"
           ],
           "properties": {
-            "is_included": {
-              "type": "boolean",
-              "description": "사용자가 항공권을 여행 계획에 포함했는지. false면 Plan Agent는 첫날·마지막날을 trip_info의 day_start_time·day_end_time으로 잡는다."
+            "start": {
+              "$ref": "#/$defs/ISODate"
             },
-            "selected_id": {
-              "type": ["string", "null"],
-              "description": "사용자가 이미 고른 항공권 id. null이면 Plan Agent가 candidates에서 rank가 가장 높은 것을 쓴다. 값이 있으면 반드시 candidates 안에 존재하는 id여야 한다."
-            },
-            "arrival_at": {
-              "type": ["string", "null"],
-              "pattern": "^\\d{4}-\\d{2}-\\d{2}T([01]\\d|2[0-3]):[0-5]\\d$",
-              "description": "목적지 공항 도착 현지 시각. YYYY-MM-DDTHH:mm, 타임존 없음. 선택된(또는 최상위) 항공권에서 Search Agent가 계산해 넣는다."
-            },
-            "departure_at": {
-              "type": ["string", "null"],
-              "pattern": "^\\d{4}-\\d{2}-\\d{2}T([01]\\d|2[0-3]):[0-5]\\d$",
-              "description": "귀국편이 목적지 공항에서 출발하는 현지 시각."
-            },
-            "first_day_available_from": {
-              "type": ["string", "null"],
-              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
-              "description": "첫날 일정을 시작할 수 있는 가장 이른 시각. 입국 수속·공항 이동을 반영해 Search Agent가 계산한다. Plan Agent는 이 시각 이전에 첫날 항목을 배치하지 않는다."
-            },
-            "last_day_available_until": {
-              "type": ["string", "null"],
-              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
-              "description": "마지막날 일정을 끝내야 하는 시각. 공항 이동·수속 시간을 뺀 값이다. Plan Agent는 이 시각 이후에 마지막날 항목을 배치하지 않는다."
-            },
-            "candidates": {
-              "type": "array",
-              "description": "왕복 묶음 단위. 편도만 담지 않는다. rank 오름차순으로 정렬한다.",
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "id",
-                  "rank",
-                  "airline_code",
-                  "airline_name",
-                  "cabin_class",
-                  "outbound_from",
-                  "outbound_to",
-                  "outbound_depart_at",
-                  "outbound_arrive_at",
-                  "outbound_duration_min",
-                  "outbound_stops",
-                  "inbound_from",
-                  "inbound_to",
-                  "inbound_depart_at",
-                  "inbound_arrive_at",
-                  "inbound_duration_min",
-                  "inbound_stops",
-                  "price",
-                  "price_unit",
-                  "total_price",
-                  "baggage_note",
-                  "is_refundable",
-                  "booking_provider",
-                  "match_reason"
-                ],
-                "properties": {
-                  "id": {
-                    "type": "string",
-                    "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
-                    "description": "재실행 간 안정적이어야 한다. 예: f-001"
-                  },
-                  "rank": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "description": "추천 순위. 1이 가장 추천. 배열 안에서 중복되지 않는다."
-                  },
-                  "airline_code": {
-                    "type": "string",
-                    "pattern": "^[A-Z0-9]{2}$"
-                  },
-                  "airline_name": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 40
-                  },
-                  "cabin_class": {
-                    "enum": ["economy", "premium", "business", "first"]
-                  },
-                  "outbound_from": {
-                    "type": "string",
-                    "pattern": "^[A-Z]{3}$",
-                    "description": "IATA 3자리 공항 코드"
-                  },
-                  "outbound_to": {
-                    "type": "string",
-                    "pattern": "^[A-Z]{3}$"
-                  },
-                  "outbound_depart_at": {
-                    "type": "string",
-                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T([01]\\d|2[0-3]):[0-5]\\d$",
-                    "description": "출발지 현지 시각. 타임존 없음."
-                  },
-                  "outbound_arrive_at": {
-                    "type": "string",
-                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T([01]\\d|2[0-3]):[0-5]\\d$",
-                    "description": "목적지 현지 시각. 날짜가 넘어가면 날짜 부분에 반영한다."
-                  },
-                  "outbound_duration_min": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "description": "총 소요 분. 경유 대기를 포함한다."
-                  },
-                  "outbound_stops": {
-                    "type": "integer",
-                    "minimum": 0
-                  },
-                  "inbound_from": {
-                    "type": "string",
-                    "pattern": "^[A-Z]{3}$"
-                  },
-                  "inbound_to": {
-                    "type": "string",
-                    "pattern": "^[A-Z]{3}$"
-                  },
-                  "inbound_depart_at": {
-                    "type": "string",
-                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T([01]\\d|2[0-3]):[0-5]\\d$"
-                  },
-                  "inbound_arrive_at": {
-                    "type": "string",
-                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T([01]\\d|2[0-3]):[0-5]\\d$"
-                  },
-                  "inbound_duration_min": {
-                    "type": "integer",
-                    "minimum": 0
-                  },
-                  "inbound_stops": {
-                    "type": "integer",
-                    "minimum": 0
-                  },
-                  "price": {
-                    "type": "number",
-                    "minimum": 0,
-                    "description": "왕복 1인 기준. local_currency 단위."
-                  },
-                  "price_unit": {
-                    "enum": ["per_person", "per_stay"],
-                    "description": "항공권은 per_person이다."
-                  },
-                  "total_price": {
-                    "type": "number",
-                    "minimum": 0,
-                    "description": "price × num_travelers. Search Agent가 계산해 넣는다."
-                  },
-                  "baggage_note": {
-                    "type": "string",
-                    "maxLength": 60,
-                    "description": "예: 위탁 23kg 1개, 기내 10kg. 정보가 없으면 빈 문자열."
-                  },
-                  "is_refundable": {
-                    "type": "boolean"
-                  },
-                  "booking_provider": {
-                    "type": "string",
-                    "maxLength": 40
-                  },
-                  "match_reason": {
-                    "type": "string",
-                    "maxLength": 60,
-                    "description": "이 항공권을 후보에 넣은 이유. 페르소나 조건과 연결한다. 없으면 빈 문자열."
-                  }
-                }
-              }
+            "end": {
+              "$ref": "#/$defs/ISODate"
             }
-          }
+          },
+          "additionalProperties": false
         },
-        "stays": {
-          "type": "object",
-          "description": "숙소. is_included가 false면 candidates는 빈 배열이다. Plan Agent는 선택된 숙소를 하루의 시작·종료 기준점으로 쓴다.",
-          "additionalProperties": false,
-          "required": ["is_included", "selected_id", "nights", "candidates"],
-          "properties": {
-            "is_included": {
-              "type": "boolean"
-            },
-            "selected_id": {
-              "type": ["string", "null"],
-              "description": "null이면 Plan Agent가 rank 1을 쓴다. 값이 있으면 candidates 안에 존재해야 한다."
-            },
-            "nights": {
-              "type": "integer",
-              "minimum": 0,
-              "description": "숙박 일수. end_date - start_date. is_included가 false면 0."
-            },
-            "candidates": {
-              "type": "array",
-              "description": "rank 오름차순으로 정렬한다.",
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "id",
-                  "rank",
-                  "name",
-                  "type",
-                  "lat",
-                  "lng",
-                  "address",
-                  "area",
-                  "nearest_station_name",
-                  "nearest_station_walk_min",
-                  "distance_summary",
-                  "check_in_time",
-                  "check_out_time",
-                  "price",
-                  "price_unit",
-                  "total_price",
-                  "rating",
-                  "review_count",
-                  "amenities",
-                  "is_free_cancellation",
-                  "booking_provider",
-                  "match_reason"
-                ],
-                "properties": {
-                  "id": {
-                    "type": "string",
-                    "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
-                    "description": "예: s-001"
-                  },
-                  "rank": {
-                    "type": "integer",
-                    "minimum": 1
-                  },
-                  "name": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 60
-                  },
-                  "type": {
-                    "enum": ["호텔", "아파트", "호스텔", "료칸", "게스트하우스"]
-                  },
-                  "lat": {
-                    "type": "number",
-                    "minimum": -90,
-                    "maximum": 90,
-                    "description": "하루의 출발·복귀 지점 계산에 쓴다. 실제 좌표여야 한다."
-                  },
-                  "lng": {
-                    "type": "number",
-                    "minimum": -180,
-                    "maximum": 180
-                  },
-                  "address": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "area": {
-                    "type": "string",
-                    "description": "권역명. area_info.areas[].name 중 하나여야 한다."
-                  },
-                  "nearest_station_name": {
-                    "type": "string",
-                    "description": "정보가 없으면 빈 문자열."
-                  },
-                  "nearest_station_walk_min": {
-                    "type": ["integer", "null"],
-                    "minimum": 0,
-                    "description": "역 정보가 없으면 null. 모른다는 뜻으로 0을 넣지 않는다."
-                  },
-                  "distance_summary": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 40,
-                    "description": "예: 신주쿠역 도보 6분. 지도를 쓸 수 없는 사용자의 유일한 위치 정보다. 빈 문자열은 접근성 요건 위반."
-                  },
-                  "check_in_time": {
-                    "type": "string",
-                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
-                    "description": "Plan Agent는 첫날 체크인 항목을 이 시각 이후로 배치한다."
-                  },
-                  "check_out_time": {
-                    "type": "string",
-                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
-                  },
-                  "price": {
-                    "type": "number",
-                    "minimum": 0,
-                    "description": "1박 요금. local_currency 단위."
-                  },
-                  "price_unit": {
-                    "enum": ["per_person", "per_stay"],
-                    "description": "1박 요금이 객실 단위면 per_stay, 1인 단위면 per_person."
-                  },
-                  "total_price": {
-                    "type": "number",
-                    "minimum": 0,
-                    "description": "전체 숙박 기간 총액. Search Agent가 계산해 넣는다."
-                  },
-                  "rating": {
-                    "type": ["number", "null"],
-                    "minimum": 0,
-                    "maximum": 10,
-                    "description": "10점 척도. 5점 척도를 넣지 않는다. 평점이 없으면 null."
-                  },
-                  "review_count": {
-                    "type": "integer",
-                    "minimum": 0
-                  },
-                  "amenities": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    },
-                    "description": "예: 무료 와이파이, 조식, 짐 보관. 짐 보관 가능 여부는 마지막날 일정 배치에 쓰인다."
-                  },
-                  "is_free_cancellation": {
-                    "type": "boolean"
-                  },
-                  "booking_provider": {
-                    "type": "string",
-                    "maxLength": 40
-                  },
-                  "match_reason": {
-                    "type": "string",
-                    "maxLength": 60,
-                    "description": "없으면 빈 문자열."
-                  }
-                }
-              }
-            }
-          }
+        "persona": {
+          "$ref": "#/$defs/Persona"
         },
         "places": {
           "type": "array",
-          "minItems": 1,
-          "description": "갈만한 장소 후보. Plan Agent는 이 배열에 없는 장소를 만들어내지 않는다. 각 항목의 name·category·lat·lng·price·price_unit·opening_hours·closed_days·expected_duration_min·physical_intensity 열 개 필드는 plan-to-verification.schema.json의 plan.days[].items[]로 값을 그대로 옮긴다. 나머지 필드는 배치 판단용 근거이며 다음 단계로 넘기지 않는다.",
+          "items": {
+            "$ref": "#/$defs/Place"
+          },
+          "minItems": 1
+        },
+        "flight": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/FlightOffer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "stay": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/StayOffer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "VerifyInput": {
+      "type": "object",
+      "required": [
+        "itinerary",
+        "persona",
+        "places"
+      ],
+      "properties": {
+        "itinerary": {
+          "$ref": "#/$defs/Itinerary"
+        },
+        "persona": {
+          "$ref": "#/$defs/Persona"
+        },
+        "places": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Place"
+          },
+          "description": "placeId → Place"
+        },
+        "flight": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/FlightOffer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "stay": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/StayOffer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "__comment_place__": {
+      "$comment": "───────── 출력: Place ─────────"
+    },
+    "OpeningHoursEntry": {
+      "type": "object",
+      "required": [
+        "weekday",
+        "open",
+        "close"
+      ],
+      "properties": {
+        "weekday": {
+          "$ref": "#/$defs/Weekday"
+        },
+        "open": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/TimeHHMM"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "null = 휴무일"
+        },
+        "close": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/TimeHHMM"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lastEntry": {
+          "$ref": "#/$defs/TimeHHMM"
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 60
+        }
+      },
+      "additionalProperties": false
+    },
+    "PlaceReview": {
+      "type": "object",
+      "required": [
+        "id",
+        "author",
+        "rating",
+        "date",
+        "text",
+        "language",
+        "source"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "author": {
+          "type": "string",
+          "minLength": 1
+        },
+        "authorInitial": {
+          "type": "string",
+          "maxLength": 2
+        },
+        "rating": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "date": {
+          "$ref": "#/$defs/ISODate"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400
+        },
+        "language": {
+          "enum": [
+            "ko",
+            "en",
+            "ja",
+            "other"
+          ]
+        },
+        "translated": {
+          "type": "string",
+          "maxLength": 400
+        },
+        "helpfulCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source": {
+          "enum": [
+            "google",
+            "tripadvisor",
+            "agent-summary"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "Place": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "category",
+        "location",
+        "address",
+        "rating",
+        "reviewCount",
+        "images",
+        "summary",
+        "description",
+        "openingHours",
+        "closedWeekdays",
+        "suggestedDurationMinutes",
+        "admission",
+        "needsReservation",
+        "accessibility",
+        "indoor",
+        "popularity",
+        "interestTags",
+        "source",
+        "reviews"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/PlaceId"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "nameLocal": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "category": {
+          "$ref": "#/$defs/PlaceCategory"
+        },
+        "subcategories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "location": {
+          "$ref": "#/$defs/LatLng"
+        },
+        "address": {
+          "type": "string",
+          "minLength": 1
+        },
+        "neighborhood": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "rating": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 5
+        },
+        "reviewCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "images": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 3
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "sourceUrls": {
+          "type": "array",
           "items": {
             "type": "object",
-            "additionalProperties": false,
             "required": [
-              "id",
-              "name",
-              "name_local",
-              "category",
-              "tags",
-              "lat",
-              "lng",
-              "address",
-              "area",
-              "summary",
-              "rating",
-              "review_count",
-              "is_indoor",
-              "physical_intensity",
-              "opening_hours",
-              "closed_days",
-              "expected_duration_min",
-              "best_visit_time",
-              "price",
-              "price_unit",
-              "is_free",
-              "is_price_estimated",
-              "price_note",
-              "needs_reservation",
-              "reservation_note",
-              "nearby",
-              "nearest_station_name",
-              "nearest_station_walk_min",
-              "area_note",
-              "rank",
-              "is_must_visit",
-              "match_reason",
-              "source_urls"
+              "label",
+              "url"
             ],
             "properties": {
-              "id": {
-                "type": "string",
-                "pattern": "^[a-z0-9]+(-[a-z0-9]+)+$",
-                "description": "{city_id}-{slug} 형식. 예: tokyo-sensoji. 같은 입력으로 다시 검색해도 같은 id가 나와야 한다. 공백·/·?·#를 넣지 않는다."
+              "label": {
+                "type": "string"
               },
-              "name": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 60,
-                "description": "→ plan items[].name 으로 그대로 복사된다."
-              },
-              "name_local": {
-                "type": "string",
-                "maxLength": 60,
-                "description": "현지 표기. 예: 浅草寺. 없으면 빈 문자열."
-              },
-              "category": {
-                "enum": ["관광지", "식사", "카페", "쇼핑", "휴식", "숙소"],
-                "description": "→ plan items[].category 로 그대로 복사된다. plan-to-verification.schema.json과 같은 여섯 값만 쓴다. 더 세밀한 분류는 tags에 넣는다."
-              },
-              "tags": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "description": "세부 분류·특징. 예: 사찰, 박물관, 전망대, 야경. category가 여섯 값뿐이라 잃는 정보를 여기 담는다. persona.must_visit·avoid 매칭에 쓴다."
-              },
-              "lat": {
-                "type": "number",
-                "minimum": -90,
-                "maximum": 90,
-                "description": "→ plan items[].lat. 실제 좌표여야 한다. 이동 시간 계산의 근거이므로 임의 값을 넣으면 일정 전체가 무의미해진다."
-              },
-              "lng": {
-                "type": "number",
-                "minimum": -180,
-                "maximum": 180,
-                "description": "→ plan items[].lng"
-              },
-              "address": {
-                "type": "string",
-                "minLength": 1
-              },
-              "area": {
-                "type": "string",
-                "description": "권역명. area_info.areas[].name 중 하나여야 한다. Plan Agent가 하루를 같은 권역으로 묶는 1차 기준이다."
-              },
-              "summary": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 120,
-                "description": "장소 소개 한두 문장. 마크다운·HTML·이모지·개행을 넣지 않는다."
-              },
-              "rating": {
-                "type": ["number", "null"],
-                "minimum": 0,
-                "maximum": 5,
-                "description": "5점 척도. 평점 정보가 없으면 null. 추측한 값을 넣지 않는다."
-              },
-              "review_count": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "is_indoor": {
-                "type": "boolean",
-                "description": "실내 여부. 우천 대안 판정과 하루 실내·실외 균형에 쓰인다."
-              },
-              "physical_intensity": {
-                "enum": ["낮음", "보통", "높음"],
-                "description": "→ plan items[].physical_intensity 로 그대로 복사된다. persona.max_walking_level과 비교하는 값이므로 같은 어휘를 쓴다."
-              },
-              "opening_hours": {
-                "type": "string",
-                "description": "→ plan items[].opening_hours. 사람이 읽는 한 줄. 예: 06:00-17:00 또는 평일 09:00-18:00, 주말 09:00-20:00. 정보가 없으면 빈 문자열이 아니라 정보 없음이라고 쓴다."
-              },
-              "closed_days": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "description": "→ plan items[].closed_days. 휴무 요일·날짜. 예: 월요일 또는 매월 첫째 화요일. 휴무가 없으면 빈 배열. Plan Agent는 이 값을 날짜와 대조해 배치한다."
-              },
-              "expected_duration_min": {
-                "type": "integer",
-                "minimum": 0,
-                "description": "→ plan items[].expected_duration_min. 권장 체류 시간(분). Plan Agent가 end_time을 계산하는 근거다."
-              },
-              "best_visit_time": {
-                "type": "string",
-                "maxLength": 60,
-                "description": "예: 이른 아침, 일몰 전후. 시간대 배치 판단에 쓴다. 정보가 없으면 빈 문자열."
-              },
-              "price": {
-                "type": "number",
-                "minimum": 0,
-                "description": "→ plan items[].price. 입장료·이용료. local_currency 단위. 무료면 0이고 is_free를 true로 둔다."
-              },
-              "price_unit": {
-                "enum": ["per_person", "per_stay"],
-                "description": "→ plan items[].price_unit"
-              },
-              "is_free": {
-                "type": "boolean",
-                "description": "무료 여부. price가 0인 것과 요금 정보를 못 찾은 것을 구분하기 위해 둔다."
-              },
-              "is_price_estimated": {
-                "type": "boolean",
-                "description": "확인하지 못해 추정한 금액이면 true. 예산 판정 단계가 근거에 추정임을 밝히는 데 쓴다."
-              },
-              "price_note": {
-                "type": "string",
-                "maxLength": 80,
-                "description": "예: 성인 500엔, 중학생 이하 무료. 없으면 빈 문자열."
-              },
-              "needs_reservation": {
-                "type": "boolean"
-              },
-              "reservation_note": {
-                "type": "string",
-                "maxLength": 80,
-                "description": "예: 방문 3일 전까지 온라인 예약. 없으면 빈 문자열."
-              },
-              "nearby": {
-                "type": "array",
-                "maxItems": 5,
-                "description": "주변 정보. 도보 이동이 현실적인 다른 후보 장소를 가까운 순으로 담는다. Plan Agent가 하루 안의 순서를 정하는 근거이므로 거리는 Search Agent가 계산해 넣는다. 없으면 빈 배열.",
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": ["id", "distance_km", "walk_min"],
-                  "properties": {
-                    "id": {
-                      "type": "string",
-                      "pattern": "^[a-z0-9]+(-[a-z0-9]+)+$",
-                      "description": "places 배열 안에 존재하는 id여야 한다. 자기 자신을 넣지 않는다."
-                    },
-                    "distance_km": {
-                      "type": "number",
-                      "minimum": 0,
-                      "description": "직선 거리(km). plan-to-verification의 travel_from_prev.distance_km와 같은 단위."
-                    },
-                    "walk_min": {
-                      "type": "integer",
-                      "minimum": 0,
-                      "description": "도보 소요 분."
-                    }
-                  }
-                }
-              },
-              "nearest_station_name": {
-                "type": "string",
-                "description": "가장 가까운 역·정류장. 정보가 없으면 빈 문자열."
-              },
-              "nearest_station_walk_min": {
-                "type": ["integer", "null"],
-                "minimum": 0,
-                "description": "역 정보가 없으면 null. 모른다는 뜻으로 0을 넣지 않는다."
-              },
-              "area_note": {
-                "type": "string",
-                "maxLength": 120,
-                "description": "주변 환경 한 줄. 예: 나카미세 상점가 인접, 도보권에 식당 다수. 식사·휴식 블록을 어디에 끼울지 판단하는 근거다. 없으면 빈 문자열."
-              },
-              "rank": {
-                "type": "integer",
-                "minimum": 1,
-                "description": "추천 순위. 1이 가장 추천. 배열 안에서 중복되지 않는다. 배열도 이 순서로 정렬한다."
-              },
-              "is_must_visit": {
-                "type": "boolean",
-                "description": "trip_info.persona.must_visit에 대응하는 장소인지. true면 Plan Agent는 반드시 어느 하루에 배치한다."
-              },
-              "match_reason": {
-                "type": "string",
-                "maxLength": 60,
-                "description": "이 장소를 후보에 넣은 이유. 페르소나 조건과 연결한다. 없으면 빈 문자열."
-              },
-              "source_urls": {
-                "type": "array",
-                "description": "참고한 출처. 확인한 출처가 없으면 빈 배열. 없는 출처를 만들어내지 않는다.",
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": ["label", "url"],
-                  "properties": {
-                    "label": {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 40
-                    },
-                    "url": {
-                      "type": "string",
-                      "minLength": 1
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "area_info": {
-          "type": "object",
-          "description": "목적지의 권역 정보. Plan Agent가 하루를 지리적으로 묶는 데 쓴다. 권역 나누기는 좌표 기반 계산이므로 Search Agent가 해서 넘긴다.",
-          "additionalProperties": false,
-          "required": ["center_lat", "center_lng", "areas", "transport_note"],
-          "properties": {
-            "center_lat": {
-              "type": "number",
-              "minimum": -90,
-              "maximum": 90,
-              "description": "도시 중심 좌표. 지도 초기 화면과 거리 기준점."
-            },
-            "center_lng": {
-              "type": "number",
-              "minimum": -180,
-              "maximum": 180
-            },
-            "areas": {
-              "type": "array",
-              "minItems": 1,
-              "description": "권역 목록. 권역을 나눌 만큼 흩어져 있지 않으면 도시 전체를 하나로 둔다. 어떤 장소가 어느 권역인지는 places[].area가 유일한 근거이며, 여기에 장소 목록을 중복해 담지 않는다.",
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": ["name", "center_lat", "center_lng", "transport_hub", "note"],
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 40,
-                    "description": "예: 아사쿠사. places[].area·stays[].candidates[].area가 이 값을 참조한다."
-                  },
-                  "center_lat": {
-                    "type": "number",
-                    "minimum": -90,
-                    "maximum": 90
-                  },
-                  "center_lng": {
-                    "type": "number",
-                    "minimum": -180,
-                    "maximum": 180
-                  },
-                  "transport_hub": {
-                    "type": "string",
-                    "maxLength": 40,
-                    "description": "권역의 교통 거점. 예: 아사쿠사역. 권역 간 이동 시간 추정의 기준점. 없으면 빈 문자열."
-                  },
-                  "note": {
-                    "type": "string",
-                    "maxLength": 120,
-                    "description": "권역 특징 한 줄. 없으면 빈 문자열."
-                  }
-                }
+              "url": {
+                "type": "string"
               }
             },
-            "transport_note": {
-              "type": "string",
-              "maxLength": 200,
-              "description": "목적지 교통 개요. 예: 지하철 중심, 1일권 800엔. trip_info.transport_mode와 함께 이동 수단 판단에 쓴다. 없으면 빈 문자열."
-            }
+            "additionalProperties": false
           }
         },
-        "cost_baseline": {
+        "openingHours": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OpeningHoursEntry"
+          },
+          "minItems": 7,
+          "maxItems": 7,
+          "description": "weekday 0~6이 각각 하나씩. 불변식 I-P2."
+        },
+        "closedWeekdays": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Weekday"
+          },
+          "description": "openingHours에서 open이 null인 요일. 두 값이 어긋나면 V1이 오판정한다. 불변식 I-P3."
+        },
+        "suggestedDurationMinutes": {
+          "type": "integer",
+          "minimum": 15,
+          "maximum": 600
+        },
+        "admission": {
           "type": "object",
-          "description": "장소 입장료로 잡히지 않는 비용의 추정 기준. Plan Agent와 검증 Agent가 같은 계수를 쓰게 하려고 Search Agent가 명시해 넘긴다. 이 값이 없으면 각 단계가 서로 다른 계수로 예산을 계산한다.",
-          "additionalProperties": false,
           "required": [
-            "meal_avg_per_person",
-            "meals_per_day",
-            "transport_per_person_per_day",
-            "note"
+            "free"
           ],
           "properties": {
-            "meal_avg_per_person": {
-              "type": "number",
-              "minimum": 0,
-              "description": "1인 1식 평균 비용. local_currency 단위."
+            "free": {
+              "type": "boolean"
             },
-            "meals_per_day": {
-              "type": "integer",
-              "minimum": 0,
-              "description": "하루 식사 횟수 기준."
-            },
-            "transport_per_person_per_day": {
-              "type": "number",
-              "minimum": 0,
-              "description": "1인 하루 교통비. local_currency 단위."
+            "price": {
+              "$ref": "#/$defs/Money"
             },
             "note": {
               "type": "string",
-              "maxLength": 120,
-              "description": "계수의 근거 한 줄. 예: 현지 평균 식사 가격과 지하철 1일권 기준. 없으면 빈 문자열."
+              "maxLength": 60
             }
+          },
+          "additionalProperties": false
+        },
+        "needsReservation": {
+          "type": "boolean"
+        },
+        "reservationNote": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "accessibility": {
+          "type": "object",
+          "required": [
+            "wheelchairAccessible",
+            "strollerFriendly",
+            "manyStairs"
+          ],
+          "properties": {
+            "wheelchairAccessible": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "description": "모르면 null. 추측해서 채우지 않는다 (불변식 I-P8)."
+            },
+            "strollerFriendly": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "manyStairs": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "bestTimeToVisit": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "indoor": {
+          "type": "boolean"
+        },
+        "popularity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "interestTags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/InterestId"
           }
+        },
+        "source": {
+          "const": "agent",
+          "description": "에이전트 출력은 항상 agent. user-google-maps / user-manual은 프론트가 만든다."
+        },
+        "googleMapsUrl": {
+          "type": "string"
+        },
+        "reviews": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlaceReview"
+          },
+          "minItems": 3
+        },
+        "agentNote": {
+          "type": "string",
+          "maxLength": 60
+        }
+      },
+      "additionalProperties": false
+    },
+    "__comment_flight__": {
+      "$comment": "───────── 출력: FlightOffer ─────────"
+    },
+    "FlightSegment": {
+      "type": "object",
+      "required": [
+        "id",
+        "airlineCode",
+        "airlineName",
+        "flightNumber",
+        "from",
+        "to",
+        "departAt",
+        "arriveAt",
+        "durationMinutes"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "airlineCode": {
+          "type": "string",
+          "pattern": "^[A-Z0-9]{2}$"
+        },
+        "airlineName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "airlineLogo": {
+          "type": "string",
+          "description": "/images/airlines/{code}.svg. 실제 항공사 로고 URL을 넣지 않는다(저작권)."
+        },
+        "flightNumber": {
+          "type": "string",
+          "minLength": 2
+        },
+        "aircraft": {
+          "type": "string"
+        },
+        "from": {
+          "type": "object",
+          "required": [
+            "code",
+            "name"
+          ],
+          "properties": {
+            "code": {
+              "$ref": "#/$defs/IATA"
+            },
+            "name": {
+              "type": "string"
+            },
+            "terminal": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "to": {
+          "type": "object",
+          "required": [
+            "code",
+            "name"
+          ],
+          "properties": {
+            "code": {
+              "$ref": "#/$defs/IATA"
+            },
+            "name": {
+              "type": "string"
+            },
+            "terminal": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "departAt": {
+          "$ref": "#/$defs/ISODateTime"
+        },
+        "arriveAt": {
+          "$ref": "#/$defs/ISODateTime"
+        },
+        "durationMinutes": {
+          "$ref": "#/$defs/Minutes"
+        }
+      },
+      "additionalProperties": false
+    },
+    "FlightLeg": {
+      "type": "object",
+      "required": [
+        "direction",
+        "segments",
+        "departAt",
+        "arriveAt",
+        "durationMinutes",
+        "stops",
+        "layovers",
+        "dayOffset"
+      ],
+      "properties": {
+        "direction": {
+          "enum": [
+            "outbound",
+            "inbound"
+          ]
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FlightSegment"
+          },
+          "minItems": 1
+        },
+        "departAt": {
+          "$ref": "#/$defs/ISODateTime"
+        },
+        "arriveAt": {
+          "$ref": "#/$defs/ISODateTime"
+        },
+        "durationMinutes": {
+          "$ref": "#/$defs/Minutes"
+        },
+        "stops": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "layovers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "airportCode",
+              "airportName",
+              "minutes"
+            ],
+            "properties": {
+              "airportCode": {
+                "$ref": "#/$defs/IATA"
+              },
+              "airportName": {
+                "type": "string"
+              },
+              "minutes": {
+                "$ref": "#/$defs/Minutes"
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "길이가 stops와 같아야 한다. 불변식 I-F4."
+        },
+        "dayOffset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        }
+      },
+      "additionalProperties": false
+    },
+    "FlightOffer": {
+      "type": "object",
+      "required": [
+        "id",
+        "outbound",
+        "inbound",
+        "price",
+        "totalPrice",
+        "cabinClass",
+        "baggage",
+        "refundable",
+        "tags",
+        "bookingProvider"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outbound": {
+          "$ref": "#/$defs/FlightLeg"
+        },
+        "inbound": {
+          "$ref": "#/$defs/FlightLeg",
+          "description": "왕복 묶음만 허용. 편도 오퍼 금지 (불변식 I-F1)."
+        },
+        "price": {
+          "$ref": "#/$defs/Money"
+        },
+        "totalPrice": {
+          "$ref": "#/$defs/Money"
+        },
+        "cabinClass": {
+          "$ref": "#/$defs/CabinClass"
+        },
+        "baggage": {
+          "type": "object",
+          "required": [
+            "carryOnKg",
+            "checkedCount",
+            "checkedKg"
+          ],
+          "properties": {
+            "carryOnKg": {
+              "type": "number",
+              "minimum": 0
+            },
+            "checkedCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "checkedKg": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "refundable": {
+          "type": "boolean"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FlightTag"
+          }
+        },
+        "seatsLeft": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bookingProvider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "agentNote": {
+          "type": "string",
+          "maxLength": 60
+        }
+      },
+      "additionalProperties": false
+    },
+    "__comment_stay__": {
+      "$comment": "───────── 출력: StayOffer ─────────"
+    },
+    "StayOffer": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "type",
+        "starRating",
+        "reviewScore",
+        "reviewCount",
+        "images",
+        "location",
+        "address",
+        "neighborhood",
+        "distanceSummary",
+        "nightlyPrice",
+        "totalPrice",
+        "taxIncluded",
+        "amenities",
+        "cancellation",
+        "checkIn",
+        "checkOut",
+        "description",
+        "reviewHighlights",
+        "reviewQuotes",
+        "tags",
+        "bookingProvider"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "type": {
+          "$ref": "#/$defs/StayType"
+        },
+        "starRating": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5
+        },
+        "reviewScore": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "10점 척도. 5점 척도를 보내지 않는다 (불변식 I-S2)."
+        },
+        "reviewCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "images": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 4
+        },
+        "location": {
+          "$ref": "#/$defs/LatLng"
+        },
+        "address": {
+          "type": "string",
+          "minLength": 1
+        },
+        "neighborhood": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "distanceSummary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "description": "지도를 쓸 수 없는 사용자의 유일한 위치 정보. 빈 문자열은 접근성 요건 위반."
+        },
+        "nearestStation": {
+          "type": "object",
+          "required": [
+            "name",
+            "walkMinutes"
+          ],
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "walkMinutes": {
+              "$ref": "#/$defs/Minutes"
+            }
+          },
+          "additionalProperties": false
+        },
+        "distanceToPlacesKm": {
+          "type": "number",
+          "minimum": 0
+        },
+        "nightlyPrice": {
+          "$ref": "#/$defs/Money"
+        },
+        "totalPrice": {
+          "$ref": "#/$defs/Money"
+        },
+        "taxIncluded": {
+          "type": "boolean"
+        },
+        "amenities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AmenityId"
+          }
+        },
+        "cancellation": {
+          "enum": [
+            "free",
+            "partial",
+            "none"
+          ]
+        },
+        "cancellationNote": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "checkIn": {
+          "$ref": "#/$defs/TimeHHMM"
+        },
+        "checkOut": {
+          "$ref": "#/$defs/TimeHHMM"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "reviewHighlights": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "label",
+              "score"
+            ],
+            "properties": {
+              "label": {
+                "enum": [
+                  "청결도",
+                  "위치",
+                  "시설",
+                  "가격"
+                ]
+              },
+              "score": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "4개 전부 채우거나 빈 배열. 2개만 오면 드로어 게이지 4행이 깨진다 (불변식 I-S7)."
+        },
+        "reviewQuotes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "description": "실제 리뷰 발췌. 없으면 빈 배열. 창작 금지."
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StayTag"
+          }
+        },
+        "agentNote": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "bookingProvider": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "__comment_itinerary__": {
+      "$comment": "───────── 출력: Itinerary ─────────"
+    },
+    "TravelLeg": {
+      "type": "object",
+      "required": [
+        "mode",
+        "minutes",
+        "distanceMeters",
+        "alternatives"
+      ],
+      "properties": {
+        "mode": {
+          "$ref": "#/$defs/TravelMode"
+        },
+        "minutes": {
+          "$ref": "#/$defs/Minutes"
+        },
+        "distanceMeters": {
+          "$ref": "#/$defs/Meters"
+        },
+        "alternatives": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "mode",
+              "minutes"
+            ],
+            "properties": {
+              "mode": {
+                "$ref": "#/$defs/TravelMode"
+              },
+              "minutes": {
+                "$ref": "#/$defs/Minutes"
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 3
+        },
+        "polyline": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LatLng"
+          }
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 40
+        }
+      },
+      "additionalProperties": false
+    },
+    "ItineraryItem": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "title",
+        "startTime",
+        "durationMinutes",
+        "locked",
+        "passedRuleIds",
+        "issueIds",
+        "travelToNext"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "$ref": "#/$defs/ItineraryItemKind"
+        },
+        "placeId": {
+          "$ref": "#/$defs/PlaceId",
+          "description": "kind가 place면 필수. 반드시 입력 places에 존재하는 id (불변식 I-I1)."
+        },
+        "offerRef": {
+          "type": "object",
+          "required": [
+            "type",
+            "offerId"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "flight",
+                "stay"
+              ]
+            },
+            "offerId": {
+              "type": "string"
+            },
+            "legDirection": {
+              "enum": [
+                "outbound",
+                "inbound"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "startTime": {
+          "$ref": "#/$defs/TimeHHMM"
+        },
+        "durationMinutes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 720
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "agentReason": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "cost": {
+          "$ref": "#/$defs/Money"
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "생성 시 false로 초기화 (불변식 I-I13)."
+        },
+        "passedRuleIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/VerificationRuleId"
+          }
+        },
+        "issueIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "travelToNext": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/TravelLeg"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "각 일자의 마지막 항목은 null (불변식 I-I6)."
+        }
+      },
+      "allOf": [
+        {
+          "description": "kind가 place면 placeId가 있어야 한다.",
+          "if": {
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "const": "place"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "placeId"
+            ]
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "ItineraryDay": {
+      "type": "object",
+      "required": [
+        "id",
+        "dayIndex",
+        "date",
+        "weekday",
+        "colorKey",
+        "items",
+        "totalCost",
+        "collapsed"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dayIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "0부터 연속. 사용자 표기는 Day {dayIndex+1}."
+        },
+        "date": {
+          "$ref": "#/$defs/ISODate"
+        },
+        "weekday": {
+          "$ref": "#/$defs/Weekday"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "colorKey": {
+          "enum": [
+            "day1",
+            "day2",
+            "day3",
+            "day4",
+            "day5",
+            "day6"
+          ],
+          "description": "dayIndex % 6 + 1 (불변식 I-I5)."
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ItineraryItem"
+          }
+        },
+        "totalCost": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "agentSummary": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "collapsed": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Itinerary": {
+      "type": "object",
+      "required": [
+        "id",
+        "generatedAt",
+        "version",
+        "days",
+        "unassignedPlaceIds",
+        "totalCost",
+        "agentSummary",
+        "agentHighlights"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generatedAt": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "최초 생성 시 1 (불변식 I-I8)."
+        },
+        "days": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ItineraryDay"
+          },
+          "minItems": 1
+        },
+        "unassignedPlaceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlaceId"
+          },
+          "description": "배치하지 못한 입력 장소. 조용히 버리지 않는다 (불변식 I-I2)."
+        },
+        "totalCost": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "agentSummary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "agentHighlights": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "maxItems": 5
+        }
+      },
+      "additionalProperties": false
+    },
+    "__comment_verification__": {
+      "$comment": "───────── 출력: VerificationReport ─────────"
+    },
+    "ItineraryChange": {
+      "type": "object",
+      "required": [
+        "op",
+        "dayIndex"
+      ],
+      "properties": {
+        "op": {
+          "enum": [
+            "move",
+            "update-time",
+            "reorder",
+            "insert",
+            "remove",
+            "replace"
+          ]
+        },
+        "dayIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "itemId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "beforeLabel": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "afterLabel": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "payload": {
+          "type": "object",
+          "description": "op별 스키마는 contract.md 부록 B (합의 대기)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "AutoFixProposal": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "summary",
+        "changes"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "$ref": "#/$defs/AutoFixKind"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ItineraryChange"
+          }
+        },
+        "impact": {
+          "type": "string",
+          "maxLength": 40
+        }
+      },
+      "additionalProperties": false
+    },
+    "VerificationIssue": {
+      "type": "object",
+      "required": [
+        "id",
+        "ruleId",
+        "severity",
+        "title",
+        "detail",
+        "evidence",
+        "target",
+        "autoFix",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ruleId": {
+          "$ref": "#/$defs/VerificationRuleId"
+        },
+        "severity": {
+          "enum": [
+            "warning",
+            "conflict"
+          ],
+          "description": "pass/skipped 금지 (불변식 I-V7)."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "detail": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "minItems": 1,
+          "description": "사실 → 수치 → 판정 패턴. 검증의 설득력이 여기서 나온다."
+        },
+        "target": {
+          "type": "object",
+          "required": [
+            "dayIndex"
+          ],
+          "properties": {
+            "dayIndex": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "itemId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "description": "입력 일정에 실재해야 한다 (불변식 I-V5).",
+          "additionalProperties": false
+        },
+        "autoFix": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/AutoFixProposal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "const": "open",
+          "description": "fixed/ignored는 프론트가 관리 (불변식 I-V6)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "VerificationReport": {
+      "type": "object",
+      "required": [
+        "id",
+        "itineraryVersion",
+        "startedAt",
+        "finishedAt",
+        "checks",
+        "issues",
+        "summary",
+        "overall",
+        "logLines"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "itineraryVersion": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "입력 itinerary.version을 그대로 되돌려준다 (불변식 I-V2)."
+        },
+        "startedAt": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "finishedAt": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "checks": {
+          "type": "array",
+          "minItems": 10,
+          "maxItems": 10,
+          "description": "V1~V10 전부. 건너뛴 규칙도 severity skipped로 포함 (불변식 I-V1)."
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/VerificationIssue"
+          }
+        },
+        "summary": {
+          "type": "object",
+          "required": [
+            "pass",
+            "warning",
+            "conflict",
+            "skipped"
+          ],
+          "properties": {
+            "pass": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "warning": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "conflict": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "skipped": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "description": "4개 합이 10이어야 한다 (불변식 I-V3).",
+          "additionalProperties": false
+        },
+        "overall": {
+          "$ref": "#/$defs/VerificationOverall"
+        },
+        "logLines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "__comment_map__": {
+      "$comment": "───────── 작업별 매핑 ─────────"
+    },
+    "taskMap": {
+      "description": "작업 ID → 입력·출력·partial payload 타입. conformance.mjs가 이 표를 따른다.",
+      "const": {
+        "flightSearch": {
+          "input": "FlightSearchInput",
+          "output": "FlightOffer[]",
+          "partial": "FlightOffer"
+        },
+        "staySearch": {
+          "input": "StaySearchInput",
+          "output": "StayOffer[]",
+          "partial": "StayOffer"
+        },
+        "placeDiscovery": {
+          "input": "PlaceDiscoveryInput",
+          "output": "Place[]",
+          "partial": "Place"
+        },
+        "itineraryGenerate": {
+          "input": "ItineraryGenInput",
+          "output": "Itinerary",
+          "partial": "ItineraryDay"
+        },
+        "itineraryVerify": {
+          "input": "VerifyInput",
+          "output": "VerificationReport",
+          "partial": null
         }
       }
     }
   }
 }
+           "$ref": "#/$defs/VerificationOverall"
+@@ -2159,9 +2246,12 @@
+             "type": "string"
+           }
+         }
+-      }
++      },
++      "additionalProperties": false
++    },
++    "__comment_map__": {
++      "$comment": "───────── 작업별 매핑 ─────────"
+     },
+-    "__comment_map__": "───────── 작업별 매핑 ─────────",
+     "taskMap": {
+       "description": "작업 ID → 입력·출력·partial payload 타입. conformance.mjs가 이 표를 따른다.",
+       "const": {
+@@ -2193,4 +2283,4 @@
+       }
+     }
+   }
+-}
+\ No newline at end of file
++}
