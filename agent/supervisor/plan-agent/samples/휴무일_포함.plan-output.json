@@ -1,0 +1,211 @@
+{
+  "schema_version": "1.0",
+  "trip_info": {
+    "destination": "도쿄",
+    "start_date": "2026-06-15",
+    "end_date": "2026-06-17",
+    "num_travelers": 2,
+    "budget_total": 3000000.0,
+    "budget_currency": "KRW",
+    "budget_includes": [
+      "숙소",
+      "식사",
+      "관광지",
+      "쇼핑"
+    ],
+    "transport_mode": "대중교통",
+    "day_start_time": "09:00",
+    "day_end_time": "22:00",
+    "persona": {
+      "description": "역사 명소와 맛집을 좋아하는 2인 여행",
+      "must_visit": [
+        "센소지"
+      ],
+      "avoid": [
+        "장시간 도보"
+      ],
+      "pace": "보통",
+      "max_walking_level": "중간"
+    }
+  },
+  "plan": {
+    "days": [
+      {
+        "day": 1,
+        "date": "2026-06-15",
+        "items": [
+          {
+            "id": "d1-1",
+            "name": "센소지",
+            "category": "관광지",
+            "start_time": "09:00",
+            "end_time": "10:30",
+            "lat": 35.7148,
+            "lng": 139.7967,
+            "price": 0.0,
+            "price_unit": "per_person",
+            "opening_hours": "06:00-17:00",
+            "closed_days": [],
+            "expected_duration_min": 90,
+            "physical_intensity": "중간",
+            "note": "09:00에 하루를 시작하는 첫 일정이에요",
+            "travel_from_prev": null
+          },
+          {
+            "id": "d1-2",
+            "name": "도쿄 스카이트리",
+            "category": "관광지",
+            "start_time": "10:45",
+            "end_time": "12:15",
+            "lat": 35.7101,
+            "lng": 139.8107,
+            "price": 2100.0,
+            "price_unit": "per_person",
+            "opening_hours": "10:00-21:00",
+            "closed_days": [],
+            "expected_duration_min": 90,
+            "physical_intensity": "낮음",
+            "note": "이전 일정에서 대중교통 15분 이동 후 방문해요",
+            "travel_from_prev": {
+              "mode": "대중교통",
+              "estimated_min": 15,
+              "distance_km": 1.78
+            }
+          },
+          {
+            "id": "d1-3",
+            "name": "호텔 그레이스리 신주쿠",
+            "category": "숙소",
+            "start_time": "15:00",
+            "end_time": "15:30",
+            "lat": 35.6955,
+            "lng": 139.7009,
+            "price": 360000.0,
+            "price_unit": "per_stay",
+            "opening_hours": "체크인 15:00 이후",
+            "closed_days": [],
+            "expected_duration_min": 30,
+            "physical_intensity": "낮음",
+            "note": "체크인 가능 시각 이후인 15:00에 배치했어요",
+            "travel_from_prev": {
+              "mode": "대중교통",
+              "estimated_min": 45,
+              "distance_km": 13.06
+            }
+          }
+        ]
+      },
+      {
+        "day": 2,
+        "date": "2026-06-16",
+        "items": [
+          {
+            "id": "d2-1",
+            "name": "도쿄 국립박물관",
+            "category": "관광지",
+            "start_time": "09:30",
+            "end_time": "11:30",
+            "lat": 35.7188,
+            "lng": 139.7765,
+            "price": 1000.0,
+            "price_unit": "per_person",
+            "opening_hours": "09:30-17:00",
+            "closed_days": [
+              "월요일"
+            ],
+            "expected_duration_min": 120,
+            "physical_intensity": "낮음",
+            "note": "09:30에 하루를 시작하는 첫 일정이에요",
+            "travel_from_prev": null
+          },
+          {
+            "id": "d2-2",
+            "name": "아사쿠사 멘치카츠",
+            "category": "식사",
+            "start_time": "11:45",
+            "end_time": "12:30",
+            "lat": 35.7118,
+            "lng": 139.7955,
+            "price": 800.0,
+            "price_unit": "per_person",
+            "opening_hours": "10:00-19:00",
+            "closed_days": [],
+            "expected_duration_min": 45,
+            "physical_intensity": "낮음",
+            "note": "이전 일정에서 대중교통 15분 이동 후 방문해요",
+            "travel_from_prev": {
+              "mode": "대중교통",
+              "estimated_min": 15,
+              "distance_km": 2.45
+            }
+          },
+          {
+            "id": "d2-3",
+            "name": "호텔 그레이스리 신주쿠",
+            "category": "숙소",
+            "start_time": "15:00",
+            "end_time": "15:30",
+            "lat": 35.6955,
+            "lng": 139.7009,
+            "price": 360000.0,
+            "price_unit": "per_stay",
+            "opening_hours": "체크인 15:00 이후",
+            "closed_days": [],
+            "expected_duration_min": 30,
+            "physical_intensity": "낮음",
+            "note": "체크인 가능 시각 이후인 15:00에 배치했어요",
+            "travel_from_prev": {
+              "mode": "대중교통",
+              "estimated_min": 40,
+              "distance_km": 11.35
+            }
+          }
+        ]
+      },
+      {
+        "day": 3,
+        "date": "2026-06-17",
+        "items": [
+          {
+            "id": "d3-1",
+            "name": "우에노 공원",
+            "category": "휴식",
+            "start_time": "09:00",
+            "end_time": "10:00",
+            "lat": 35.7141,
+            "lng": 139.7744,
+            "price": 0.0,
+            "price_unit": "per_person",
+            "opening_hours": "05:00-23:00",
+            "closed_days": [],
+            "expected_duration_min": 60,
+            "physical_intensity": "낮음",
+            "note": "09:00에 하루를 시작하는 첫 일정이에요",
+            "travel_from_prev": null
+          },
+          {
+            "id": "d3-2",
+            "name": "츠키지 장외시장",
+            "category": "식사",
+            "start_time": "10:30",
+            "end_time": "11:45",
+            "lat": 35.6654,
+            "lng": 139.7707,
+            "price": 3000.0,
+            "price_unit": "per_person",
+            "opening_hours": "05:00-14:00",
+            "closed_days": [],
+            "expected_duration_min": 75,
+            "physical_intensity": "중간",
+            "note": "이전 일정에서 대중교통 30분 이동 후 방문해요",
+            "travel_from_prev": {
+              "mode": "대중교통",
+              "estimated_min": 30,
+              "distance_km": 7.05
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

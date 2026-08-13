@@ -168,13 +168,22 @@ def allocate(
     _, pace_max = pace_target(trip.persona.pace)
     capacity = _day_capacity_minutes(trip)
 
-    # 하루에 몇 곳까지 둘지. 페이스 상한을 기본으로 쓰되, 장소가 많으면
-    # 버리는 대신 상한을 넘긴다. 페이스 초과는 검증에서 warning이지만
-    # 장소를 버리는 것은 사용자가 고른 것을 잃는 일이다.
+    # 하루에 몇 곳까지 둘지.
+    #
+    # 균등 분배를 우선한다. 페이스 상한(예: 4곳)만 기준으로 삼으면 한 날에
+    # 4곳이 찰 때까지 계속 넣어서 2/1/4/1처럼 심하게 치우친다. 사용자가
+    # "보통 페이스"라고 했는데 어떤 날은 4곳, 어떤 날은 1곳이면 요청을
+    # 지킨 것이 아니다.
+    #
+    # 그래서 상한을 `ceil(장소 수 / 일수)`로 잡고, 페이스 상한을 넘지 않는
+    # 선에서만 쓴다. 장소가 너무 많으면 버리는 대신 상한을 넘긴다 —
+    # 페이스 초과는 검증에서 warning이지만 장소를 버리는 것은 사용자가
+    # 고른 것을 잃는 일이다.
     day_count = len(days)
     needed_per_day = -(-len(ordered) // day_count) if day_count else 0
-    per_day_cap = max(pace_max, needed_per_day)
+    per_day_cap = max(1, min(pace_max, needed_per_day)) if day_count else pace_max
     if needed_per_day > pace_max:
+        per_day_cap = needed_per_day
         result.notes.append(
             f"장소 {len(ordered)}곳을 {day_count}일에 담으려면 하루 {needed_per_day}곳이 "
             f"필요해 페이스 상한({pace_max}곳)을 넘습니다. 장소를 버리지 않는 쪽을 택했습니다."
@@ -242,8 +251,21 @@ def _choose_day(
         already_full = len(day.place_ids) >= per_day_cap
         affinity = _affinity_minutes(place, day.place_ids, by_id)
 
-        # 우선순위: 여유 있는 날 → 가까운 날 → 항목 적은 날 → 앞선 날
-        scored.append(((1 if already_full else 0, affinity, len(day.place_ids), index), index))
+        # 우선순위를 이 순서로 둔다.
+        #   1. 상한을 넘지 않은 날 (균등 분배의 기본)
+        #   2. 항목이 적은 날      (같은 조건이면 비어 있는 날부터)
+        #   3. 지리적으로 가까운 날 (이동을 줄인다)
+        #   4. 앞선 날            (결정론적 tiebreak)
+        #
+        # 근접성을 항목 수보다 먼저 보면 한 지역 장소가 모두 같은 날에 몰려
+        # 다른 날이 비게 된다. 이동을 조금 더 하더라도 하루 밀도를 사용자가
+        # 요청한 페이스에 맞추는 것이 낫다.
+        scored.append(
+            (
+                (1 if already_full else 0, len(day.place_ids), affinity, index),
+                index,
+            )
+        )
 
     if not scored:
         return None

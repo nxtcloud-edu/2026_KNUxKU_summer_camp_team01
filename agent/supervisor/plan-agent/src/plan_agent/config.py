@@ -107,9 +107,11 @@ class Config:
     # ── 서버 ──
     port: int
     log_level: str
-    # 검증 에이전트가 40초 하드 상한을 쓴다. 그보다 먼저 끝내야
-    # 파이프라인 전체가 클라이언트 타임아웃에 걸리지 않는다.
-    hard_timeout_ms: int
+    # Plan Agent 자신의 작업 상한. 전체 파이프라인
+    # (Search -> Plan -> Verification) 예산은 supervisor가 관리하고,
+    # 이 값은 그중 Plan에 할당된 몫이다. 두 곳에서 같은 예산을 해석하지
+    # 않도록 변수를 분리해 둔다.
+    own_timeout_ms: int
 
     # ── Google Routes API ──
     google_maps_api_key: str
@@ -134,7 +136,7 @@ def _build_config() -> Config:
     return Config(
         port=_get_int("PLAN_AGENT_PORT", 8001),
         log_level=_get("LOG_LEVEL", "info").upper(),
-        hard_timeout_ms=_get_int("AGENT_HARD_TIMEOUT_MS", 40_000),
+        own_timeout_ms=_get_int("PLAN_AGENT_TIMEOUT_MS", 20_000),
         google_maps_api_key=_get("GOOGLE_MAPS_API_KEY"),
         routes_timeout_s=_get_float("ROUTES_TIMEOUT_S", 8.0),
         routes_cache_enabled=_get("ROUTES_CACHE", "on").casefold() != "off",
