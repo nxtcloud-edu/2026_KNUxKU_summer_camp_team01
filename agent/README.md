@@ -144,9 +144,25 @@ Accept: text/event-stream
         }
       ]
     }
+  },
+  "findings": {
+    "cautions": [
+      {
+        "level": "주의",
+        "check": "duration_realism",
+        "code": "DURATION_TOO_SHORT",
+        "message": "카페에서 휴식하기에는 10분이 짧습니다.",
+        "attention": "체류시간을 30~60분으로 조정할지 확인하세요.",
+        "day": 1,
+        "item_id": "d1-2"
+      }
+    ],
+    "dangers": []
   }
 }
 ```
+
+`findings.cautions`와 `findings.dangers`는 문제가 있는 사안을 한 건씩 분리해 제공합니다. `warning` issue는 `주의`, `fail` issue는 `위험`으로 분류됩니다. 모든 `주의` finding에는 사용자가 확인하거나 조정해야 할 내용을 `attention`으로 제공합니다. 기존 `checks`는 상세 원본 판정을 위해 그대로 유지됩니다.
 
 결정론 규칙은 물리적 시간, 예산, 영업시간, 일정 구조, 필수 방문을 처리합니다. Gemini는 회피 조건, 페이스, 걷기/활동 강도와 각 장소의 체류시간 현실성을 처리하며 `GEMINI_API_KEY`가 없으면 해당 체크만 `skipped`가 됩니다.
 
