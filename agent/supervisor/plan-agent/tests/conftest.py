@@ -16,7 +16,24 @@
 
 from __future__ import annotations
 
+import os
+
 import pytest
+
+# `quota.CallBudget.reload_limits()`처럼 os.getenv를 직접 읽는 코드가 있다.
+# `_isolate_external_apis`가 `CONFIG` 객체만 패치하면 이런 코드는 영향을 받지
+# 않는다. 실제로 이 프로젝트에서 서버를 `ROUTES_ENABLED=off`로 띄운 뒤 같은
+# 셀에서 pytest를 돌리면 `test_quota.py`가 7개 실패하는 것으로 확인됐다 —
+# 프로세스 환경변수가 셀 사이에 남기 때문이다. 그래서 이 환경변수들도 매 테스트
+# 시작 시 스냅샷을 찍고 끝나면 정확히 복원한다.
+_ENV_KEYS_TO_ISOLATE = (
+    "ROUTES_ENABLED",
+    "ROUTES_MAX_CALLS_TOTAL",
+    "ROUTES_MAX_CALLS_PER_REQUEST",
+    "ROUTES_CACHE",
+    "GOOGLE_MAPS_API_KEY",
+    "GEMINI_API_KEY",
+)
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -47,7 +64,7 @@ def pytest_collection_modifyitems(
 
 @pytest.fixture(autouse=True)
 def _isolate_external_apis(request: pytest.FixtureRequest, monkeypatch):
-    """외부 API를 끈 상태로 테스트한다.
+    """외부 API를 끈 상태로, 그리고 남은 환경변수 없이 테스트한다.
 
     `live_api` 표시가 붙은 테스트는 예외로 둔다.
     """
@@ -56,7 +73,14 @@ def _isolate_external_apis(request: pytest.FixtureRequest, monkeypatch):
         yield
         return
 
+    # 프로세스 환경변수를 먼저 정리한다. `monkeypatch.delenv`는 테스트가 끝나면
+    # 원래 값으로 자동 복원하므로, 실제 서버 기동 등으로 셀에 남은 값이 있어도
+    # 이 테스트 실행 동안은 항상 같은 상태에서 출발한다.
+    for key in _ENV_KEYS_TO_ISOLATE:
+        monkeypatch.delenv(key, raising=False)
+
     from plan_agent import config as config_module
+    from plan_agent import quota as quota_module
     from plan_agent import routing
 
     isolated = config_module.CONFIG.__class__(
@@ -69,6 +93,10 @@ def _isolate_external_apis(request: pytest.FixtureRequest, monkeypatch):
     monkeypatch.setattr(config_module, "CONFIG", isolated)
     monkeypatch.setattr(routing, "CONFIG", isolated)
 
+    # quota.BUDGET은 import 시점에 한 번 생성된 전역 싱글턴이다. 환경변수를
+    # 지운 뒤 기본값으로 다시 맞춘다.
+    quota_module.BUDGET.reset()
     routing.clear_cache()
     yield
+    quota_module.BUDGET.reset()
     routing.clear_cache()
