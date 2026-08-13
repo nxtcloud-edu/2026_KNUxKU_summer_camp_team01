@@ -22,16 +22,32 @@ import pytest
 from plan_agent import timecalc
 from plan_agent.models import PlanToVerificationInput, SearchToPlanInput
 
-FIXTURES = Path(__file__).resolve().parents[2] / "fixtures"
+def _find_agent_root() -> Path:
+    """`schemas/`와 `fixtures/`를 가진 `agent/` 디렉터리를 위로 올라가며 찾는다.
 
-# 검증 에이전트는 다른 담당자의 산출물이며 `agent` 브랜치에 있다. 이 브랜치에
-# 존재하지 않을 수 있으므로 있을 때만 대조한다(있으면 정규식 표류를 잡아준다).
-VERIFICATION_RULES = (
-    Path(__file__).resolve().parents[2]
-    / "verification-agent"
-    / "src"
-    / "verification_agent"
-    / "rules.py"
+    디렉터리 깊이를 `parents[N]`으로 세면 폴더를 옮길 때마다 조용히 깨진다.
+    실제로 이 프로젝트는 `agent/plan-agent`에서 `agent/supervisor/plan-agent`로
+    한 번 옮겨졌다. 그래서 구조를 탐색해서 찾는다.
+    """
+
+    for candidate in Path(__file__).resolve().parents:
+        if (candidate / "schemas").is_dir() and (candidate / "fixtures").is_dir():
+            return candidate
+    raise RuntimeError("agent 루트(schemas/ + fixtures/)를 찾지 못했습니다")
+
+
+AGENT_ROOT = _find_agent_root()
+FIXTURES = AGENT_ROOT / "fixtures"
+
+# 검증 에이전트는 다른 담당자의 산출물이다. 이 브랜치에 없을 수 있으므로
+# 있을 때만 대조한다(있으면 정규식 표류를 잡아준다).
+VERIFICATION_RULES = next(
+    (
+        path
+        for path in AGENT_ROOT.rglob("verification_agent/rules.py")
+        if path.is_file()
+    ),
+    AGENT_ROOT / "supervisor" / "verification-agent" / "src" / "verification_agent" / "rules.py",
 )
 
 
