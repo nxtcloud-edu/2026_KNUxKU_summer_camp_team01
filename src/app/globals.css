@@ -138,11 +138,12 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .home-hero h1 { font-size: 44px; font-weight: 600; letter-spacing: -.028em; line-height: 1.17; margin-top: 17px; }
 .home-hero h1 span { color: var(--text-secondary); }
 .home-hero > p { color: var(--text-secondary); font-size: 17px; line-height: 1.55; margin-top: 20px; }
-.quick-start { border: 1px solid var(--border-strong); border-radius: 8px; display: grid; grid-template-columns: minmax(0, 1fr) auto; margin-top: 32px; padding: 4px; position: relative; width: 100%; }
+.quick-start { border: 1px solid var(--border-strong); border-radius: 8px; display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1fr) auto; margin-top: 32px; padding: 4px; position: relative; width: 100%; }
 .quick-start:focus-within { box-shadow: 0 0 0 2px color-mix(in oklch, var(--primary) 28%, transparent); border-color: var(--primary); }
 .city-search { align-items: center; display: flex; min-width: 0; padding: 0 12px; position: relative; }
+.quick-start .city-search + .city-search { border-left: 1px solid var(--border); }
 .city-search > svg { color: var(--text-muted); flex: 0 0 auto; }
-.city-search input { background: transparent; border: 0; height: 46px; outline: 0; padding: 0 10px; width: 100%; }
+.city-search input { background: transparent; border: 0; height: 46px; min-width: 0; outline: 0; padding: 0 10px; width: 100%; }
 .city-search__menu { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 30px var(--overlay); left: -5px; padding: 4px; position: absolute; right: -5px; text-align: left; top: 54px; z-index: 20; }
 .city-search__menu button, .city-options button { align-items: center; background: transparent; border-radius: 6px; display: grid; gap: 8px; grid-template-columns: 24px auto minmax(0, 1fr) auto; min-height: 40px; padding: 0 10px; text-align: left; width: 100%; }
 .city-search__menu button:hover, .city-options button:hover, .city-options button.is-active { background: var(--surface-hover); }

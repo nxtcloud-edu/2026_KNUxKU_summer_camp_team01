@@ -17,6 +17,7 @@ export type City = {
   timezone: string;
   image: string;
   color: string;
+  airportCodes: string[];
 };
 
 export type PlaceCategory = '명소' | '역사' | '자연' | '미술관' | '맛집' | '쇼핑';
@@ -42,6 +43,8 @@ export type Place = {
 
 export type FlightOffer = {
   id: string;
+  originId: string;
+  destinationId: string;
   airline: string;
   code: string;
   price: number;
@@ -99,6 +102,7 @@ export type Trip = {
   updatedAt: string;
   currentStep: StepId;
   completedSteps: StepId[];
+  originId: string | null;
   destinationId: string | null;
   startDate: string;
   endDate: string;
@@ -126,6 +130,7 @@ export const createTrip = (id: string): Trip => {
     updatedAt: now,
     currentStep: 'city',
     completedSteps: [],
+    originId: null,
     destinationId: null,
     startDate: '',
     endDate: '',

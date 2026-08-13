@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { BrandHeader } from '@/components/AppShell';
 import { MapPanel } from '@/components/MapPanel';
-import { CITIES, PLACES, STAYS } from '@/lib/data';
+import { CITIES, FLIGHTS, PLACES, STAYS } from '@/lib/data';
 import { useTripStore } from '@/lib/store';
 import type { Trip } from '@/lib/types';
 
@@ -29,6 +29,7 @@ export function SharePrintScreen({ mode }: { mode: 'share' | 'print' }) {
   }, [stored]);
   const trip = stored ?? snapshot;
   const city = CITIES.find((item) => item.id === trip?.destinationId);
+  const flight = FLIGHTS.find((item) => item.id === trip?.selectedFlightId);
   const stay = STAYS.find((item) => item.id === trip?.selectedStayId);
   const selectedPlaces = useMemo(() => trip ? PLACES.filter((place) => trip.selectedPlaceIds.includes(place.id)) : [], [trip]);
 
@@ -44,7 +45,7 @@ export function SharePrintScreen({ mode }: { mode: 'share' | 'print' }) {
         {trip.verification && <span className="verification-seal"><CheckCircle2 size={16} /> 검증 완료</span>}
       </section>
       <div className="readonly-summary">
-        {trip.selectedFlightId && <span><Plane size={16} /> 대한항공 KE703 · ICN 09:05 → NRT 11:20</span>}
+        {flight && <span><Plane size={16} /> {flight.airline} {flight.code} · {flight.outbound}</span>}
         {stay && <span><BedDouble size={16} /> {stay.name} · 4박</span>}
       </div>
       <div className="readonly-layout">

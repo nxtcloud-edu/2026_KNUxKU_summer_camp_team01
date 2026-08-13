@@ -6,22 +6,64 @@ import { ArrowRight, CheckCircle2, Compass, MoreHorizontal, Search, Sparkles, Tr
 import { useMemo, useState } from 'react';
 
 import { BrandHeader } from '@/components/AppShell';
-import { CITIES } from '@/lib/data';
+import { CITIES, ORIGIN_CITIES } from '@/lib/data';
 import { useTripStore } from '@/lib/store';
+import type { City } from '@/lib/types';
 import messages from '../../messages/ko.json';
+
+function LocationSearch({ options, query, selectedId, placeholder, onQueryChange, onSelect }: {
+  options: City[];
+  query: string;
+  selectedId: string | null;
+  placeholder: string;
+  onQueryChange: (value: string) => void;
+  onSelect: (id: string | null) => void;
+}) {
+  const selected = options.find((item) => item.id === selectedId);
+  const filtered = options.filter((item) => `${item.name} ${item.nameEn} ${item.country} ${item.airportCodes.join(' ')}`.toLowerCase().includes(query.toLowerCase()));
+
+  return (
+    <div className="city-search">
+      <Search size={18} />
+      <input
+        value={selected ? `${selected.flag} ${selected.name} (${selected.airportCodes.join(' · ')})` : query}
+        onChange={(event) => { onSelect(null); onQueryChange(event.target.value); }}
+        onFocus={() => { if (selected) { onSelect(null); onQueryChange(''); } }}
+        placeholder={placeholder}
+        aria-label={placeholder}
+      />
+      {query && !selected && (
+        <div className="city-search__menu">
+          {filtered.map((item) => (
+            <button key={item.id} onClick={() => { onSelect(item.id); onQueryChange(''); }}>
+              <span>{item.flag}</span><strong>{item.name}</strong><small>{item.country} · {item.airportCodes.join(' · ')}</small><em>데모 데이터</em>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function HomeScreen() {
   const router = useRouter();
-  const [query, setQuery] = useState('');
-  const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  const [originQuery, setOriginQuery] = useState('');
+  const [destinationQuery, setDestinationQuery] = useState('');
+  const [selectedOriginId, setSelectedOriginId] = useState<string | null>(null);
+  const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
   const trips = useTripStore((state) => state.trips);
   const removeTrip = useTripStore((state) => state.removeTrip);
   const hasHydrated = useTripStore((state) => state.hasHydrated);
   const tripList = useMemo(() => Object.values(trips).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)), [trips]);
-  const filteredCities = CITIES.filter((city) => `${city.name} ${city.nameEn} ${city.country}`.toLowerCase().includes(query.toLowerCase()));
-  const selected = CITIES.find((city) => city.id === selectedCity);
+  const selectedOrigin = ORIGIN_CITIES.find((item) => item.id === selectedOriginId);
+  const selectedCity = CITIES.find((item) => item.id === selectedCityId);
 
-  const start = (cityId?: string) => router.push(`/plan/new${cityId ? `?city=${cityId}` : ''}`);
+  const start = (cityId?: string, originId = selectedOriginId ?? undefined) => {
+    const params = new URLSearchParams();
+    if (originId) params.set('origin', originId);
+    if (cityId) params.set('city', cityId);
+    router.push(`/plan/new${params.size ? `?${params.toString()}` : ''}`);
+  };
 
   return (
     <div className="home-page">
@@ -31,27 +73,10 @@ export function HomeScreen() {
         <h1>{messages.home.title1}<br /><span>{messages.home.title2}</span></h1>
         <p>{messages.home.description1}<br />{messages.home.description2}</p>
         <div className="quick-start">
-          <div className="city-search">
-            <Search size={18} />
-            <input
-              value={selected ? `${selected.flag} ${selected.name}` : query}
-              onChange={(event) => { setSelectedCity(null); setQuery(event.target.value); }}
-              onFocus={() => selected && setSelectedCity(null)}
-              placeholder={messages.home.placeholder}
-              aria-label={messages.home.placeholder}
-            />
-            {query && !selected && (
-              <div className="city-search__menu">
-                {filteredCities.map((city) => (
-                  <button key={city.id} onClick={() => { setSelectedCity(city.id); setQuery(''); }}>
-                    <span>{city.flag}</span><strong>{city.name}</strong><small>{city.country} · {city.nameEn}</small><em>데모 데이터</em>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <button className="button button--primary button--large" onClick={() => start(selectedCity ?? undefined)}>
-            {selected ? `${selected.name} 여행 시작` : messages.home.start}<ArrowRight size={17} />
+          <LocationSearch options={ORIGIN_CITIES} query={originQuery} selectedId={selectedOriginId} placeholder={messages.home.originPlaceholder} onQueryChange={setOriginQuery} onSelect={setSelectedOriginId} />
+          <LocationSearch options={CITIES} query={destinationQuery} selectedId={selectedCityId} placeholder={messages.home.placeholder} onQueryChange={setDestinationQuery} onSelect={setSelectedCityId} />
+          <button className="button button--primary button--large" onClick={() => start(selectedCityId ?? undefined)}>
+            {selectedOrigin && selectedCity ? `${selectedOrigin.name} → ${selectedCity.name}` : messages.home.start}<ArrowRight size={17} />
           </button>
         </div>
         <div className="popular-cities"><span>{messages.home.popular}</span>{CITIES.map((city) => <button key={city.id} onClick={() => start(city.id)}>{city.flag} {city.name}</button>)}</div>
@@ -66,6 +91,7 @@ export function HomeScreen() {
         ) : (
           <div className="trip-grid">
             {tripList.map((trip) => {
+              const origin = ORIGIN_CITIES.find((item) => item.id === trip.originId);
               const city = CITIES.find((item) => item.id === trip.destinationId);
               const progress = Math.round((trip.completedSteps.length / 7) * 100);
               return (
@@ -76,7 +102,7 @@ export function HomeScreen() {
                     </div>
                     <div className="trip-card__body">
                       <h3><span>{city?.flag ?? '·'}</span>{trip.title}</h3>
-                      <p>{trip.startDate ? `${trip.startDate.slice(5)} – ${trip.endDate.slice(5)}` : '날짜 미정'}</p>
+                      <p>{origin ? `${origin.name} → ${city?.name ?? '목적지 미정'} · ` : ''}{trip.startDate ? `${trip.startDate.slice(5)} – ${trip.endDate.slice(5)}` : '날짜 미정'}</p>
                       <div className="trip-progress"><span style={{ width: `${progress}%` }} /></div>
                       <div className="trip-card__meta"><span>{progress === 100 ? '완료' : trip.currentStep}</span><span>최근 저장됨</span></div>
                       <strong className="continue-label">이어서 <ArrowRight size={14} /></strong>

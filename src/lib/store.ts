@@ -3,7 +3,7 @@
 import { create, type StateCreator } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { PLACES, VERIFICATION_CHECKS } from '@/lib/data';
+import { FLIGHTS, PLACES, VERIFICATION_CHECKS } from '@/lib/data';
 import { createTrip, type ItineraryDay, type StepId, type Trip } from '@/lib/types';
 
 type TripPatch = Partial<Omit<Trip, 'persona'>> & { persona?: Partial<Trip['persona']> };
@@ -41,8 +41,10 @@ const buildItinerary = (trip: Trip): ItineraryDay[] => {
     title: ['도착 · 아사쿠사', '시부야 · 하라주쿠', '우에노 · 도요스', '긴자 · 도심 산책', '마지막 여유 일정'][index] ?? '도쿄 탐험',
     items: [],
   }));
-  if (trip.selectedFlightId) {
-    days[0].items.push({ id: 'arrival', kind: 'flight', time: '11:20', title: '나리타 공항 도착', duration: 80, travelMinutes: 78, travelMode: '대중교통' });
+  const selectedFlight = FLIGHTS.find((flight) => flight.id === trip.selectedFlightId);
+  if (selectedFlight) {
+    const arrival = selectedFlight.outbound.split(' → ')[1]?.split(' ') ?? [];
+    days[0].items.push({ id: 'arrival', kind: 'flight', time: arrival[0] ?? '11:20', title: `${arrival[1] ?? '목적지'} 공항 도착`, duration: 80, travelMinutes: 78, travelMode: '대중교통' });
   }
   if (trip.selectedStayId) {
     days[0].items.push({ id: 'checkin', kind: 'stay', time: '14:00', title: '호텔 체크인', duration: 30, travelMinutes: 8, travelMode: '도보' });
@@ -69,7 +71,14 @@ const tripStoreCreator: StateCreator<TripStore> = (set) => ({
   trips: {},
   hasHydrated: false,
   setHasHydrated: (value) => set({ hasHydrated: value }),
-  ensureTrip: (id) => set((state) => state.trips[id] ? state : { trips: { ...state.trips, [id]: createTrip(id) } }),
+  ensureTrip: (id) => set((state) => {
+    const current = state.trips[id];
+    if (!current) return { trips: { ...state.trips, [id]: createTrip(id) } };
+    if (typeof current.originId === 'undefined') {
+      return { trips: { ...state.trips, [id]: { ...current, originId: 'seoul' } } };
+    }
+    return state;
+  }),
   updateTrip: (id, patch) => set((state) => {
     const current = state.trips[id] ?? createTrip(id);
     const next: Trip = {

@@ -1,10 +1,16 @@
 import type { City, FlightOffer, Place, StayOffer, VerificationCheck } from '@/lib/types';
 
+export const ORIGIN_CITIES: City[] = [
+  { id: 'seoul', name: '서울', nameEn: 'Seoul', country: '대한민국', flag: '🇰🇷', currency: 'KRW', timezone: 'GMT+9', image: 'https://picsum.photos/seed/voyagent-seoul/1200/630', color: '#4f6bc7', airportCodes: ['ICN', 'GMP'] },
+  { id: 'busan', name: '부산', nameEn: 'Busan', country: '대한민국', flag: '🇰🇷', currency: 'KRW', timezone: 'GMT+9', image: 'https://picsum.photos/seed/voyagent-busan/1200/630', color: '#397f91', airportCodes: ['PUS'] },
+  { id: 'jeju', name: '제주', nameEn: 'Jeju', country: '대한민국', flag: '🇰🇷', currency: 'KRW', timezone: 'GMT+9', image: 'https://picsum.photos/seed/voyagent-jeju/1200/630', color: '#b26a43', airportCodes: ['CJU'] },
+];
+
 export const CITIES: City[] = [
-  { id: 'tokyo', name: '도쿄', nameEn: 'Tokyo', country: '일본', flag: '🇯🇵', currency: 'JPY', timezone: 'GMT+9', image: 'https://picsum.photos/seed/voyagent-tokyo/1200/630', color: '#6173c9' },
-  { id: 'osaka', name: '오사카', nameEn: 'Osaka', country: '일본', flag: '🇯🇵', currency: 'JPY', timezone: 'GMT+9', image: 'https://picsum.photos/seed/voyagent-osaka/1200/630', color: '#b66c52' },
-  { id: 'paris', name: '파리', nameEn: 'Paris', country: '프랑스', flag: '🇫🇷', currency: 'EUR', timezone: 'GMT+2', image: 'https://picsum.photos/seed/voyagent-paris/1200/630', color: '#3f8a7d' },
-  { id: 'bangkok', name: '방콕', nameEn: 'Bangkok', country: '태국', flag: '🇹🇭', currency: 'THB', timezone: 'GMT+7', image: 'https://picsum.photos/seed/voyagent-bangkok/1200/630', color: '#915a91' },
+  { id: 'tokyo', name: '도쿄', nameEn: 'Tokyo', country: '일본', flag: '🇯🇵', currency: 'JPY', timezone: 'GMT+9', image: 'https://picsum.photos/seed/voyagent-tokyo/1200/630', color: '#6173c9', airportCodes: ['NRT', 'HND'] },
+  { id: 'osaka', name: '오사카', nameEn: 'Osaka', country: '일본', flag: '🇯🇵', currency: 'JPY', timezone: 'GMT+9', image: 'https://picsum.photos/seed/voyagent-osaka/1200/630', color: '#b66c52', airportCodes: ['KIX'] },
+  { id: 'paris', name: '파리', nameEn: 'Paris', country: '프랑스', flag: '🇫🇷', currency: 'EUR', timezone: 'GMT+2', image: 'https://picsum.photos/seed/voyagent-paris/1200/630', color: '#3f8a7d', airportCodes: ['CDG'] },
+  { id: 'bangkok', name: '방콕', nameEn: 'Bangkok', country: '태국', flag: '🇹🇭', currency: 'THB', timezone: 'GMT+7', image: 'https://picsum.photos/seed/voyagent-bangkok/1200/630', color: '#915a91', airportCodes: ['BKK'] },
 ];
 
 export const PLACES: Place[] = [
@@ -20,9 +26,9 @@ export const PLACES: Place[] = [
 ];
 
 export const FLIGHTS: FlightOffer[] = [
-  { id: 'ke703', airline: '대한항공', code: 'KE703', price: 684000, outbound: '09:05 ICN → 11:20 NRT', inbound: '14:30 NRT → 17:00 ICN', duration: '2시간 15분', tag: '추천', note: '오전 도착이라 첫날 일정을 넉넉하게 쓸 수 있어요.' },
-  { id: 'lj201', airline: '진에어', code: 'LJ201', price: 412000, outbound: '09:35 ICN → 12:05 NRT', inbound: '18:40 NRT → 21:15 ICN', duration: '2시간 30분', tag: '최저가', note: '가격을 아끼고 현지 활동에 예산을 더 쓸 수 있어요.' },
-  { id: 'nh6970', airline: '전일본공수', code: 'NH6970', price: 736000, outbound: '07:50 ICN → 10:00 HND', inbound: '19:00 HND → 21:25 ICN', duration: '2시간 10분', tag: '최단시간', note: '하네다 도착이라 도심 이동 시간이 가장 짧아요.' },
+  { id: 'ke703', originId: 'seoul', destinationId: 'tokyo', airline: '대한항공', code: 'KE703', price: 684000, outbound: '09:05 ICN → 11:20 NRT', inbound: '14:30 NRT → 17:00 ICN', duration: '2시간 15분', tag: '추천', note: '오전 도착이라 첫날 일정을 넉넉하게 쓸 수 있어요.' },
+  { id: 'lj201', originId: 'seoul', destinationId: 'tokyo', airline: '진에어', code: 'LJ201', price: 412000, outbound: '09:35 ICN → 12:05 NRT', inbound: '18:40 NRT → 21:15 ICN', duration: '2시간 30분', tag: '최저가', note: '가격을 아끼고 현지 활동에 예산을 더 쓸 수 있어요.' },
+  { id: 'nh6970', originId: 'seoul', destinationId: 'tokyo', airline: '전일본공수', code: 'NH6970', price: 736000, outbound: '07:50 ICN → 10:00 HND', inbound: '19:00 HND → 21:25 ICN', duration: '2시간 10분', tag: '최단시간', note: '하네다 도착이라 도심 이동 시간이 가장 짧아요.' },
 ];
 
 export const STAYS: StayOffer[] = [
