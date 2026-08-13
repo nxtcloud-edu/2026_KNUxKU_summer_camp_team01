@@ -1,0 +1,814 @@
+{
+  "title": "SearchToPlanInput",
+  "description": "Search Agent가 취합한 항공권·숙소·장소 정보를 Plan Agent에 전달하는 입력 스키마. plan-to-verification.schema.json과 같은 규약(snake_case · 모든 필드 required · additionalProperties false · $ref 없음 · 타임존 없음)을 따른다. Plan Agent는 여기 있는 사실만으로 일정을 만든다. 없는 값을 추측해 채우지 않는다.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["trip_info", "search_result"],
+  "properties": {
+    "trip_info": {
+      "type": "object",
+      "description": "plan-to-verification.schema.json의 trip_info와 동일한 구조. Plan Agent는 이 객체를 그대로 검증 Agent에 넘긴다. 값을 바꾸지 않는다.",
+      "additionalProperties": false,
+      "required": [
+        "destination",
+        "start_date",
+        "end_date",
+        "num_travelers",
+        "budget_total",
+        "budget_currency",
+        "budget_includes",
+        "transport_mode",
+        "day_start_time",
+        "day_end_time",
+        "persona"
+      ],
+      "properties": {
+        "destination": {
+          "type": "string"
+        },
+        "start_date": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "end_date": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "num_travelers": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "budget_total": {
+          "type": "number",
+          "minimum": 0
+        },
+        "budget_currency": {
+          "type": "string"
+        },
+        "budget_includes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "transport_mode": {
+          "type": "string"
+        },
+        "day_start_time": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
+        "day_end_time": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
+        "persona": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "description",
+            "must_visit",
+            "avoid",
+            "pace",
+            "max_walking_level"
+          ],
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "must_visit": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "avoid": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "pace": {
+              "type": "string"
+            },
+            "max_walking_level": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "search_result": {
+      "type": "object",
+      "description": "Search Agent가 취합한 결과. flights·stays·places 세 갈래와 공통 메타로 나뉜다.",
+      "additionalProperties": false,
+      "required": [
+        "city_id",
+        "local_currency",
+        "searched_at",
+        "flights",
+        "stays",
+        "places",
+        "area_info",
+        "cost_baseline"
+      ],
+      "properties": {
+        "city_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "description": "목적지 도시 식별자. 예: tokyo. 모든 장소 id의 접두어와 일치해야 한다."
+        },
+        "local_currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$",
+          "description": "이 문서 안 모든 price·total_price 필드의 통화. 환율 변환을 하지 않고 현지 통화 그대로 보낸다. trip_info.budget_currency와 다를 수 있고, 환산은 예산 판정 단계에서 한다."
+        },
+        "searched_at": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$",
+          "description": "검색을 완료한 시각. ISO 8601 UTC. 이 필드만 Z를 붙인다. 나머지 모든 날짜·시각 필드는 타임존 없는 현지 시각이다."
+        },
+        "flights": {
+          "type": "object",
+          "description": "항공권. is_included가 false면 candidates는 빈 배열이고 도착·출발 시각은 모두 null이다.",
+          "additionalProperties": false,
+          "required": [
+            "is_included",
+            "selected_id",
+            "arrival_at",
+            "departure_at",
+            "first_day_available_from",
+            "last_day_available_until",
+            "candidates"
+          ],
+          "properties": {
+            "is_included": {
+              "type": "boolean",
+              "description": "사용자가 항공권을 여행 계획에 포함했는지. false면 Plan Agent는 첫날·마지막날을 trip_info의 day_start_time·day_end_time으로 잡는다."
+            },
+            "selected_id": {
+              "type": ["string", "null"],
+              "description": "사용자가 이미 고른 항공권 id. null이면 Plan Agent가 candidates에서 rank가 가장 높은 것을 쓴다. 값이 있으면 반드시 candidates 안에 존재하는 id여야 한다."
+            },
+            "arrival_at": {
+              "type": ["string", "null"],
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T([01]\\d|2[0-3]):[0-5]\\d$",
+              "description": "목적지 공항 도착 현지 시각. YYYY-MM-DDTHH:mm, 타임존 없음. 선택된(또는 최상위) 항공권에서 Search Agent가 계산해 넣는다."
+            },
+            "departure_at": {
+              "type": ["string", "null"],
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T([01]\\d|2[0-3]):[0-5]\\d$",
+              "description": "귀국편이 목적지 공항에서 출발하는 현지 시각."
+            },
+            "first_day_available_from": {
+              "type": ["string", "null"],
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+              "description": "첫날 일정을 시작할 수 있는 가장 이른 시각. 입국 수속·공항 이동을 반영해 Search Agent가 계산한다. Plan Agent는 이 시각 이전에 첫날 항목을 배치하지 않는다."
+            },
+            "last_day_available_until": {
+              "type": ["string", "null"],
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+              "description": "마지막날 일정을 끝내야 하는 시각. 공항 이동·수속 시간을 뺀 값이다. Plan Agent는 이 시각 이후에 마지막날 항목을 배치하지 않는다."
+            },
+            "candidates": {
+              "type": "array",
+              "description": "왕복 묶음 단위. 편도만 담지 않는다. rank 오름차순으로 정렬한다.",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "rank",
+                  "airline_code",
+                  "airline_name",
+                  "cabin_class",
+                  "outbound_from",
+                  "outbound_to",
+                  "outbound_depart_at",
+                  "outbound_arrive_at",
+                  "outbound_duration_min",
+                  "outbound_stops",
+                  "inbound_from",
+                  "inbound_to",
+                  "inbound_depart_at",
+                  "inbound_arrive_at",
+                  "inbound_duration_min",
+                  "inbound_stops",
+                  "price",
+                  "price_unit",
+                  "total_price",
+                  "baggage_note",
+                  "is_refundable",
+                  "booking_provider",
+                  "match_reason"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+                    "description": "재실행 간 안정적이어야 한다. 예: f-001"
+                  },
+                  "rank": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "추천 순위. 1이 가장 추천. 배열 안에서 중복되지 않는다."
+                  },
+                  "airline_code": {
+                    "type": "string",
+                    "pattern": "^[A-Z0-9]{2}$"
+                  },
+                  "airline_name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "cabin_class": {
+                    "enum": ["economy", "premium", "business", "first"]
+                  },
+                  "outbound_from": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$",
+                    "description": "IATA 3자리 공항 코드"
+                  },
+                  "outbound_to": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$"
+                  },
+                  "outbound_depart_at": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T([01]\\d|2[0-3]):[0-5]\\d$",
+                    "description": "출발지 현지 시각. 타임존 없음."
+                  },
+                  "outbound_arrive_at": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T([01]\\d|2[0-3]):[0-5]\\d$",
+                    "description": "목적지 현지 시각. 날짜가 넘어가면 날짜 부분에 반영한다."
+                  },
+                  "outbound_duration_min": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "총 소요 분. 경유 대기를 포함한다."
+                  },
+                  "outbound_stops": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "inbound_from": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$"
+                  },
+                  "inbound_to": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$"
+                  },
+                  "inbound_depart_at": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T([01]\\d|2[0-3]):[0-5]\\d$"
+                  },
+                  "inbound_arrive_at": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T([01]\\d|2[0-3]):[0-5]\\d$"
+                  },
+                  "inbound_duration_min": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "inbound_stops": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "price": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "왕복 1인 기준. local_currency 단위."
+                  },
+                  "price_unit": {
+                    "enum": ["per_person", "per_stay"],
+                    "description": "항공권은 per_person이다."
+                  },
+                  "total_price": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "price × num_travelers. Search Agent가 계산해 넣는다."
+                  },
+                  "baggage_note": {
+                    "type": "string",
+                    "maxLength": 60,
+                    "description": "예: 위탁 23kg 1개, 기내 10kg. 정보가 없으면 빈 문자열."
+                  },
+                  "is_refundable": {
+                    "type": "boolean"
+                  },
+                  "booking_provider": {
+                    "type": "string",
+                    "maxLength": 40
+                  },
+                  "match_reason": {
+                    "type": "string",
+                    "maxLength": 60,
+                    "description": "이 항공권을 후보에 넣은 이유. 페르소나 조건과 연결한다. 없으면 빈 문자열."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "stays": {
+          "type": "object",
+          "description": "숙소. is_included가 false면 candidates는 빈 배열이다. Plan Agent는 선택된 숙소를 하루의 시작·종료 기준점으로 쓴다.",
+          "additionalProperties": false,
+          "required": ["is_included", "selected_id", "nights", "candidates"],
+          "properties": {
+            "is_included": {
+              "type": "boolean"
+            },
+            "selected_id": {
+              "type": ["string", "null"],
+              "description": "null이면 Plan Agent가 rank 1을 쓴다. 값이 있으면 candidates 안에 존재해야 한다."
+            },
+            "nights": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "숙박 일수. end_date - start_date. is_included가 false면 0."
+            },
+            "candidates": {
+              "type": "array",
+              "description": "rank 오름차순으로 정렬한다.",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "rank",
+                  "name",
+                  "type",
+                  "lat",
+                  "lng",
+                  "address",
+                  "area",
+                  "nearest_station_name",
+                  "nearest_station_walk_min",
+                  "distance_summary",
+                  "check_in_time",
+                  "check_out_time",
+                  "price",
+                  "price_unit",
+                  "total_price",
+                  "rating",
+                  "review_count",
+                  "amenities",
+                  "is_free_cancellation",
+                  "booking_provider",
+                  "match_reason"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+                    "description": "예: s-001"
+                  },
+                  "rank": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
+                  },
+                  "type": {
+                    "enum": ["호텔", "아파트", "호스텔", "료칸", "게스트하우스"]
+                  },
+                  "lat": {
+                    "type": "number",
+                    "minimum": -90,
+                    "maximum": 90,
+                    "description": "하루의 출발·복귀 지점 계산에 쓴다. 실제 좌표여야 한다."
+                  },
+                  "lng": {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180
+                  },
+                  "address": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "area": {
+                    "type": "string",
+                    "description": "권역명. area_info.areas[].name 중 하나여야 한다."
+                  },
+                  "nearest_station_name": {
+                    "type": "string",
+                    "description": "정보가 없으면 빈 문자열."
+                  },
+                  "nearest_station_walk_min": {
+                    "type": ["integer", "null"],
+                    "minimum": 0,
+                    "description": "역 정보가 없으면 null. 모른다는 뜻으로 0을 넣지 않는다."
+                  },
+                  "distance_summary": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40,
+                    "description": "예: 신주쿠역 도보 6분. 지도를 쓸 수 없는 사용자의 유일한 위치 정보다. 빈 문자열은 접근성 요건 위반."
+                  },
+                  "check_in_time": {
+                    "type": "string",
+                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                    "description": "Plan Agent는 첫날 체크인 항목을 이 시각 이후로 배치한다."
+                  },
+                  "check_out_time": {
+                    "type": "string",
+                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                  },
+                  "price": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "1박 요금. local_currency 단위."
+                  },
+                  "price_unit": {
+                    "enum": ["per_person", "per_stay"],
+                    "description": "1박 요금이 객실 단위면 per_stay, 1인 단위면 per_person."
+                  },
+                  "total_price": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "전체 숙박 기간 총액. Search Agent가 계산해 넣는다."
+                  },
+                  "rating": {
+                    "type": ["number", "null"],
+                    "minimum": 0,
+                    "maximum": 10,
+                    "description": "10점 척도. 5점 척도를 넣지 않는다. 평점이 없으면 null."
+                  },
+                  "review_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "amenities": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "예: 무료 와이파이, 조식, 짐 보관. 짐 보관 가능 여부는 마지막날 일정 배치에 쓰인다."
+                  },
+                  "is_free_cancellation": {
+                    "type": "boolean"
+                  },
+                  "booking_provider": {
+                    "type": "string",
+                    "maxLength": 40
+                  },
+                  "match_reason": {
+                    "type": "string",
+                    "maxLength": 60,
+                    "description": "없으면 빈 문자열."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "places": {
+          "type": "array",
+          "minItems": 1,
+          "description": "갈만한 장소 후보. Plan Agent는 이 배열에 없는 장소를 만들어내지 않는다. 각 항목의 name·category·lat·lng·price·price_unit·opening_hours·closed_days·expected_duration_min·physical_intensity 열 개 필드는 plan-to-verification.schema.json의 plan.days[].items[]로 값을 그대로 옮긴다. 나머지 필드는 배치 판단용 근거이며 다음 단계로 넘기지 않는다.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "name_local",
+              "category",
+              "tags",
+              "lat",
+              "lng",
+              "address",
+              "area",
+              "summary",
+              "rating",
+              "review_count",
+              "is_indoor",
+              "physical_intensity",
+              "opening_hours",
+              "closed_days",
+              "expected_duration_min",
+              "best_visit_time",
+              "price",
+              "price_unit",
+              "is_free",
+              "is_price_estimated",
+              "price_note",
+              "needs_reservation",
+              "reservation_note",
+              "nearby",
+              "nearest_station_name",
+              "nearest_station_walk_min",
+              "area_note",
+              "rank",
+              "is_must_visit",
+              "match_reason",
+              "source_urls"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)+$",
+                "description": "{city_id}-{slug} 형식. 예: tokyo-sensoji. 같은 입력으로 다시 검색해도 같은 id가 나와야 한다. 공백·/·?·#를 넣지 않는다."
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 60,
+                "description": "→ plan items[].name 으로 그대로 복사된다."
+              },
+              "name_local": {
+                "type": "string",
+                "maxLength": 60,
+                "description": "현지 표기. 예: 浅草寺. 없으면 빈 문자열."
+              },
+              "category": {
+                "enum": ["관광지", "식사", "카페", "쇼핑", "휴식", "숙소"],
+                "description": "→ plan items[].category 로 그대로 복사된다. plan-to-verification.schema.json과 같은 여섯 값만 쓴다. 더 세밀한 분류는 tags에 넣는다."
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "세부 분류·특징. 예: 사찰, 박물관, 전망대, 야경. category가 여섯 값뿐이라 잃는 정보를 여기 담는다. persona.must_visit·avoid 매칭에 쓴다."
+              },
+              "lat": {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90,
+                "description": "→ plan items[].lat. 실제 좌표여야 한다. 이동 시간 계산의 근거이므로 임의 값을 넣으면 일정 전체가 무의미해진다."
+              },
+              "lng": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180,
+                "description": "→ plan items[].lng"
+              },
+              "address": {
+                "type": "string",
+                "minLength": 1
+              },
+              "area": {
+                "type": "string",
+                "description": "권역명. area_info.areas[].name 중 하나여야 한다. Plan Agent가 하루를 같은 권역으로 묶는 1차 기준이다."
+              },
+              "summary": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120,
+                "description": "장소 소개 한두 문장. 마크다운·HTML·이모지·개행을 넣지 않는다."
+              },
+              "rating": {
+                "type": ["number", "null"],
+                "minimum": 0,
+                "maximum": 5,
+                "description": "5점 척도. 평점 정보가 없으면 null. 추측한 값을 넣지 않는다."
+              },
+              "review_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "is_indoor": {
+                "type": "boolean",
+                "description": "실내 여부. 우천 대안 판정과 하루 실내·실외 균형에 쓰인다."
+              },
+              "physical_intensity": {
+                "enum": ["낮음", "보통", "높음"],
+                "description": "→ plan items[].physical_intensity 로 그대로 복사된다. persona.max_walking_level과 비교하는 값이므로 같은 어휘를 쓴다."
+              },
+              "opening_hours": {
+                "type": "string",
+                "description": "→ plan items[].opening_hours. 사람이 읽는 한 줄. 예: 06:00-17:00 또는 평일 09:00-18:00, 주말 09:00-20:00. 정보가 없으면 빈 문자열이 아니라 정보 없음이라고 쓴다."
+              },
+              "closed_days": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "→ plan items[].closed_days. 휴무 요일·날짜. 예: 월요일 또는 매월 첫째 화요일. 휴무가 없으면 빈 배열. Plan Agent는 이 값을 날짜와 대조해 배치한다."
+              },
+              "expected_duration_min": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "→ plan items[].expected_duration_min. 권장 체류 시간(분). Plan Agent가 end_time을 계산하는 근거다."
+              },
+              "best_visit_time": {
+                "type": "string",
+                "maxLength": 60,
+                "description": "예: 이른 아침, 일몰 전후. 시간대 배치 판단에 쓴다. 정보가 없으면 빈 문자열."
+              },
+              "price": {
+                "type": "number",
+                "minimum": 0,
+                "description": "→ plan items[].price. 입장료·이용료. local_currency 단위. 무료면 0이고 is_free를 true로 둔다."
+              },
+              "price_unit": {
+                "enum": ["per_person", "per_stay"],
+                "description": "→ plan items[].price_unit"
+              },
+              "is_free": {
+                "type": "boolean",
+                "description": "무료 여부. price가 0인 것과 요금 정보를 못 찾은 것을 구분하기 위해 둔다."
+              },
+              "is_price_estimated": {
+                "type": "boolean",
+                "description": "확인하지 못해 추정한 금액이면 true. 예산 판정 단계가 근거에 추정임을 밝히는 데 쓴다."
+              },
+              "price_note": {
+                "type": "string",
+                "maxLength": 80,
+                "description": "예: 성인 500엔, 중학생 이하 무료. 없으면 빈 문자열."
+              },
+              "needs_reservation": {
+                "type": "boolean"
+              },
+              "reservation_note": {
+                "type": "string",
+                "maxLength": 80,
+                "description": "예: 방문 3일 전까지 온라인 예약. 없으면 빈 문자열."
+              },
+              "nearby": {
+                "type": "array",
+                "maxItems": 5,
+                "description": "주변 정보. 도보 이동이 현실적인 다른 후보 장소를 가까운 순으로 담는다. Plan Agent가 하루 안의 순서를 정하는 근거이므로 거리는 Search Agent가 계산해 넣는다. 없으면 빈 배열.",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["id", "distance_km", "walk_min"],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9]+(-[a-z0-9]+)+$",
+                      "description": "places 배열 안에 존재하는 id여야 한다. 자기 자신을 넣지 않는다."
+                    },
+                    "distance_km": {
+                      "type": "number",
+                      "minimum": 0,
+                      "description": "직선 거리(km). plan-to-verification의 travel_from_prev.distance_km와 같은 단위."
+                    },
+                    "walk_min": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "도보 소요 분."
+                    }
+                  }
+                }
+              },
+              "nearest_station_name": {
+                "type": "string",
+                "description": "가장 가까운 역·정류장. 정보가 없으면 빈 문자열."
+              },
+              "nearest_station_walk_min": {
+                "type": ["integer", "null"],
+                "minimum": 0,
+                "description": "역 정보가 없으면 null. 모른다는 뜻으로 0을 넣지 않는다."
+              },
+              "area_note": {
+                "type": "string",
+                "maxLength": 120,
+                "description": "주변 환경 한 줄. 예: 나카미세 상점가 인접, 도보권에 식당 다수. 식사·휴식 블록을 어디에 끼울지 판단하는 근거다. 없으면 빈 문자열."
+              },
+              "rank": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "추천 순위. 1이 가장 추천. 배열 안에서 중복되지 않는다. 배열도 이 순서로 정렬한다."
+              },
+              "is_must_visit": {
+                "type": "boolean",
+                "description": "trip_info.persona.must_visit에 대응하는 장소인지. true면 Plan Agent는 반드시 어느 하루에 배치한다."
+              },
+              "match_reason": {
+                "type": "string",
+                "maxLength": 60,
+                "description": "이 장소를 후보에 넣은 이유. 페르소나 조건과 연결한다. 없으면 빈 문자열."
+              },
+              "source_urls": {
+                "type": "array",
+                "description": "참고한 출처. 확인한 출처가 없으면 빈 배열. 없는 출처를 만들어내지 않는다.",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["label", "url"],
+                  "properties": {
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    },
+                    "url": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "area_info": {
+          "type": "object",
+          "description": "목적지의 권역 정보. Plan Agent가 하루를 지리적으로 묶는 데 쓴다. 권역 나누기는 좌표 기반 계산이므로 Search Agent가 해서 넘긴다.",
+          "additionalProperties": false,
+          "required": ["center_lat", "center_lng", "areas", "transport_note"],
+          "properties": {
+            "center_lat": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90,
+              "description": "도시 중심 좌표. 지도 초기 화면과 거리 기준점."
+            },
+            "center_lng": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            },
+            "areas": {
+              "type": "array",
+              "minItems": 1,
+              "description": "권역 목록. 권역을 나눌 만큼 흩어져 있지 않으면 도시 전체를 하나로 둔다. 어떤 장소가 어느 권역인지는 places[].area가 유일한 근거이며, 여기에 장소 목록을 중복해 담지 않는다.",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name", "center_lat", "center_lng", "transport_hub", "note"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40,
+                    "description": "예: 아사쿠사. places[].area·stays[].candidates[].area가 이 값을 참조한다."
+                  },
+                  "center_lat": {
+                    "type": "number",
+                    "minimum": -90,
+                    "maximum": 90
+                  },
+                  "center_lng": {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180
+                  },
+                  "transport_hub": {
+                    "type": "string",
+                    "maxLength": 40,
+                    "description": "권역의 교통 거점. 예: 아사쿠사역. 권역 간 이동 시간 추정의 기준점. 없으면 빈 문자열."
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 120,
+                    "description": "권역 특징 한 줄. 없으면 빈 문자열."
+                  }
+                }
+              }
+            },
+            "transport_note": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "목적지 교통 개요. 예: 지하철 중심, 1일권 800엔. trip_info.transport_mode와 함께 이동 수단 판단에 쓴다. 없으면 빈 문자열."
+            }
+          }
+        },
+        "cost_baseline": {
+          "type": "object",
+          "description": "장소 입장료로 잡히지 않는 비용의 추정 기준. Plan Agent와 검증 Agent가 같은 계수를 쓰게 하려고 Search Agent가 명시해 넘긴다. 이 값이 없으면 각 단계가 서로 다른 계수로 예산을 계산한다.",
+          "additionalProperties": false,
+          "required": [
+            "meal_avg_per_person",
+            "meals_per_day",
+            "transport_per_person_per_day",
+            "note"
+          ],
+          "properties": {
+            "meal_avg_per_person": {
+              "type": "number",
+              "minimum": 0,
+              "description": "1인 1식 평균 비용. local_currency 단위."
+            },
+            "meals_per_day": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "하루 식사 횟수 기준."
+            },
+            "transport_per_person_per_day": {
+              "type": "number",
+              "minimum": 0,
+              "description": "1인 하루 교통비. local_currency 단위."
+            },
+            "note": {
+              "type": "string",
+              "maxLength": 120,
+              "description": "계수의 근거 한 줄. 예: 현지 평균 식사 가격과 지하철 1일권 기준. 없으면 빈 문자열."
+            }
+          }
+        }
+      }
+    }
+  }
+}
