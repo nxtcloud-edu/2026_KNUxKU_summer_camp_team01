@@ -125,6 +125,45 @@ def check_input_usable(payload: SearchToPlanInput) -> list[Violation]:
                 )
             )
 
+    # 다일 여행에서 숙소가 없으면 `LAST_ITEM_NOT_STAY`를 만족시킬 방법이 없다.
+    # 검증 에이전트는 마지막 여행일을 뺀 모든 날의 마지막 항목이 `숙소`이기를
+    # 요구하는데, Plan Agent는 숙소를 만들어낼 수 없다. 배치를 시작하기 전에
+    # 알려야 하는 구조적 불가능이다.
+    total_days = timecalc.day_count(trip.start_date, trip.end_date)
+    if total_days > 1:
+        has_stay_category = any(
+            place.category == "숙소" for place in payload.selected.places
+        )
+        if payload.selected.stay is None and not has_stay_category:
+            violations.append(
+                Violation(
+                    code="STAY_REQUIRED_FOR_MULTIDAY",
+                    message=(
+                        f"{total_days}일 일정인데 숙소가 선택되지 않았습니다. "
+                        "검증 규칙상 마지막 날을 제외한 모든 날의 마지막 항목이 "
+                        "숙소여야 하므로, 숙소 없이는 통과할 수 없습니다."
+                    ),
+                )
+            )
+
+    # 모든 날이 휴무일인 장소는 어디에도 배치할 수 없다.
+    all_dates = [timecalc.add_days(trip.start_date, offset) for offset in range(total_days)]
+    for place in payload.selected.places:
+        if all(
+            timecalc.is_closed_on(date_str, list(place.closed_days))
+            for date_str in all_dates
+        ):
+            violations.append(
+                Violation(
+                    code="CLOSED_ON_ALL_DAYS",
+                    message=(
+                        f"'{place.name}'은 여행 기간 전체가 휴무일입니다 "
+                        f"(휴무: {', '.join(place.closed_days)})."
+                    ),
+                    item_id=place.id,
+                )
+            )
+
     return violations
 
 

@@ -44,6 +44,7 @@ from typing import Literal
 from . import geo, timecalc
 from .config import CONFIG
 from .models import TravelFromPrevious
+from .quota import BUDGET, QuotaExhausted
 
 logger = logging.getLogger(__name__)
 
@@ -105,10 +106,18 @@ class TravelEstimate:
 
 
 def _post_json(url: str, body: dict, field_mask: str) -> dict | list:
-    """Routes API 호출. 실패는 예외로 올린다(호출부가 폴백을 결정한다)."""
+    """Routes API 호출. 실패는 예외로 올린다(호출부가 폴백을 결정한다).
+
+    **이 함수가 유일한 네트워크 진입점이다.** 여기서 예산을 차감하므로
+    우회 경로가 없다. 예산을 넘으면 호출하지 않고 예외를 던져 폴백으로 보낸다.
+    """
 
     if not CONFIG.has_routes_api:
         raise RuntimeError("GOOGLE_MAPS_API_KEY가 없습니다")
+
+    # 과금 방어선. 상한을 넘으면 네트워크에 나가지 않는다.
+    if not BUDGET.try_consume():
+        raise QuotaExhausted("Routes API 호출 예산을 초과했습니다")
 
     request = urllib.request.Request(
         url,
@@ -210,6 +219,10 @@ def _estimate_uncached(
             return _call_compute_routes(
                 origin, destination, transport_mode, mode_key
             )
+        except QuotaExhausted:
+            # 예산 소진은 오류가 아니라 정상 운영 상태다. quota 모듈이 이미
+            # 경고를 남겼으므로 여기서 또 시끄럽게 하지 않는다.
+            logger.debug("호출 예산 소진. 좌표 기반 추정을 사용합니다.")
         except (urllib.error.URLError, TimeoutError, OSError) as error:
             logger.warning(
                 "Routes API 호출 실패(%s). 좌표 기반 추정으로 대체합니다: %s",
@@ -306,6 +319,8 @@ def matrix_minutes(
     if CONFIG.has_routes_api and elements <= limit:
         try:
             return _call_matrix(points, transport_mode, mode_key)
+        except QuotaExhausted:
+            logger.debug("호출 예산 소진. 행렬을 좌표 기반으로 추정합니다.")
         except (urllib.error.URLError, TimeoutError, OSError, ValueError, KeyError) as error:
             logger.warning(
                 "computeRouteMatrix 실패(%s). 좌표 기반 추정으로 대체합니다: %s",
