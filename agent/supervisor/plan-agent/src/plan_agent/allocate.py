@@ -215,10 +215,11 @@ def allocate(
         days[best_index].place_ids.append(place.id)
         used_minutes[best_index] += place.expected_duration_min
 
-    # 하루 안의 순서를 최근접 경로로 정한다.
+    # 하루 안의 순서를 정한다. 개장 시각을 고려해 하루를 일찍 시작하게 한다.
     seed = (stay.lat, stay.lng) if stay is not None else None
+    day_start = timecalc.to_minutes(trip.day_start_time)
     for day in days:
-        day.place_ids = _order_within_day(day.place_ids, by_id, seed)
+        day.place_ids = _order_within_day(day.place_ids, by_id, seed, day_start)
 
     _add_intensity_notes(result, days, by_id, trip)
     return result
@@ -296,42 +297,73 @@ def _affinity_minutes(
     return int(round(min(distances) * 10))  # 0.1km 단위 정수화 (결정론 정렬용)
 
 
+def _opens_at(place: SelectedPlace) -> int:
+    """장소의 개장 시각(분). 파싱 불가면 하루 시작으로 본다."""
+
+    window = timecalc.parse_opening_hours(place.opening_hours)
+    return window[0] if window is not None else 0
+
+
 def _order_within_day(
     place_ids: list[str],
     by_id: dict[str, SelectedPlace],
     seed: tuple[float, float] | None,
+    day_start_minutes: int = 0,
 ) -> list[str]:
-    """하루 안의 방문 순서를 최근접 이웃으로 정한다.
+    """하루 안의 방문 순서를 정한다.
 
-    숙소 좌표가 있으면 거기서 출발한다. 실제로 아침에 숙소에서 나오기 때문이고,
-    하루의 마지막에 숙소로 돌아가는 이동도 짧아진다.
+    ## 개장 시각을 근접성보다 먼저 본다
+
+    근접성만으로 정하면 개장이 늦은 곳(예: 11시 개장 쇼핑몰)이 첫 항목이 되어
+    하루 전체가 11시에 시작한다. 사용자가 `day_start_time`을 09:00으로 줬는데
+    두 시간을 버리는 것이다.
+
+    그래서 **하루 시작 시각에 이미 열려 있는 곳을 먼저** 배치하고, 그 안에서
+    근접성으로 정한다. 늦게 여는 곳은 자연히 뒤로 밀린다.
+
+    숙소 좌표가 있으면 거기서 출발한다. 아침에 숙소에서 나오기 때문이다.
     """
 
     remaining = [pid for pid in place_ids if pid in by_id]
     if len(remaining) <= 1:
         return remaining
 
-    if seed is None:
-        # 숙소가 없으면 가장 서쪽·북쪽 장소에서 시작한다(결정론적 선택).
-        start_id = min(remaining, key=lambda pid: (by_id[pid].lng, by_id[pid].lat, pid))
+    current = seed
+    if current is None:
+        # 숙소가 없으면 하루 시작에 열려 있고 가장 서쪽인 곳에서 출발한다.
+        start_id = min(
+            remaining,
+            key=lambda pid: (
+                max(0, _opens_at(by_id[pid]) - day_start_minutes),
+                by_id[pid].lng,
+                pid,
+            ),
+        )
         ordered = [start_id]
         remaining.remove(start_id)
         current = (by_id[start_id].lat, by_id[start_id].lng)
     else:
         ordered = []
-        current = seed
+
+    # 시간이 흐르는 것을 대략 반영한다. 정확한 시각은 schedule 단계에서 정하고,
+    # 여기서는 "이미 열려 있는가"만 판단할 정도의 근사면 충분하다.
+    clock = day_start_minutes
 
     while remaining:
-        next_id = min(
-            remaining,
-            key=lambda pid: (
-                geo.haversine_km(current[0], current[1], by_id[pid].lat, by_id[pid].lng),
-                pid,
-            ),
-        )
+        def sort_key(pid: str) -> tuple:
+            place = by_id[pid]
+            distance = geo.haversine_km(current[0], current[1], place.lat, place.lng)
+            # 도착 예상 시각에 아직 안 열렸으면 기다려야 하는 분.
+            wait = max(0, _opens_at(place) - clock)
+            # 대기가 있는 곳은 뒤로 밀되, 0.5km 단위로 근접성과 견준다.
+            return (wait, round(distance * 2), pid)
+
+        next_id = min(remaining, key=sort_key)
+        place = by_id[next_id]
         ordered.append(next_id)
         remaining.remove(next_id)
-        current = (by_id[next_id].lat, by_id[next_id].lng)
+        clock = max(clock, _opens_at(place)) + place.expected_duration_min
+        current = (place.lat, place.lng)
 
     return ordered
 

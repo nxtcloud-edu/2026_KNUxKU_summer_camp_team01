@@ -1,0 +1,43 @@
+{
+  "generated_by": "agent/supervisor/plan-agent/tools/save_samples.py",
+  "live_api": false,
+  "note": "Search Agent 더미 입력과 그에 대한 Plan Agent 산출물. plan-to-verification.output.json은 Verification Agent의 POST /agent/itineraryVerify에 그대로 넣을 수 있다.",
+  "input_summary": {
+    "destination": "도쿄",
+    "date_range": "2026-06-15 ~ 2026-06-19",
+    "selected_places": 15,
+    "pace": "보통",
+    "max_walking_level": "중간",
+    "must_visit": [
+      "센소지",
+      "도쿄 타워",
+      "츠키지 장외시장"
+    ],
+    "transport_mode": "대중교통",
+    "has_flight": true,
+    "has_stay": true
+  },
+  "output_summary": {
+    "day_count": 5,
+    "item_count": 19,
+    "places_per_day": [
+      3,
+      3,
+      3,
+      3,
+      3
+    ],
+    "estimated_total": 740600.0,
+    "budget_total": 1800000.0,
+    "budget_currency": "KRW",
+    "stay_price_sum": 720000.0,
+    "travel_legs": 14,
+    "estimated_legs": 14
+  },
+  "verification": {
+    "passed": true,
+    "violations": []
+  },
+  "unassigned": [],
+  "notes": []
+}

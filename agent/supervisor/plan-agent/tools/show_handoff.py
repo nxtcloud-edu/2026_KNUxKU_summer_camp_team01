@@ -31,7 +31,6 @@ sys.path.insert(0, str(_HERE.parent / "tests"))
 
 async def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--scenario", default="4일_표준")
     parser.add_argument("--save", help="JSON을 파일로 저장한다")
     parser.add_argument("--live", action="store_true", help="실제 API 호출 (과금)")
     args = parser.parse_args()
@@ -41,16 +40,12 @@ async def main() -> int:
         os.environ["GEMINI_API_KEY"] = ""
     logging.basicConfig(level=logging.WARNING, format="  %(levelname)s %(message)s")
 
-    from dummy_search_output import SCENARIOS, make_search_output
+    from dummy_search_output import make_standard_input
     from plan_agent import budget, contracts
     from plan_agent.graph import generate_itinerary
     from plan_agent.models import SearchToPlanInput
 
-    if args.scenario not in SCENARIOS:
-        print(f"시나리오 '{args.scenario}' 없음. 가능: {list(SCENARIOS)}")
-        return 2
-
-    source_raw = make_search_output(**SCENARIOS[args.scenario])
+    source_raw = make_standard_input()
     source = SearchToPlanInput.model_validate(source_raw)
 
     payload, diagnostics = await generate_itinerary(source)
@@ -63,7 +58,7 @@ async def main() -> int:
     handoff = payload.model_dump(mode="json")
 
     print("=" * 70)
-    print(f"Search Agent 더미 입력  (시나리오: {args.scenario})")
+    print("Search Agent 더미 입력")
     print("=" * 70)
     selected = source_raw["selected"]
     print(f"  선택 장소 {len(selected['places'])}곳")

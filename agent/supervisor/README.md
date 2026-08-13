@@ -21,10 +21,28 @@ agent/supervisor/
 ## 데이터 흐름
 
 ```text
-              SearchToPlanInput              PlanToVerificationInput
-Search Agent ────────────────────> Plan Agent ────────────────────> Verification Agent
-                                                                     { possible, checks }
+프론트엔드 웹사이트                Search Agent
+(사용자 선호·조건 수집)            (항공편·숙소·장소 정보 수집)
+        │                                │
+        │ trip_info                      │ selected
+        │  (persona 포함)                 │  (flight / stay / places)
+        └────────────┬───────────────────┘
+                     ↓ SearchToPlanInput
+                 Plan Agent
+                     ↓ PlanToVerificationInput
+              Verification Agent
+                     ↓ { possible, checks }
 ```
+
+`SearchToPlanInput`은 **두 출처가 합쳐진 것**이다. 한 에이전트의 산출물이 아니다.
+
+| 블록 | 만드는 곳 | 내용 |
+|---|---|---|
+| `trip_info` | 프론트엔드 웹사이트 | 목적지·날짜·인원·예산·이동수단·하루 시간대 + `persona` |
+| `selected` | Search Agent | 항공편·숙소·장소 후보 |
+
+사용자에게 선호를 묻는 것은 **프론트엔드의 일**이다. Search Agent는 그 조건을
+받아 항공편·숙소·여행장소 **정보만** 수집한다.
 
 | 경계 | 정본 스키마 | 예제 |
 |---|---|---|
@@ -42,9 +60,13 @@ Search Agent ────────────────────> Plan 
 
 | 에이전트 | 엔드포인트 | 입력 | 출력 payload |
 |---|---|---|---|
-| search | (담당자 확정 예정) | 사용자 조건 | `SearchToPlanInput` |
+| search | (담당자 확정 예정) | 목적지·날짜·인원 등 검색 조건 | `selected` 블록 (`flight` / `stay` / `places`) |
 | plan | `POST /agent/itineraryGenerate` | `SearchToPlanInput` | `PlanToVerificationInput` |
 | verification | `POST /agent/itineraryVerify` | `PlanToVerificationInput` | `{ possible, checks }` |
+
+Search Agent는 `SearchToPlanInput` 전체를 만들지 않는다. `selected`만 만들고,
+`trip_info`는 프론트엔드가 만든다. 둘을 합쳐 Plan Agent에 보내는 것은 프론트엔드
+또는 supervisor의 일이다.
 
 이벤트는 [`../schemas/agent-event.schema.json`](../schemas/agent-event.schema.json)의
 4종(`status` · `progress` · `done` · `error`)만 사용한다. 모든 스트림은

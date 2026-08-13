@@ -88,18 +88,21 @@ def test_trip_info_is_shared_between_both_handoffs() -> None:
 def test_time_fields_never_gain_seconds() -> None:
     """`datetime.time`을 썼다면 실패할 테스트.
 
-    이 프로젝트에서 시각을 `str`로 다루는 이유를 고정한다.
+    이 프로젝트에서 시각을 `str`로 다루는 이유를 고정한다. 기대값을
+    하드코딩하지 않고 fixture 원본과 비교한다 — 정본이 바뀌어도 안 깨진다.
     """
     raw = _load("plan-to-verification.example.json")
     parsed = PlanToVerificationInput.model_validate(raw)
     dumped = parsed.model_dump(mode="json")
 
-    assert dumped["trip_info"]["day_start_time"] == "09:00"
-    assert dumped["trip_info"]["day_end_time"] == "22:00"
+    # 왕복 후에도 원본 문자열 그대로여야 한다 (초가 붙으면 실패).
+    assert dumped["trip_info"]["day_start_time"] == raw["trip_info"]["day_start_time"]
+    assert dumped["trip_info"]["day_end_time"] == raw["trip_info"]["day_end_time"]
     for day in dumped["plan"]["days"]:
         for item in day["items"]:
             assert len(item["start_time"]) == 5, item["start_time"]
             assert len(item["end_time"]) == 5, item["end_time"]
+            assert ":" in item["start_time"]
 
 
 # ── 2. 계약 위반은 조용히 통과하지 않는다 ──────────────────────

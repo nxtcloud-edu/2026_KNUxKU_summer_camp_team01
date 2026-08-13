@@ -1,7 +1,21 @@
-"""Search Agent 더미 결과물 생성기.
+"""Plan Agent 입력(`SearchToPlanInput`) 더미 생성기.
 
-실제 Search Agent는 다른 담당자가 만들고 있다. 그때까지 Plan Agent를 테스트
-하려면 `SearchToPlanInput`을 만들어 줄 무언가가 필요하다.
+실제 Search Agent와 프론트엔드는 다른 담당자가 만들고 있다. 그때까지 Plan
+Agent를 테스트하려면 입력을 만들어 줄 무언가가 필요하다.
+
+## 이 입력은 두 곳에서 합쳐진 것이다
+
+`SearchToPlanInput`은 한 에이전트의 산출물이 아니다. 두 출처가 합쳐진다.
+
+| 블록 | 만드는 곳 | 내용 |
+|---|---|---|
+| `trip_info` | **프론트엔드 웹사이트** | 목적지·날짜·인원·예산·이동수단·하루 시간대, 그리고 `persona`(설명·필수방문·회피·페이스·활동강도) |
+| `selected` | **Search Agent** | 항공편·숙소·장소 후보 정보 |
+
+즉 사용자 선호를 묻는 것은 프론트엔드의 일이고, Search Agent는 그 조건을
+받아 **항공편·숙소·여행장소 정보만** 수집한다. Plan Agent는 둘을 합쳐 받는다.
+
+이 더미는 그 합쳐진 결과를 한 번에 만든다.
 
 ## 이 더미가 지키는 것
 
@@ -175,63 +189,63 @@ def make_search_output(
     return output
 
 
-# 대표 시나리오. 전체 검증에서 이 목록을 순회한다.
-SCENARIOS: dict[str, dict[str, Any]] = {
-    "1일_단순": {
-        "start_date": "2026-06-15",
-        "end_date": "2026-06-15",
-        "place_count": 2,
-    },
-    "4일_표준": {
-        "start_date": "2026-06-15",
-        "end_date": "2026-06-18",
-        "place_count": 8,
-    },
-    "5일_빡빡": {
-        "start_date": "2026-06-15",
-        "end_date": "2026-06-19",
-        "place_count": 15,
-        "pace": "빡빡",
-    },
-    "3일_여유": {
-        "start_date": "2026-06-15",
-        "end_date": "2026-06-17",
-        "place_count": 6,
-        "pace": "여유",
-    },
-    "휴무일_포함": {
-        "start_date": "2026-06-15",
-        "end_date": "2026-06-17",
-        "place_count": 6,
-        # 도쿄 국립박물관(index 1)은 월요일 휴관. 2026-06-15가 월요일이다.
-        "closed_days_map": {1: ["월요일"]},
-    },
-    "예산_촉박": {
-        "start_date": "2026-06-15",
-        "end_date": "2026-06-17",
-        "place_count": 6,
-        "budget_total": 800_000,
-    },
-    "항공_포함": {
-        "start_date": "2026-06-15",
-        "end_date": "2026-06-18",
-        "place_count": 8,
-        "with_flight": True,
-    },
-    "도보_여행": {
-        "start_date": "2026-06-15",
-        "end_date": "2026-06-17",
-        "place_count": 5,
-        "transport_mode": "도보",
-        "max_walking_level": "높음",
-    },
+# ── 표준 더미 입력 하나 ──────────────────────────────────────
+#
+# ## 왜 하나인가
+#
+# 처음에는 `여유/보통/빡빡`처럼 페이스별로 시나리오를 여러 개 두었다. 그건
+# 잘못이었다.
+#
+# `pace` · `max_walking_level` · `must_visit` · `avoid` 는 모두 **프론트엔드
+# 웹사이트가 사용자에게서 받아 `trip_info.persona`에 담아 보내는 값**이다.
+# Plan Agent는 그걸 받아 반영할 뿐이고, 여러 안을 만들어 고르게 하지 않는다.
+# **입력 하나 = 결과 하나**다.
+#
+# 그래서 더미도 하나만 둔다. 페이스를 바꿔 보고 싶으면 `make_search_output(pace=...)`
+# 인자를 바꾸면 되고, 그건 시나리오가 아니라 그냥 다른 입력이다.
+#
+# ## 이 입력이 담고 있는 것
+#
+# 실제 사용에 가깝게 한 번에 다 넣었다. 조건이 하나씩 있을 때 통과하는 것과
+# 전부 겹쳤을 때 통과하는 것은 다른 문제다.
+#
+# - 장소 15곳(관광지·식사·카페·쇼핑·휴식 혼합)을 5일에 배치
+# - 필수 방문지 3곳
+# - 휴무일 2건 (월요일 휴관, 화요일 휴관)
+# - 예산 제약
+# - 항공·숙소 선택 포함
+
+STANDARD_INPUT: dict[str, Any] = {
+    "start_date": "2026-06-15",
+    "end_date": "2026-06-19",  # 5일 4박
+    "place_count": len(TOKYO_PLACES),  # 15곳 전부
+    "num_travelers": 2,
+    "budget_total": 1_800_000,
+    "pace": "보통",
+    "max_walking_level": "중간",
+    "must_visit": ["센소지", "도쿄 타워", "츠키지 장외시장"],
+    "avoid": ["장시간 도보", "복잡한 환승"],
+    "description": "역사 명소와 맛집을 좋아하고 카페에서 쉬는 시간을 챙기는 2인 여행",
+    "with_flight": True,
+    "with_stay": True,
+    # 도쿄 국립박물관(index 1)은 월요일 휴관, 하마리큐 정원(index 6)은 화요일 휴관.
+    # 2026-06-15가 월요일, 06-16이 화요일이다.
+    "closed_days_map": {1: ["월요일"], 6: ["화요일"]},
+    "transport_mode": "대중교통",
 }
+
+
+def make_standard_input(**overrides: Any) -> dict[str, Any]:
+    """표준 더미 입력. 필요하면 일부만 덮어쓴다."""
+
+    return make_search_output(**{**STANDARD_INPUT, **overrides})
 
 
 __all__ = [
     "DEFAULT_STAY",
-    "SCENARIOS",
+    "STANDARD_INPUT",
     "TOKYO_PLACES",
     "make_place",
     "make_search_output",
+    "make_standard_input",
 ]

@@ -7,7 +7,6 @@
 
 from __future__ import annotations
 
-import copy
 import json
 from pathlib import Path
 
@@ -65,17 +64,26 @@ def test_input_fixture_is_usable() -> None:
 
 def test_detects_duration_mismatch() -> None:
     raw = _plan()
-    raw["plan"]["days"][0]["items"][0]["expected_duration_min"] = 60  # 실제 90분
+    first = raw["plan"]["days"][0]["items"][0]
+    # 실제 시간과 다른 값을 넣는다. fixture 값에 의존하지 않는다.
+    first["expected_duration_min"] = first["expected_duration_min"] + 15
     assert "DURATION_MISMATCH" in _codes(_verify(raw))
 
 
 def test_detects_insufficient_travel_time() -> None:
     raw = _plan()
-    # 센소지 종료 10:30 + 이동 35분 = 11:05가 최소. 10:40으로 당긴다.
-    item = raw["plan"]["days"][0]["items"][1]
-    item["start_time"] = "10:40"
-    item["end_time"] = "11:10"
-    item["expected_duration_min"] = 30
+    # 두 번째 항목의 시작을 이전 종료 시각과 같게 만들고 이동시간을 크게 준다.
+    day = raw["plan"]["days"][0]
+    previous, item = day["items"][0], day["items"][1]
+    item["travel_from_prev"] = {
+        "mode": "지하철",
+        "estimated_min": 60,
+        "distance_km": 10.0,
+    }
+    item["start_time"] = previous["end_time"]
+    start_h, start_m = map(int, previous["end_time"].split(":"))
+    end_minutes = start_h * 60 + start_m + item["expected_duration_min"]
+    item["end_time"] = f"{end_minutes // 60:02d}:{end_minutes % 60:02d}"
     assert "INSUFFICIENT_TRAVEL_TIME" in _codes(_verify(raw))
 
 
@@ -96,9 +104,15 @@ def test_detects_missing_travel_on_later_item() -> None:
 
 
 def test_detects_closed_day() -> None:
+    """그 날짜의 실제 요일을 계산해 휴무일로 심는다.
+
+    요일을 하드코딩하면 fixture 날짜가 바뀔 때 조용히 무의미해진다.
+    """
+    from plan_agent import timecalc
+
     raw = _plan()
-    # 2026-06-15는 월요일이다.
-    raw["plan"]["days"][0]["items"][0]["closed_days"] = ["월요일"]
+    day = raw["plan"]["days"][0]
+    day["items"][0]["closed_days"] = [timecalc.weekday_ko(day["date"])]
     assert "CLOSED_DAY" in _codes(_verify(raw))
 
 
@@ -146,14 +160,23 @@ def test_detects_duplicate_item_id() -> None:
 
 
 def test_detects_day_count_mismatch() -> None:
+    """days 개수와 날짜 범위가 어긋나면 잡는다."""
+    from plan_agent import timecalc
+
     raw = _plan()
-    raw["trip_info"]["end_date"] = "2026-06-17"  # 3일인데 days는 1개
+    # 종료일을 하루 늘리면 days가 하나 부족해진다.
+    raw["trip_info"]["end_date"] = timecalc.add_days(raw["trip_info"]["end_date"], 1)
     assert "DAY_COUNT_MISMATCH" in _codes(_verify(raw))
 
 
 def test_detects_missing_must_visit() -> None:
+    """일정에 없는 이름을 필수 방문지로 넣으면 잡힌다.
+
+    실제 장소 이름을 쓰면 fixture에 그 장소가 생겼을 때 조용히 무의미해진다.
+    그래서 절대 존재하지 않는 이름을 쓴다.
+    """
     raw = _plan()
-    raw["trip_info"]["persona"]["must_visit"] = ["도쿄타워"]
+    raw["trip_info"]["persona"]["must_visit"] = ["존재하지_않는_장소_XYZ"]
     assert "MUST_VISIT_MISSING" in _codes(_verify(raw))
 
 
@@ -179,16 +202,14 @@ def test_detects_mutated_trip_info() -> None:
 
 
 def test_detects_last_item_not_stay_on_multiday_trip() -> None:
-    """마지막 여행일이 아닌 날의 마지막 항목은 숙소여야 한다."""
+    """마지막 여행일이 아닌 날의 마지막 항목은 숙소여야 한다.
+
+    공식 fixture는 이미 다일 일정이므로, 첫날 마지막 항목의 카테고리만
+    바꿔서 규칙이 실제로 동작하는지 본다.
+    """
     raw = _plan()
-    raw["trip_info"]["end_date"] = "2026-06-16"
-    day2 = copy.deepcopy(raw["plan"]["days"][0])
-    day2["day"] = 2
-    day2["date"] = "2026-06-16"
-    for offset, item in enumerate(day2["items"], start=1):
-        item["id"] = f"d2-{offset}"
-    raw["plan"]["days"].append(day2)
-    # day1의 마지막 항목을 숙소가 아닌 것으로 바꾼다.
+    assert len(raw["plan"]["days"]) >= 2, "다일 fixture가 필요합니다"
+    # 첫날(=마지막 날이 아닌 날)의 마지막 항목을 숙소가 아닌 것으로 바꾼다.
     raw["plan"]["days"][0]["items"][-1]["category"] = "관광지"
     assert "LAST_ITEM_NOT_STAY" in _codes(_verify(raw))
 
@@ -207,7 +228,7 @@ def test_input_check_rejects_unparseable_opening_hours() -> None:
 def test_input_check_rejects_must_visit_not_in_selection() -> None:
     """Plan Agent는 장소를 만들 수 없으므로 이건 Search 단계의 문제다."""
     raw = _search()
-    raw["trip_info"]["persona"]["must_visit"] = ["도쿄타워"]
+    raw["trip_info"]["persona"]["must_visit"] = ["존재하지_않는_장소_XYZ"]
     payload = SearchToPlanInput.model_validate(raw)
     assert "MUST_VISIT_NOT_SELECTED" in _codes(contracts.check_input_usable(payload))
 
