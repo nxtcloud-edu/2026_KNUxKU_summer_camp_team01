@@ -390,13 +390,7 @@ function FlightsStep({ trip, update }: { trip: Trip; update: (patch: Partial<Tri
     setPreferredAirlineCodes((current) => current.includes(code) ? current.filter((item) => item !== code) : [...current, code]);
   };
 
-  useEffect(() => {
-    if (phase !== 'searching') return;
-    const timer = window.setTimeout(() => setPhase('results'), 2300);
-    return () => window.clearTimeout(timer);
-  }, [phase]);
-
-  if (phase === 'searching') return <div className="stream-page"><PageHeading eyebrow="AGENT · FLIGHT SEARCH" title="조건에 맞는 항공권을 비교하고 있어요" description="검색 과정과 판단 근거를 실시간으로 보여드릴게요." /><AgentPanel type="항공권" /><SkeletonCards count={3} /></div>;
+  if (phase === 'searching') return <div className="stream-page"><PageHeading eyebrow="AGENT · FLIGHT SEARCH" title="조건에 맞는 항공권을 비교하고 있어요" description="검색 과정과 판단 근거를 실시간으로 보여드릴게요." /><AgentPanel type="항공권" task="flightSearch" input={{ originId: trip.originId, destinationId: trip.destinationId, startDate: trip.startDate, endDate: trip.endDate, persona: trip.persona }} onDone={() => setPhase('results')} onAbort={() => setPhase('survey')} /><SkeletonCards count={3} /></div>;
   if (phase === 'survey') return (
     <div className="form-page">
       <PageHeading eyebrow="STEP 3 · 항공권" title="항공권을 찾기 전에" description="조건을 알려주시면 맞는 것만 골라드려요. 모두 선택 사항이에요." />
@@ -428,12 +422,6 @@ function StaysStep({ trip, update }: { trip: Trip; update: (patch: Partial<Trip>
   const [detailPlace, setDetailPlace] = useState<PlaceDetail | null>(null);
   const selectedStay = STAYS.find((stay) => stay.id === trip.selectedStayId);
 
-  useEffect(() => {
-    if (phase !== 'searching') return;
-    const timer = window.setTimeout(() => setPhase('results'), 2200);
-    return () => window.clearTimeout(timer);
-  }, [phase]);
-
   const openStayDetail = (stay: (typeof STAYS)[number]) => {
     setDetailPlace({
       name: stay.name,
@@ -452,7 +440,7 @@ function StaysStep({ trip, update }: { trip: Trip; update: (patch: Partial<Trip>
   };
 
   if (phase === 'searching') {
-    return <div className="stream-page"><PageHeading eyebrow="AGENT · STAY SEARCH" title="숙소 위치와 가격을 비교하고 있어요" description="일정에 편리한 동네와 이동 시간을 함께 계산합니다." /><AgentPanel type="숙소" progress={68} /><SkeletonCards count={3} /></div>;
+    return <div className="stream-page"><PageHeading eyebrow="AGENT · STAY SEARCH" title="숙소 위치와 가격을 비교하고 있어요" description="일정에 편리한 동네와 이동 시간을 함께 계산합니다." /><AgentPanel type="숙소" task="staySearch" input={{ destinationId: trip.destinationId, startDate: trip.startDate, endDate: trip.endDate, persona: trip.persona, selectedPlaceIds: trip.selectedPlaceIds }} onDone={() => setPhase('results')} onAbort={() => setPhase('survey')} /><SkeletonCards count={3} /></div>;
   }
   if (phase === 'survey') {
     return <div className="form-page"><PageHeading eyebrow="STEP 4 · 숙소" title="숙소를 찾기 전에" description="위치와 예산만 정해도 충분해요." /><div className="route-summary"><BedDouble size={20} /><div><strong>도쿄 · {trip.startDate} 체크인</strong><span>{getNights(trip.startDate, trip.endDate)}박 · 성인 {trip.persona.adults}명 · 객실 1개</span></div></div><div className="survey-fields"><Question title="어떤 숙소를 찾으세요?" meta="전체"><div className="interest-list"><button className="is-selected">호텔 <Check size={13} /></button><button>아파트·민박</button><button>호스텔</button><button>료칸</button></div></Question><Question title="위치는 뭐가 중요해요?" meta="최대 2개"><div className="interest-list"><button className="is-selected">도심 한가운데</button><button className="is-selected">역에서 가까운 곳</button><button>관광지 근처</button><button>조용한 동네</button></div></Question><Question title="1박 예산"><input className="range" type="range" min="70000" max="480000" defaultValue="220000" /><div className="range-labels"><span>7만원</span><strong>8만 – 22만원</strong><span>48만원</span></div></Question><Question title="최소 평점"><div className="segmented"><button>무관</button><button>7.0+</button><button className="is-active">8.0+</button><button>9.0+</button></div></Question></div><button className="button button--primary button--wide" onClick={() => setPhase('searching')}><Sparkles size={16} /> 숙소 찾기</button></div>;

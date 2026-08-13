@@ -49,3 +49,24 @@
 
 [`spec.md` 14장 구현 로드맵](./spec.md#14-구현-로드맵)의 26단계를 순서대로 진행한다.
 시간이 부족할 때의 최소 데모 경로는 [14.3](./spec.md#143-최소-데모-경로-시간이-부족할-때)에 정리되어 있다.
+
+## 백엔드 API
+
+백엔드는 Next.js App Router의 서버 라우트로 함께 배포된다. 별도 서버나 API 키 없이 로컬 목데이터를 사용하므로 Vercel에서도 그대로 실행할 수 있다.
+
+```bash
+npm ci
+npm run dev
+
+# 상태 확인
+curl http://localhost:3000/api/health
+
+# SSE 에이전트 호출
+curl -N -X POST http://localhost:3000/api/agent/flightSearch \
+  -H "Content-Type: application/json" \
+  -d '{"originId":"seoul","destinationId":"tokyo"}'
+```
+
+지원 작업은 `flightSearch`, `staySearch`, `placeDiscovery`, `itineraryGenerate`, `itineraryVerify`다. 응답은 `text/event-stream`이며 각 프레임은 명세 6.3의 `AgentEvent` JSON을 `data:` 필드에 담는다. `GET /api/health`는 배포 후 헬스 체크에 사용한다.
+
+전체 검증은 `npm run check`로 실행한다. SSE 연출 속도는 선택적으로 `AGENT_STREAM_DELAY_MS`(0~2000ms)로 조절할 수 있다.
