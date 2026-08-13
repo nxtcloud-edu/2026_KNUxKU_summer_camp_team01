@@ -87,6 +87,8 @@ export type StayOffer = {
   features: ('central' | 'station' | 'attraction' | 'quiet')[];
   name: string;
   area: string;
+  address: string;
+  description: string;
   rating: number;
   reviews: number;
   price: number;
@@ -151,6 +153,10 @@ export type Trip = {
   importedPlaces: Record<string, ImportedPlace>;
   itinerary: ItineraryDay[] | null;
   verification: VerificationCheck[] | null;
+  /** The exact itinerary that the current AI verification result was generated from. */
+  verifiedItinerary: ItineraryDay[] | null;
+  /** Set only after the verified itinerary has been explicitly saved. */
+  savedAt: string | null;
 };
 
 export const createTrip = (id: string): Trip => {
@@ -183,5 +189,7 @@ export const createTrip = (id: string): Trip => {
     importedPlaces: {},
     itinerary: null,
     verification: null,
+    verifiedItinerary: null,
+    savedAt: null,
   };
 };
