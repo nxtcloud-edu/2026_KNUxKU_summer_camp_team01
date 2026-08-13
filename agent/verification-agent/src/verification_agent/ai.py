@@ -6,7 +6,6 @@ import os
 from typing import Any
 
 from google import genai
-from google.genai import types
 
 from .models import (
     AiHumanJudgement,
@@ -90,9 +89,9 @@ def _parse_response(response: Any) -> AiHumanJudgement:
     if parsed is not None:
         return AiHumanJudgement.model_validate(parsed)
 
-    text = getattr(response, "text", None)
+    text = getattr(response, "output_text", None) or getattr(response, "text", None)
     if not text:
-        raise ValueError("Gemini response did not contain structured output")
+        raise ValueError("Gemini interaction did not contain structured output")
     return AiHumanJudgement.model_validate_json(text)
 
 
@@ -110,22 +109,22 @@ async def judge_human_constraints(
                 "AI_NOT_CONFIGURED",
                 "Gemini API 키가 없어 인간적 제약 검사를 건너뛰었습니다.",
             )
-        client = genai.Client(api_key=api_key)
+        client = genai.Client(api_key=api_key, enterprise=False)
 
     try:
         prompt_payload = _build_prompt_payload(payload)
-        response = await client.aio.models.generate_content(
+        response = await client.aio.interactions.create(
             model=os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL),
-            contents=(
-                "아래 여행 데이터를 기준으로 회피 조건, 페이스, 걷기 수준만 검토하세요.\n"
+            input=(
+                SYSTEM_INSTRUCTION
+                + "\n아래 여행 데이터를 기준으로 회피 조건, 페이스, 걷기 수준만 검토하세요.\n"
                 + json.dumps(prompt_payload, ensure_ascii=False, separators=(",", ":"))
             ),
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_INSTRUCTION,
-                temperature=0.1,
-                response_mime_type="application/json",
-                response_schema=AiHumanJudgement,
-            ),
+            response_format={
+                "type": "text",
+                "mime_type": "application/json",
+                "schema": AiHumanJudgement.model_json_schema(),
+            },
         )
         return _parse_response(response)
     except Exception:

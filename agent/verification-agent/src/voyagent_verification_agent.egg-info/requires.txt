@@ -1,0 +1,5 @@
+fastapi
+google-genai>=2.18.0
+langgraph
+pydantic>=2
+uvicorn[standard]
