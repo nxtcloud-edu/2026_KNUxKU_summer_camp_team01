@@ -1,0 +1,53 @@
+# ── Python ────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+.coverage
+htmlcov/
+
+# ── 비밀 · 환경 ────────────────────────
+# GEMINI_API_KEY, GOOGLE_MAPS_API_KEY 등이 여기로 들어간다.
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+!.env.example
+
+# ── 실행 산출물 · 캐시 ─────────────────
+# Routes API / 환율 응답 캐시, 실행 로그
+.cache/
+*.log
+logs/
+
+# ⚠ 아래는 반드시 커밋한다 (실수로 무시되지 않도록 명시)
+!agent/schemas/
+!agent/fixtures/
+!agent/tools/
+
+# ── Node · Next.js (프론트엔드) ────────
+node_modules/
+.next/
+out/
+.vercel/
+*.tsbuildinfo
+coverage/
+playwright-report/
+test-results/
+
+# ── 에디터 · OS ───────────────────────
+.vscode/*
+!.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
