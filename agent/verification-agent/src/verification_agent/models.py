@@ -86,6 +86,23 @@ class StandardCheck(StrictModel):
     issues: list[CheckIssue] = Field(default_factory=list)
 
 
+class DurationRealismIssue(StrictModel):
+    code: Literal["DURATION_TOO_SHORT", "DURATION_TOO_LONG"]
+    severity: Literal["warning", "fail"]
+    message: str
+    day: int = Field(ge=1)
+    item_id: str
+    allocated_min: int = Field(ge=0)
+    suggested_min: int = Field(ge=0)
+    suggested_max: int = Field(ge=0)
+
+
+class DurationRealismCheck(StrictModel):
+    status: CheckStatus
+    reviewed_item_ids: list[str] = Field(default_factory=list)
+    issues: list[DurationRealismIssue] = Field(default_factory=list)
+
+
 class BudgetCheck(StrictModel):
     status: CheckStatus
     budget_total: float
@@ -120,6 +137,7 @@ class VerificationChecks(StrictModel):
     avoid: AvoidCheck
     pace: StandardCheck
     walking_level: StandardCheck
+    duration_realism: DurationRealismCheck
 
 
 class VerificationResult(StrictModel):
@@ -128,8 +146,9 @@ class VerificationResult(StrictModel):
 
 
 class AiHumanJudgement(StrictModel):
-    """Structured Gemini response for subjective persona-related checks only."""
+    """Structured Gemini response for subjective persona-related checks."""
 
     avoid: AvoidCheck
     pace: StandardCheck
     walking_level: StandardCheck
+    duration_realism: DurationRealismCheck

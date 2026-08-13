@@ -7,6 +7,7 @@ from .models import (
     AvoidCheck,
     BudgetCheck,
     CheckIssue,
+    DurationRealismCheck,
     MustVisitCheck,
     PlanDay,
     PlanItem,
@@ -220,4 +221,9 @@ def build_rule_checks(payload: PlanToVerificationInput) -> VerificationChecks:
         avoid=AvoidCheck(status="skipped", matched=[]),
         pace=ai_pending,
         walking_level=ai_pending.model_copy(deep=True),
+        duration_realism=DurationRealismCheck(
+            status="skipped",
+            reviewed_item_ids=[],
+            issues=[],
+        ),
     )

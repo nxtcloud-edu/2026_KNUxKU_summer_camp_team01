@@ -24,6 +24,7 @@ async def _run_ai_checks(state: VerificationState) -> dict[str, VerificationChec
                 "avoid": judgement.avoid,
                 "pace": judgement.pace,
                 "walking_level": judgement.walking_level,
+                "duration_realism": judgement.duration_realism,
             },
             deep=True,
         )
@@ -44,6 +45,7 @@ def _finalize(state: VerificationState) -> dict[str, bool]:
         checks.avoid.status,
         checks.pace.status,
         checks.walking_level.status,
+        checks.duration_realism.status,
     )
     return {"possible": "fail" not in statuses}
 

@@ -127,12 +127,30 @@ Accept: text/event-stream
     "must_visit": {},
     "avoid": {},
     "pace": {},
-    "walking_level": {}
+    "walking_level": {},
+    "duration_realism": {
+      "status": "warning",
+      "reviewed_item_ids": ["d1-1", "d1-2"],
+      "issues": [
+        {
+          "code": "DURATION_TOO_SHORT",
+          "severity": "warning",
+          "message": "카페에서 휴식하기에는 10분이 짧습니다.",
+          "day": 1,
+          "item_id": "d1-2",
+          "allocated_min": 10,
+          "suggested_min": 30,
+          "suggested_max": 60
+        }
+      ]
+    }
   }
 }
 ```
 
-결정론 규칙은 물리적 시간, 예산, 영업시간, 일정 구조, 필수 방문을 처리합니다. Gemini는 회피 조건, 페이스, 걷기/활동 강도를 처리하며 `GEMINI_API_KEY`가 없으면 해당 체크만 `skipped`가 됩니다.
+결정론 규칙은 물리적 시간, 예산, 영업시간, 일정 구조, 필수 방문을 처리합니다. Gemini는 회피 조건, 페이스, 걷기/활동 강도와 각 장소의 체류시간 현실성을 처리하며 `GEMINI_API_KEY`가 없으면 해당 체크만 `skipped`가 됩니다.
+
+`duration_realism.reviewed_item_ids`에는 입력의 모든 일정 item ID가 포함됩니다. `DURATION_TOO_SHORT`와 `DURATION_TOO_LONG` issue는 배정 시간과 Gemini가 제안한 현실적 범위를 함께 반환합니다. `warning`은 빠듯하지만 수행 가능한 경우이고, `fail`은 명시된 활동을 사실상 수행하기 어려운 경우이며 전체 `possible`을 `false`로 만듭니다.
 
 ## 파일 구조
 
