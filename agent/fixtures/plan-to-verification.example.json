@@ -1,4 +1,5 @@
 {
+  "schema_version": "1.0",
   "trip_info": {
     "destination": "도쿄",
     "start_date": "2026-06-15",
@@ -6,7 +7,7 @@
     "num_travelers": 2,
     "budget_total": 1200000,
     "budget_currency": "KRW",
-    "budget_includes": ["숙소", "식사", "교통", "관광"],
+    "budget_includes": ["숙소", "식사", "관광지"],
     "transport_mode": "대중교통",
     "day_start_time": "09:00",
     "day_end_time": "22:00",
@@ -51,7 +52,7 @@
             "lng": 139.7009,
             "price": 180000,
             "price_unit": "per_stay",
-            "opening_hours": "15:00-23:59",
+            "opening_hours": "체크인 15:00 이후",
             "closed_days": [],
             "expected_duration_min": 30,
             "physical_intensity": "낮음",

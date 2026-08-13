@@ -16,8 +16,8 @@ class Persona(StrictModel):
     description: str
     must_visit: list[str]
     avoid: list[str]
-    pace: str
-    max_walking_level: str
+    pace: Literal["여유", "보통", "빡빡"]
+    max_walking_level: Literal["낮음", "중", "중간", "높음"]
 
 
 class TripInfo(StrictModel):
@@ -26,8 +26,8 @@ class TripInfo(StrictModel):
     end_date: date
     num_travelers: int = Field(ge=1)
     budget_total: float = Field(ge=0)
-    budget_currency: str
-    budget_includes: list[str]
+    budget_currency: str = Field(pattern=r"^[A-Z]{3}$")
+    budget_includes: list[Literal["관광지", "식사", "카페", "쇼핑", "휴식", "숙소"]]
     transport_mode: str
     day_start_time: time
     day_end_time: time
@@ -53,7 +53,7 @@ class PlanItem(StrictModel):
     opening_hours: str
     closed_days: list[str]
     expected_duration_min: int = Field(ge=0)
-    physical_intensity: str
+    physical_intensity: Literal["낮음", "중", "중간", "높음"]
     note: str
     travel_from_prev: TravelFromPrevious | None
 
@@ -69,6 +69,7 @@ class Plan(StrictModel):
 
 
 class PlanToVerificationInput(StrictModel):
+    schema_version: Literal["1.0"]
     trip_info: TripInfo
     plan: Plan
 
