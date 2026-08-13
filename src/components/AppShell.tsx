@@ -13,7 +13,6 @@ import {
   MoreHorizontal,
   Plane,
   Route,
-  Share2,
   Sparkles,
   Users,
 } from 'lucide-react';
@@ -61,13 +60,6 @@ export function AppShell({ trip, step, children, footer }: {
     window.localStorage.setItem('voyagent:theme', isDark ? 'dark' : 'light');
   };
 
-  const handleShare = async () => {
-    const payload = window.btoa(unescape(encodeURIComponent(JSON.stringify(trip))));
-    const url = `${window.location.origin}/trip/${trip.id}/share#${payload}`;
-    await navigator.clipboard?.writeText(url);
-    router.push(`/trip/${trip.id}/share#${payload}`);
-  };
-
   return (
     <div className="app-shell">
       <header className="trip-header">
@@ -80,8 +72,7 @@ export function AppShell({ trip, step, children, footer }: {
           <span className="trip-meta trip-meta--desktop">· 성인 {trip.persona.adults}명</span>
         </div>
         <div className="trip-actions">
-          <span className="save-status"><Check size={14} /> <span>모든 변경사항 저장됨</span></span>
-          {trip.itinerary && <button className="header-action" onClick={handleShare}><Share2 size={15} /> <span>공유</span></button>}
+          <span className="save-status"><Check size={14} /> <span>변경사항은 이 브라우저에 저장돼요</span></span>
           <button className="icon-button" onClick={toggleTheme} aria-label="테마 변경">
             <Moon size={17} />
           </button>

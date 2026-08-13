@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react';
 
 import { BrandHeader } from '@/components/AppShell';
 import { CITIES, ORIGIN_CITIES } from '@/lib/data';
+import { isVerificationCurrent } from '@/lib/itinerary';
 import { useTripStore } from '@/lib/store';
 import type { City } from '@/lib/types';
 import messages from '../../messages/ko.json';
@@ -75,8 +76,12 @@ export function HomeScreen() {
         <div className="quick-start">
           <LocationSearch options={ORIGIN_CITIES} query={originQuery} selectedId={selectedOriginId} placeholder={messages.home.originPlaceholder} onQueryChange={setOriginQuery} onSelect={setSelectedOriginId} />
           <LocationSearch options={CITIES} query={destinationQuery} selectedId={selectedCityId} placeholder={messages.home.placeholder} onQueryChange={setDestinationQuery} onSelect={setSelectedCityId} />
-          <button className="button button--primary button--large" onClick={() => start(selectedCityId ?? undefined)}>
-            {selectedOrigin && selectedCity ? `${selectedOrigin.name} → ${selectedCity.name}` : messages.home.start}<ArrowRight size={17} />
+          <button
+            aria-label={selectedOrigin && selectedCity ? `${selectedOrigin.name}에서 ${selectedCity.name} 여행 계획 짜기` : messages.home.start}
+            className="button button--primary button--large"
+            onClick={() => start(selectedCityId ?? undefined)}
+          >
+            {messages.home.start}<ArrowRight size={16} />
           </button>
         </div>
         <div className="popular-cities"><span>{messages.home.popular}</span>{CITIES.map((city) => <button key={city.id} onClick={() => start(city.id)}>{city.flag} {city.name}</button>)}</div>
@@ -98,7 +103,7 @@ export function HomeScreen() {
                 <article className="trip-card" key={trip.id}>
                   <Link href={`/plan/${trip.id}/${trip.currentStep}`} className="trip-card__link" aria-label={`${trip.title} 이어서 계획하기`}>
                     <div className="trip-card__image" style={{ backgroundImage: `url(${city?.image ?? 'https://picsum.photos/seed/new-trip/800/400'})` }}>
-                      {trip.verification && <span className="verified-badge"><CheckCircle2 size={13} /> 검증 완료</span>}
+                      {isVerificationCurrent(trip) && <span className="verified-badge"><CheckCircle2 size={13} /> 검증 완료</span>}
                     </div>
                     <div className="trip-card__body">
                       <h3><span>{city?.flag ?? '·'}</span>{trip.title}</h3>
