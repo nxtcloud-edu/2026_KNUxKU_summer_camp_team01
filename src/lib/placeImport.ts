@@ -73,22 +73,9 @@ export const finalizeImportedPlaces = (
     latitude: isFiniteCoordinate(draft.latitude, -90, 90) ? draft.latitude : undefined,
     longitude: isFiniteCoordinate(draft.longitude, -180, 180) ? draft.longitude : undefined,
   }));
-  const located = normalized.filter((draft) => draft.latitude !== undefined && draft.longitude !== undefined);
-  const latitudes = located.map((draft) => draft.latitude!);
-  const longitudes = located.map((draft) => draft.longitude!);
-  const minLat = Math.min(...latitudes);
-  const maxLat = Math.max(...latitudes);
-  const minLng = Math.min(...longitudes);
-  const maxLng = Math.max(...longitudes);
 
   return normalized.map((draft) => {
     const identity = `${draft.sourceUrl ?? sourceLabel}|${draft.name}|${draft.latitude ?? ''}|${draft.longitude ?? ''}`;
-    let x: number | undefined;
-    let y: number | undefined;
-    if (draft.latitude !== undefined && draft.longitude !== undefined) {
-      x = maxLng === minLng ? 50 : 14 + ((draft.longitude - minLng) / (maxLng - minLng)) * 72;
-      y = maxLat === minLat ? 50 : 86 - ((draft.latitude - minLat) / (maxLat - minLat)) * 72;
-    }
     return {
       id: `imported-${hashText(identity)}`,
       name: draft.name,
@@ -100,8 +87,6 @@ export const finalizeImportedPlaces = (
       layer: draft.layer,
       latitude: draft.latitude,
       longitude: draft.longitude,
-      x,
-      y,
       sourceType,
       sourceLabel,
       sourceUrl: draft.sourceUrl,

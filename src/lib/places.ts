@@ -13,7 +13,7 @@ export const getTripPlaces = (trip: Pick<Trip, 'importedPlaces'>): TripPlace[] =
 export const isImportedPlace = (place: TripPlace): place is ImportedPlace =>
   place.sourceType === 'google-maps-url' || place.sourceType === 'my-maps-file';
 
-export type MappableTripPlace = TripPlace & { x: number; y: number };
+export type MappableTripPlace = TripPlace & { latitude: number; longitude: number };
 
 export const getMappablePlaces = (places: TripPlace[]): MappableTripPlace[] => places.filter((place): place is MappableTripPlace =>
-  Number.isFinite(place.x) && Number.isFinite(place.y));
+  Number.isFinite(place.latitude) && Number.isFinite(place.longitude));

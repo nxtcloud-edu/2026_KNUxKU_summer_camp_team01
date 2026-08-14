@@ -125,6 +125,7 @@ export function ItineraryPresentationScreen() {
           showRoute
           stay={stay}
           focusActive
+          showInfoWindow={false}
         />
       </section>
 

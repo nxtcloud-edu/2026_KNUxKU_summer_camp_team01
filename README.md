@@ -30,7 +30,7 @@
 | 프레임워크 | Next.js 15 (App Router) + TypeScript |
 | 스타일 | Tailwind CSS + shadcn/ui, OKLCH 토큰 |
 | 상태 | Zustand (+ localStorage 지속화) + TanStack Query |
-| 지도 | MapLibre GL JS + OpenFreeMap (**API 키 불필요**) |
+| 지도 | Google Maps JavaScript API (`@react-google-maps/api`, **API 키 필요** — `.env.example` 참고) |
 | 드래그&드롭 | dnd-kit |
 | 에이전트 | 목 스트리밍 계층 → `MockTransport` ↔ `SseTransport` 교체 가능 |
 | 배포 | Vercel |

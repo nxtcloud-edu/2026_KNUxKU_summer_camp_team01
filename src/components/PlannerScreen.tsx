@@ -188,8 +188,13 @@ function CityStep({ trip, update }: { trip: Trip; update: (patch: Partial<Trip>)
   const endDateRef = useRef<HTMLInputElement>(null);
   const [originQuery, setOriginQuery] = useState('');
   const [destinationQuery, setDestinationQuery] = useState('');
-  const [originMenuOpen, setOriginMenuOpen] = useState(!trip.originId);
-  const [destinationMenuOpen, setDestinationMenuOpen] = useState(!trip.destinationId);
+  // "explicitly editing" flags: whether the user asked to change an already-selected city.
+  // Deliberately NOT derived from `!trip.originId`/`!trip.destinationId` at mount time, because
+  // the origin/destination can be filled in asynchronously (e.g. from the URL query params set by
+  // the home screen) after this component has already mounted — keeping these `false` by default
+  // lets the "selected" hero card show up correctly whenever a city becomes available.
+  const [originMenuOpen, setOriginMenuOpen] = useState(false);
+  const [destinationMenuOpen, setDestinationMenuOpen] = useState(false);
   const origin = ORIGIN_CITIES.find((item) => item.id === trip.originId);
   const city = CITIES.find((item) => item.id === trip.destinationId);
   const filteredOrigins = ORIGIN_CITIES.filter((item) => `${item.name} ${item.nameEn} ${item.airportCodes.join(' ')}`.toLowerCase().includes(originQuery.toLowerCase()));

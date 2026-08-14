@@ -14,15 +14,15 @@ export const CITIES: City[] = [
 ];
 
 export const PLACES: Place[] = [
-  { id: 'sensoji', name: '센소지', localName: '浅草寺', category: '역사', area: '아사쿠사', rating: 4.5, reviews: 32841, duration: 90, price: '무료', summary: '628년에 창건된 도쿄에서 가장 오래된 사찰. 가미나리몬과 나카미세 상점가가 이어집니다.', note: '이른 아침에 방문하면 한적하게 둘러볼 수 있어요.', image: 'https://picsum.photos/seed/sensoji/480/360', x: 76, y: 29 },
-  { id: 'skytree', name: '도쿄 스카이트리', category: '명소', area: '오시아게', rating: 4.4, reviews: 58120, duration: 120, price: '2,100엔', summary: '도쿄 전경을 한눈에 볼 수 있는 634m 높이의 전망대입니다.', note: '해 질 무렵 방문하면 낮과 야경을 함께 볼 수 있어요.', image: 'https://picsum.photos/seed/skytree/480/360', x: 84, y: 33, reservation: true },
-  { id: 'museum', name: '도쿄 국립박물관', category: '미술관', area: '우에노', rating: 4.6, reviews: 21004, duration: 150, price: '1,000엔', summary: '일본 최대 규모의 박물관으로 국보와 동아시아 미술품을 전시합니다.', note: '상설관만 보아도 두 시간 이상 필요해요.', image: 'https://picsum.photos/seed/tokyo-museum/480/360', x: 67, y: 24, closed: '월 휴관' },
-  { id: 'meiji', name: '메이지 신궁', category: '역사', area: '하라주쿠', rating: 4.6, reviews: 40122, duration: 90, price: '무료', summary: '도심 한가운데 울창한 숲길을 지나 만나는 고요한 신궁입니다.', note: '오전 산책 코스로 배치하면 이동이 편해요.', image: 'https://picsum.photos/seed/meiji/480/360', x: 34, y: 46 },
-  { id: 'shibuya', name: '시부야 스카이', category: '명소', area: '시부야', rating: 4.7, reviews: 18940, duration: 90, price: '2,200엔', summary: '시부야 교차로와 도쿄 도심을 내려다보는 개방형 전망 시설입니다.', note: '인기 시간대는 사전 예약을 권해요.', image: 'https://picsum.photos/seed/shibuya-sky/480/360', x: 31, y: 58, reservation: true },
-  { id: 'shinjuku', name: '신주쿠 교엔', category: '자연', area: '신주쿠', rating: 4.6, reviews: 19871, duration: 120, price: '500엔', summary: '일본식·영국식·프랑스식 정원이 어우러진 넓은 도심 공원입니다.', note: '여행 중간에 여유를 더하기 좋은 장소예요.', image: 'https://picsum.photos/seed/shinjuku-gyoen/480/360', x: 38, y: 36, closed: '월 휴관' },
-  { id: 'teamlab', name: '팀랩 플래닛', category: '미술관', area: '도요스', rating: 4.5, reviews: 35220, duration: 150, price: '3,800엔', summary: '물과 빛, 거대한 설치 작품을 몸으로 경험하는 몰입형 미술관입니다.', note: '날짜 지정 예약이 필요해 준비물에 추가할게요.', image: 'https://picsum.photos/seed/teamlab/480/360', x: 69, y: 72, reservation: true },
-  { id: 'tsukiji', name: '츠키지 장외시장', category: '맛집', area: '츠키지', rating: 4.3, reviews: 29510, duration: 90, price: '약 3,000엔', summary: '초밥과 해산물 덮밥, 계란말이 등 다양한 길거리 음식을 맛볼 수 있습니다.', note: '오전 10시 전에 가면 대기 시간을 줄일 수 있어요.', image: 'https://picsum.photos/seed/tsukiji/480/360', x: 61, y: 63 },
-  { id: 'ginza', name: '긴자 식스', category: '쇼핑', area: '긴자', rating: 4.2, reviews: 12884, duration: 120, price: '무료', summary: '패션과 라이프스타일 브랜드, 예술 설치가 함께 있는 복합 쇼핑 공간입니다.', note: '비 오는 날 대안으로 좋아요.', image: 'https://picsum.photos/seed/ginza-six/480/360', x: 57, y: 54 },
+  { id: 'sensoji', name: '센소지', localName: '浅草寺', category: '역사', area: '아사쿠사', rating: 4.5, reviews: 32841, duration: 90, price: '무료', summary: '628년에 창건된 도쿄에서 가장 오래된 사찰. 가미나리몬과 나카미세 상점가가 이어집니다.', note: '이른 아침에 방문하면 한적하게 둘러볼 수 있어요.', image: 'https://picsum.photos/seed/sensoji/480/360', latitude: 35.7147, longitude: 139.7967 },
+  { id: 'skytree', name: '도쿄 스카이트리', category: '명소', area: '오시아게', rating: 4.4, reviews: 58120, duration: 120, price: '2,100엔', summary: '도쿄 전경을 한눈에 볼 수 있는 634m 높이의 전망대입니다.', note: '해 질 무렵 방문하면 낮과 야경을 함께 볼 수 있어요.', image: 'https://picsum.photos/seed/skytree/480/360', latitude: 35.7101, longitude: 139.8107, reservation: true },
+  { id: 'museum', name: '도쿄 국립박물관', category: '미술관', area: '우에노', rating: 4.6, reviews: 21004, duration: 150, price: '1,000엔', summary: '일본 최대 규모의 박물관으로 국보와 동아시아 미술품을 전시합니다.', note: '상설관만 보아도 두 시간 이상 필요해요.', image: 'https://picsum.photos/seed/tokyo-museum/480/360', latitude: 35.7188, longitude: 139.7765, closed: '월 휴관' },
+  { id: 'meiji', name: '메이지 신궁', category: '역사', area: '하라주쿠', rating: 4.6, reviews: 40122, duration: 90, price: '무료', summary: '도심 한가운데 울창한 숲길을 지나 만나는 고요한 신궁입니다.', note: '오전 산책 코스로 배치하면 이동이 편해요.', image: 'https://picsum.photos/seed/meiji/480/360', latitude: 35.6764, longitude: 139.6993 },
+  { id: 'shibuya', name: '시부야 스카이', category: '명소', area: '시부야', rating: 4.7, reviews: 18940, duration: 90, price: '2,200엔', summary: '시부야 교차로와 도쿄 도심을 내려다보는 개방형 전망 시설입니다.', note: '인기 시간대는 사전 예약을 권해요.', image: 'https://picsum.photos/seed/shibuya-sky/480/360', latitude: 35.658, longitude: 139.7016, reservation: true },
+  { id: 'shinjuku', name: '신주쿠 교엔', category: '자연', area: '신주쿠', rating: 4.6, reviews: 19871, duration: 120, price: '500엔', summary: '일본식·영국식·프랑스식 정원이 어우러진 넓은 도심 공원입니다.', note: '여행 중간에 여유를 더하기 좋은 장소예요.', image: 'https://picsum.photos/seed/shinjuku-gyoen/480/360', latitude: 35.6872, longitude: 139.7107, closed: '월 휴관' },
+  { id: 'teamlab', name: '팀랩 플래닛', category: '미술관', area: '도요스', rating: 4.5, reviews: 35220, duration: 150, price: '3,800엔', summary: '물과 빛, 거대한 설치 작품을 몸으로 경험하는 몰입형 미술관입니다.', note: '날짜 지정 예약이 필요해 준비물에 추가할게요.', image: 'https://picsum.photos/seed/teamlab/480/360', latitude: 35.6459, longitude: 139.7933, reservation: true },
+  { id: 'tsukiji', name: '츠키지 장외시장', category: '맛집', area: '츠키지', rating: 4.3, reviews: 29510, duration: 90, price: '약 3,000엔', summary: '초밥과 해산물 덮밥, 계란말이 등 다양한 길거리 음식을 맛볼 수 있습니다.', note: '오전 10시 전에 가면 대기 시간을 줄일 수 있어요.', image: 'https://picsum.photos/seed/tsukiji/480/360', latitude: 35.6655, longitude: 139.7708 },
+  { id: 'ginza', name: '긴자 식스', category: '쇼핑', area: '긴자', rating: 4.2, reviews: 12884, duration: 120, price: '무료', summary: '패션과 라이프스타일 브랜드, 예술 설치가 함께 있는 복합 쇼핑 공간입니다.', note: '비 오는 날 대안으로 좋아요.', image: 'https://picsum.photos/seed/ginza-six/480/360', latitude: 35.6706, longitude: 139.7639 },
 ];
 
 export const FLIGHTS: FlightOffer[] = [
@@ -47,8 +47,8 @@ export const STAYS: StayOffer[] = [
     station: '신주쿠역 도보 6분',
     tag: '위치 최고',
     image: 'https://picsum.photos/seed/gracery/640/420',
-    x: 39,
-    y: 37,
+    latitude: 35.6954,
+    longitude: 139.7025,
   },
   {
     id: 'granbell',
@@ -65,8 +65,8 @@ export const STAYS: StayOffer[] = [
     station: '신주쿠산초메역 도보 4분',
     tag: '가성비',
     image: 'https://picsum.photos/seed/granbell/640/420',
-    x: 43,
-    y: 40,
+    latitude: 35.6967,
+    longitude: 139.7056,
   },
   {
     id: 'park-hyatt',
@@ -83,8 +83,8 @@ export const STAYS: StayOffer[] = [
     station: '도초마에역 도보 8분',
     tag: '평점 높음',
     image: 'https://picsum.photos/seed/park-hyatt/640/420',
-    x: 34,
-    y: 34,
+    latitude: 35.68564,
+    longitude: 139.69095,
   },
 ];
 

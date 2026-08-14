@@ -35,8 +35,6 @@ export type TripPlace = {
   summary?: string;
   note?: string;
   image?: string;
-  x?: number;
-  y?: number;
   closed?: string;
   reservation?: boolean;
   description?: string;
@@ -58,8 +56,8 @@ export type Place = TripPlace & {
   summary: string;
   note: string;
   image: string;
-  x: number;
-  y: number;
+  latitude: number;
+  longitude: number;
 };
 
 export type ImportedPlace = TripPlace & {
@@ -96,8 +94,8 @@ export type StayOffer = {
   station: string;
   tag: string;
   image: string;
-  x: number;
-  y: number;
+  latitude: number;
+  longitude: number;
 };
 
 export type ItineraryItem = {
