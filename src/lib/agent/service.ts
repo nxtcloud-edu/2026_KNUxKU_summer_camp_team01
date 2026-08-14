@@ -38,8 +38,9 @@ export function validateTaskInput(task: AgentTaskId, input: unknown): void {
     return;
   }
   if (task === 'itineraryVerify') {
-    if (!Array.isArray(body.itinerary)) {
-      throw new AgentInputError('itinerary는 배열이어야 합니다.');
+    const trip = requireRecord(body.trip, 'trip');
+    if (!Array.isArray(trip.itinerary)) {
+      throw new AgentInputError('trip.itinerary는 배열이어야 합니다.');
     }
     return;
   }
@@ -142,6 +143,6 @@ export function resolveTask(task: AgentTaskId, input: AgentTaskInput[AgentTaskId
     case 'staySearch': return STAYS;
     case 'placeDiscovery': return PLACES;
     case 'itineraryGenerate': return buildItinerary((input as AgentTaskInput['itineraryGenerate']).trip);
-    case 'itineraryVerify': return verifyItinerary((input as AgentTaskInput['itineraryVerify']).itinerary);
+    case 'itineraryVerify': return verifyItinerary((input as AgentTaskInput['itineraryVerify']).trip.itinerary ?? []);
   }
 }

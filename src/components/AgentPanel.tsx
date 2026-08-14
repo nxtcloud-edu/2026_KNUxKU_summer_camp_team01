@@ -7,6 +7,11 @@ import type { AgentTaskId } from '@/lib/agent/contracts';
 import { streamAgentEvents } from '@/lib/agent/sseTransport';
 
 type ToolState = { id: string; name: string; label: string; resultLabel?: string; ok?: boolean };
+type ActiveRequest = {
+  key: string;
+  controller: AbortController;
+  abortTimer: ReturnType<typeof setTimeout> | null;
+};
 
 export function AgentPanel({
   type = '항공권',
@@ -28,6 +33,7 @@ export function AgentPanel({
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
+  const activeRequestRef = useRef<ActiveRequest | null>(null);
   const onDoneRef = useRef(onDone);
   const onAbortRef = useRef(onAbort);
   const inputKey = JSON.stringify(input);
@@ -38,7 +44,25 @@ export function AgentPanel({
   }, [onAbort, onDone]);
 
   useEffect(() => {
+    const requestKey = `${task}:${retryKey}:${inputKey}`;
+    const activeRequest = activeRequestRef.current;
+    if (activeRequest?.abortTimer) {
+      clearTimeout(activeRequest.abortTimer);
+      activeRequest.abortTimer = null;
+    }
+    if (activeRequest && activeRequest.key === requestKey && !activeRequest.controller.signal.aborted) {
+      return () => {
+        activeRequest.abortTimer = setTimeout(() => {
+          activeRequest.controller.abort();
+          if (activeRequestRef.current === activeRequest) activeRequestRef.current = null;
+        }, 0);
+      };
+    }
+    activeRequest?.controller.abort();
+
     const controller = new AbortController();
+    const request: ActiveRequest = { key: requestKey, controller, abortTimer: null };
+    activeRequestRef.current = request;
     abortRef.current = controller;
     const consume = async () => {
       try {
@@ -56,7 +80,12 @@ export function AgentPanel({
       }
     };
     void consume();
-    return () => controller.abort();
+    return () => {
+      request.abortTimer = setTimeout(() => {
+        controller.abort();
+        if (activeRequestRef.current === request) activeRequestRef.current = null;
+      }, 0);
+    };
   }, [inputKey, retryKey, task]);
 
   const abort = () => {

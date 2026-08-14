@@ -57,7 +57,7 @@ import { isVerificationCurrent } from '@/lib/itinerary';
 import { createManualUrlPlace, parseGoogleMapsUrl, parsePlaceFile } from '@/lib/placeImport';
 import { getTripPlace, getTripPlaces, isImportedPlace } from '@/lib/places';
 import { useTripStore } from '@/lib/store';
-import type { ImportedPlace, StepId, Trip, TripPlace } from '@/lib/types';
+import type { ImportedPlace, ItineraryDay, StepId, Trip, TripPlace, VerificationCheck } from '@/lib/types';
 import messages from '../../messages/ko.json';
 
 const STEP_ORDER: StepId[] = ['city', 'persona', 'flights', 'stays', 'places', 'itinerary', 'verify'];
@@ -70,6 +70,23 @@ const formatDurationLabel = (duration: number) => {
   const minutes = duration % 60;
   if (hours === 0) return `${minutes}분`;
   return `${hours}시간${minutes ? ` ${minutes}분` : ''}`;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const readAgentPlan = (payload: unknown): { itinerary: ItineraryDay[]; verification: VerificationCheck[] | null } | null => {
+  if (Array.isArray(payload)) return { itinerary: payload as ItineraryDay[], verification: null };
+  if (!isRecord(payload) || !Array.isArray(payload.itinerary)) return null;
+  return {
+    itinerary: payload.itinerary as ItineraryDay[],
+    verification: Array.isArray(payload.verification) ? payload.verification as VerificationCheck[] : null,
+  };
+};
+
+const readAgentVerification = (payload: unknown): VerificationCheck[] | null => {
+  if (Array.isArray(payload)) return payload as VerificationCheck[];
+  return isRecord(payload) && Array.isArray(payload.verification) ? payload.verification as VerificationCheck[] : null;
 };
 
 function applicableSteps(trip: Trip) {
@@ -663,7 +680,7 @@ function PlacesStep({ trip }: { trip: Trip }) {
 }
 
 function ItineraryStep({ trip }: { trip: Trip }) {
-  const generate = useTripStore((state) => state.generateItinerary);
+  const applyAgentPlan = useTripStore((state) => state.applyAgentPlan);
   const moveItem = useTripStore((state) => state.moveItineraryItem);
   const addPlaces = useTripStore((state) => state.addPlacesToItinerary);
   const removeItem = useTripStore((state) => state.removeItineraryItem);
@@ -676,6 +693,8 @@ function ItineraryStep({ trip }: { trip: Trip }) {
   const [modalSelectedIds, setModalSelectedIds] = useState<string[]>([]);
   const [modalActiveId, setModalActiveId] = useState<string | null>(null);
   const [durationEditorId, setDurationEditorId] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const generate = (id: string) => { if (id === trip.id) setGenerating(true); };
   const durationEditorRef = useRef<HTMLDivElement>(null);
   const allPlaces = getTripPlaces(trip);
 
@@ -693,6 +712,8 @@ function ItineraryStep({ trip }: { trip: Trip }) {
       document.removeEventListener('keydown', closeEditor);
     };
   }, [durationEditorId]);
+
+  if (generating) return <div className="stream-page"><PageHeading eyebrow="AGENT · SUPERVISOR" title="선택한 장소로 일정을 만들고 있어요" description="Supervisor가 일정 생성과 검증, 필요한 재계획까지 진행합니다." /><AgentPanel type="일정" task="itineraryGenerate" input={{ trip }} onDone={(payload) => { const result = readAgentPlan(payload); if (result) applyAgentPlan(trip.id, result.itinerary, result.verification); setGenerating(false); }} onAbort={() => setGenerating(false)} /><SkeletonCards count={3} /></div>;
 
   if (!trip.itinerary) return <div className="generation-page"><PageHeading eyebrow="STEP 6 · 일정 생성" title="선택한 장소로 일정을 설계할게요" description={`${trip.selectedPlaceIds.length}곳의 위치와 영업시간, 이동 동선을 함께 고려합니다.${trip.persona.companionDescription?.trim() ? ' 저장한 동행 메모는 AI 연결 시 생성 조건에 함께 전달됩니다.' : ''}`} /><div className="generation-visual"><div className="generation-orbit"><WandSparkles size={28} /></div><div><span><CheckCircle2 size={15} /> 장소를 지역별로 묶기</span><span><CheckCircle2 size={15} /> 영업시간과 휴관일 확인</span><span><Circle size={15} /> 이동 시간 계산</span><span><Circle size={15} /> 일자별 일정 배치</span></div></div><button className="button button--primary button--large" onClick={() => generate(trip.id)}><Sparkles size={17} /> AI로 일정 만들기</button></div>;
 
@@ -743,24 +764,11 @@ function ChecklistPanel() {
 
 function VerifyStep({ trip }: { trip: Trip }) {
   const router = useRouter();
-  const verify = useTripStore((state) => state.verifyItinerary);
+  const applyAgentVerification = useTripStore((state) => state.applyAgentVerification);
   const verificationIsCurrent = isVerificationCurrent(trip);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(0);
-  useEffect(() => {
-    if (!running) return;
-    let nextProgress = 0;
-    const timer = window.setInterval(() => {
-      nextProgress += 1;
-      setProgress(nextProgress);
-      if (nextProgress >= 10) {
-        window.clearInterval(timer);
-        setRunning(false);
-        verify(trip.id);
-      }
-    }, 280);
-    return () => window.clearInterval(timer);
-  }, [running, trip.id, verify]);
+  if (running) return <div className="stream-page"><PageHeading eyebrow="AGENT · VERIFICATION" title="일정을 검증하고 있어요" description="운영시간, 이동 가능성, 예산과 여행 페이스를 실제 검증 에이전트가 확인합니다." /><AgentPanel type="일정" task="itineraryVerify" input={{ trip }} onDone={(payload) => { const checks = readAgentVerification(payload); if (checks) applyAgentVerification(trip.id, checks); setRunning(false); }} onAbort={() => setRunning(false)} /><SkeletonCards count={3} /></div>;
   if ((!trip.verification || !verificationIsCurrent) && !running) return <div className="verify-intro"><div className="verify-shield"><ShieldCheck size={36} /></div><PageHeading eyebrow="STEP 7 · 최종 점검" title={trip.verification ? '수정한 일정을 다시 검증할게요' : '일정을 검증할게요'} description={trip.verification ? '직접 수정한 일정과 기존 검증 결과를 구분해 변경된 시간표를 다시 확인합니다.' : '휴관일, 이동 시간, 예산, 접근성 등 10가지를 확인합니다.'} /><div className="verify-intro__summary"><span><CalendarDays size={16} />{trip.itinerary?.length ?? 0}일 일정</span><span><MapPin size={16} />방문지 {trip.selectedPlaceIds.length}곳</span><span><ListChecks size={16} />검사 항목 10개</span></div><button className="button button--primary button--large" onClick={() => { setProgress(0); setRunning(true); }}><ShieldCheck size={17} /> {trip.verification ? '수정 일정 다시 검증' : '검증 시작'}</button></div>;
   if (running) return <div className="verify-running"><section><div className="verify-running__header"><div><h1>일정을 검증하고 있어요</h1><span>{progress}/10</span></div><div className="verification-progress"><span style={{ width: `${progress * 10}%` }} /></div></div><div className="verify-checklist">{['영업시간 · 휴관일', '이동 시간 실현성', '항공 도착 · 출발 여유', '숙소 체크인 · 체크아웃', '하루 일정량', '예산', '접근성', '관심사 반영', '사전 예약 필요', '시즌 · 날씨'].map((label, index) => <div className={index === progress ? 'is-running' : ''} key={label}>{index < progress ? <CheckCircle2 size={16} /> : index === progress ? <Loader2 className="spin" size={16} /> : <Circle size={16} />}<strong>{label}</strong><span>{index < progress ? (index === 0 ? '충돌 1' : index === 1 || index === 4 ? '주의 1' : '정상') : index === progress ? '검사 중…' : '대기'}</span></div>)}</div></section><ReasoningConsole progress={progress} /></div>;
   const checks = trip.verification ?? [];

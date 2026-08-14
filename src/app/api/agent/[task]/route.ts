@@ -1,5 +1,6 @@
 import { createAgentEvents } from '@/lib/agent/events';
 import { isAgentTask } from '@/lib/agent/contracts';
+import { createLiveAgentEvents, liveAgentEnabled } from '@/lib/agent/liveEvents';
 import { AgentInputError, validateTaskInput } from '@/lib/agent/service';
 
 export const runtime = 'nodejs';
@@ -33,11 +34,14 @@ export async function POST(request: Request, context: { params: Promise<{ task: 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        for await (const event of createAgentEvents(task, input, request.signal)) {
+        const events = liveAgentEnabled() && (task === 'itineraryGenerate' || task === 'itineraryVerify')
+          ? createLiveAgentEvents(task, input as never, request.signal)
+          : createAgentEvents(task, input, request.signal);
+        for await (const event of events) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
         }
       } catch (error) {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', code: 'agent_failed', message: error instanceof Error ? error.message : '에이전트 실행에 실패했습니다.', retryable: true })}\n\n`));
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ seq: 0, at: 0, type: 'error', code: 'agent_failed', message: error instanceof Error ? error.message : '에이전트 실행에 실패했습니다.', retryable: true })}\n\n`));
       } finally {
         controller.close();
       }

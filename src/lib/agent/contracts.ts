@@ -1,4 +1,4 @@
-import type { ItineraryDay, Trip, VerificationCheck } from '@/lib/types';
+import type { Trip, VerificationCheck } from '@/lib/types';
 
 export const AGENT_TASKS = [
   'flightSearch',
@@ -15,7 +15,7 @@ export type AgentTaskInput = {
   staySearch: Pick<Trip, 'destinationId' | 'startDate' | 'endDate' | 'persona' | 'selectedPlaceIds'>;
   placeDiscovery: Pick<Trip, 'destinationId' | 'startDate' | 'endDate' | 'persona'>;
   itineraryGenerate: { trip: Trip };
-  itineraryVerify: { itinerary: ItineraryDay[] };
+  itineraryVerify: { trip: Trip };
 };
 
 export type AgentErrorCode =

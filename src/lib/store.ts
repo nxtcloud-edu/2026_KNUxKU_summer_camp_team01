@@ -12,7 +12,7 @@ import {
   type ItineraryEdit,
 } from '@/lib/itinerary';
 import { getTripPlace } from '@/lib/places';
-import { createTrip, type ImportedPlace, type ItineraryDay, type StepId, type Trip } from '@/lib/types';
+import { createTrip, type ImportedPlace, type ItineraryDay, type StepId, type Trip, type VerificationCheck } from '@/lib/types';
 
 type TripPatch = Partial<Omit<Trip, 'persona'>> & { persona?: Partial<Trip['persona']> };
 
@@ -29,12 +29,14 @@ type TripStore = {
   addPlaceToItinerary: (id: string, placeId: string) => boolean;
   removePlaceFromItinerary: (id: string, placeId: string) => boolean;
   generateItinerary: (id: string) => void;
+  applyAgentPlan: (id: string, itinerary: ItineraryDay[], verification: VerificationCheck[] | null) => void;
   applyItineraryEdit: (tripId: string, edit: ItineraryEdit) => void;
   updateItineraryItemDuration: (tripId: string, dayId: string, itemId: string, duration: number) => void;
   moveItineraryItem: (id: string, sourceDayId: string, itemId: string, targetDayId: string, targetIndex: number) => void;
   addPlacesToItinerary: (id: string, dayId: string, placeIds: string[]) => void;
   removeItineraryItem: (id: string, dayId: string, itemId: string) => void;
   verifyItinerary: (id: string) => void;
+  applyAgentVerification: (id: string, verification: VerificationCheck[]) => void;
   saveItinerary: (id: string) => boolean;
   removeTrip: (id: string) => void;
 };
@@ -295,6 +297,23 @@ const tripStoreCreator: StateCreator<TripStore> = (set) => ({
     const next = structuralReset({ ...current, itinerary: buildItinerary(current), updatedAt: new Date().toISOString() });
     return { trips: { ...state.trips, [id]: next } };
   }),
+  applyAgentPlan: (id, itinerary, verification) => set((state) => {
+    const current = normalizeTrip(state.trips[id] ?? createTrip(id));
+    const updatedAt = new Date().toISOString();
+    return {
+      trips: {
+        ...state.trips,
+        [id]: {
+          ...current,
+          itinerary,
+          verification,
+          verifiedItinerary: verification ? cloneItinerary(itinerary) : null,
+          savedAt: null,
+          updatedAt,
+        },
+      },
+    };
+  }),
   applyItineraryEdit: (tripId, edit) => set((state) => {
     const current = normalizeTrip(state.trips[tripId] ?? createTrip(tripId));
     if (!current.itinerary) return state;
@@ -363,6 +382,21 @@ const tripStoreCreator: StateCreator<TripStore> = (set) => ({
         [id]: {
           ...current,
           verification: VERIFICATION_CHECKS,
+          verifiedItinerary: current.itinerary ? cloneItinerary(current.itinerary) : null,
+          savedAt: null,
+          updatedAt: new Date().toISOString(),
+        },
+      },
+    };
+  }),
+  applyAgentVerification: (id, verification) => set((state) => {
+    const current = normalizeTrip(state.trips[id] ?? createTrip(id));
+    return {
+      trips: {
+        ...state.trips,
+        [id]: {
+          ...current,
+          verification,
           verifiedItinerary: current.itinerary ? cloneItinerary(current.itinerary) : null,
           savedAt: null,
           updatedAt: new Date().toISOString(),
