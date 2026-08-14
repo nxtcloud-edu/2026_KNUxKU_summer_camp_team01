@@ -75,8 +75,11 @@ async def call_agent(
             async with client.stream(
                 "POST",
                 url,
-                json=body,
-                headers={"Accept": "text/event-stream"},
+                content=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+                headers={
+                    "Accept": "text/event-stream",
+                    "Content-Type": "application/json; charset=utf-8",
+                },
             ) as response:
                 if response.status_code != 200:
                     body_text = (await response.aread()).decode("utf-8", "replace")

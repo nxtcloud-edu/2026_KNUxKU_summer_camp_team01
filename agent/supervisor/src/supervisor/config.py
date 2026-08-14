@@ -113,7 +113,7 @@ def _build() -> SupervisorConfig:
         verification_url=_get(
             "VERIFICATION_AGENT_URL", f"http://127.0.0.1:{verification_port}"
         ),
-        search_timeout_ms=_get_int("SEARCH_AGENT_TIMEOUT_MS", 15_000),
+        search_timeout_ms=_get_int("SEARCH_AGENT_TIMEOUT_MS", 40_000),
         plan_timeout_ms=_get_int("PLAN_AGENT_TIMEOUT_MS", 20_000),
         verification_timeout_ms=_get_int("VERIFICATION_AGENT_TIMEOUT_MS", 15_000),
         max_reissue=_get_int("SUPERVISOR_MAX_REISSUE", 1),

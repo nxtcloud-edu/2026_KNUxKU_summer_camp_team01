@@ -22,6 +22,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import StreamingResponse
 
 from .config import CONFIG, describe
+from .clients import AgentCallFailed, call_agent
 from .graph import run_pipeline
 from .sse import SSE_HEADERS, SseEmitter
 
@@ -55,8 +56,56 @@ async def health() -> dict:
         "status": "ok",
         "plan_url": CONFIG.plan_url,
         "verification_url": CONFIG.verification_url,
+        "search_url": CONFIG.search_url,
         "hard_timeout_ms": CONFIG.hard_timeout_ms,
     }
+
+
+@app.post("/agent/search")
+async def search_pipeline(request: Request) -> StreamingResponse:
+    """Search Agent를 Supervisor의 공개 SSE 계약 뒤에 숨긴다."""
+
+    try:
+        source = await request.json()
+    except Exception:
+
+        async def bad_json() -> AsyncIterator[str]:
+            emitter = SseEmitter()
+            yield emitter.error(
+                code="invalid_input",
+                message="요청 본문이 JSON이 아니에요.",
+                retryable=False,
+            )
+
+        return _stream(bad_json())
+
+    async def events() -> AsyncIterator[str]:
+        emitter = SseEmitter()
+        try:
+            yield emitter.status("검색 에이전트에 조건을 전달하고 있어요")
+            yield emitter.progress(0.05)
+            result = await call_agent(
+                agent="search",
+                url=f"{CONFIG.search_url}/agent/search",
+                body=source,
+                timeout_ms=CONFIG.search_timeout_ms,
+            )
+            yield emitter.progress(1.0)
+            yield emitter.done(payload=result.payload, summary=result.summary)
+        except AgentCallFailed as error:
+            yield emitter.error(
+                code=error.code, message=error.message, retryable=error.retryable
+            )
+        except Exception:
+            logger.exception("search supervisor 실행 중 예외")
+            if not emitter.terminated:
+                yield emitter.error(
+                    code="agent_failed",
+                    message="검색을 완료하지 못했어요.",
+                    retryable=True,
+                )
+
+    return _stream(events())
 
 
 @app.exception_handler(RequestValidationError)
@@ -87,6 +136,7 @@ async def plan_pipeline(request: Request) -> StreamingResponse:
     try:
         source = await request.json()
     except Exception:
+
         async def bad_json() -> AsyncIterator[str]:
             emitter = SseEmitter()
             yield emitter.error(
@@ -138,9 +188,7 @@ async def plan_pipeline(request: Request) -> StreamingResponse:
                     else "일정을 만들 수 없었어요."
                 )
                 logger.error("파이프라인 실패: %s", state["failures"])
-                yield emitter.error(
-                    code="agent_failed", message=reason, retryable=True
-                )
+                yield emitter.error(code="agent_failed", message=reason, retryable=True)
                 return
 
             day_count = len(state["plan"].get("plan", {}).get("days", []))
