@@ -26,6 +26,25 @@ describe('planning service', () => {
     expect(itinerary.flatMap((day) => day.items).map((item) => item.placeId).filter(Boolean)).toEqual(['sensoji', 'skytree']);
   });
 
+  it('keeps places imported by the latest frontend in generated itineraries', () => {
+    const trip = createTrip('imported-place-trip');
+    trip.startDate = '2026-08-17';
+    trip.endDate = '2026-08-17';
+    trip.importedPlaces.custom = {
+      id: 'custom',
+      name: '팀원이 가져온 장소',
+      category: '명소',
+      area: '도쿄',
+      duration: 90,
+      sourceType: 'google-maps-url',
+      sourceLabel: 'Google Maps',
+    };
+    trip.selectedPlaceIds = ['custom'];
+
+    const itinerary = buildItinerary(trip);
+    expect(itinerary[0].items[0]).toMatchObject({ placeId: 'custom', title: '팀원이 가져온 장소' });
+  });
+
   it('reports Monday closures and reservation requirements from itinerary data', () => {
     const trip = createTrip('verify-trip');
     trip.startDate = '2026-08-17';

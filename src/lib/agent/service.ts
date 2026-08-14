@@ -1,5 +1,6 @@
 import { FLIGHTS, PLACES, STAYS, VERIFICATION_CHECKS } from '@/lib/data';
 import type { AgentTaskId, AgentTaskInput } from '@/lib/agent/contracts';
+import { getTripPlaces } from '@/lib/places';
 import type { ItineraryDay, ItineraryItem, Trip, VerificationCheck } from '@/lib/types';
 
 export class AgentInputError extends Error {
@@ -53,10 +54,11 @@ const addDays = (iso: string, amount: number) => {
 };
 
 export function buildItinerary(trip: Trip): ItineraryDay[] {
+  const availablePlaces = getTripPlaces(trip);
   const selected = [...new Set(trip.selectedPlaceIds)]
-    .map((id) => PLACES.find((place) => place.id === id))
-    .filter((place): place is (typeof PLACES)[number] => Boolean(place));
-  const places = selected.length > 0 ? selected : PLACES.slice(0, 5);
+    .map((id) => availablePlaces.find((place) => place.id === id))
+    .filter((place): place is (typeof availablePlaces)[number] => Boolean(place));
+  const places = selected.length > 0 ? selected : availablePlaces.slice(0, 5);
   const rawDays = trip.startDate && trip.endDate
     ? Math.round((new Date(trip.endDate).getTime() - new Date(trip.startDate).getTime()) / 86_400_000) + 1
     : 3;

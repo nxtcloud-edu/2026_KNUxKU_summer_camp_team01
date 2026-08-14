@@ -22,23 +22,49 @@ export type City = {
 
 export type PlaceCategory = '명소' | '역사' | '자연' | '미술관' | '맛집' | '쇼핑';
 
-export type Place = {
+export type TripPlace = {
   id: string;
   name: string;
   localName?: string;
   category: PlaceCategory;
   area: string;
+  duration: number;
+  rating?: number;
+  reviews?: number;
+  price?: string;
+  summary?: string;
+  note?: string;
+  image?: string;
+  x?: number;
+  y?: number;
+  closed?: string;
+  reservation?: boolean;
+  description?: string;
+  layer?: string;
+  latitude?: number;
+  longitude?: number;
+  sourceType?: 'google-maps-url' | 'my-maps-file';
+  sourceLabel?: string;
+  sourceUrl?: string;
+  googlePlaceId?: string;
+  openingHours?: string[];
+  photoReferences?: string[];
+};
+
+export type Place = TripPlace & {
   rating: number;
   reviews: number;
-  duration: number;
   price: string;
   summary: string;
   note: string;
   image: string;
   x: number;
   y: number;
-  closed?: string;
-  reservation?: boolean;
+};
+
+export type ImportedPlace = TripPlace & {
+  sourceType: 'google-maps-url' | 'my-maps-file';
+  sourceLabel: string;
 };
 
 export type FlightOffer = {
@@ -57,6 +83,8 @@ export type FlightOffer = {
 
 export type StayOffer = {
   id: string;
+  type: 'hotel' | 'apartment' | 'hostel' | 'ryokan';
+  features: ('central' | 'station' | 'attraction' | 'quiet')[];
   name: string;
   area: string;
   address: string;
@@ -115,10 +143,14 @@ export type Trip = {
     adults: number;
     pace: 'relaxed' | 'balanced' | 'packed';
     interests: string[];
+    preferredTransportModes: ('walking' | 'publicTransit')[];
+    companionDescription: string;
   };
   selectedFlightId: string | null;
   selectedStayId: string | null;
   selectedPlaceIds: string[];
+  placeDurations: Record<string, number>;
+  importedPlaces: Record<string, ImportedPlace>;
   itinerary: ItineraryDay[] | null;
   verification: VerificationCheck[] | null;
   /** The exact itinerary that the current AI verification result was generated from. */
@@ -147,10 +179,14 @@ export const createTrip = (id: string): Trip => {
       adults: 2,
       pace: 'balanced',
       interests: [],
+      preferredTransportModes: [],
+      companionDescription: '',
     },
     selectedFlightId: null,
     selectedStayId: null,
     selectedPlaceIds: [],
+    placeDurations: {},
+    importedPlaces: {},
     itinerary: null,
     verification: null,
     verifiedItinerary: null,

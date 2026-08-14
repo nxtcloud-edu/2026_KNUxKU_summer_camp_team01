@@ -7,8 +7,9 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { BrandHeader } from '@/components/AppShell';
 import { MapPanel } from '@/components/MapPanel';
-import { CITIES, FLIGHTS, PLACES, STAYS } from '@/lib/data';
+import { CITIES, FLIGHTS, STAYS } from '@/lib/data';
 import { isVerificationCurrent } from '@/lib/itinerary';
+import { getTripPlace, getTripPlaces } from '@/lib/places';
 import { useTripStore } from '@/lib/store';
 import type { Trip } from '@/lib/types';
 
@@ -67,7 +68,8 @@ export function SharePrintScreen({ mode }: { mode: ReadonlyMode }) {
   const city = CITIES.find((item) => item.id === trip?.destinationId);
   const flight = FLIGHTS.find((item) => item.id === trip?.selectedFlightId);
   const stay = STAYS.find((item) => item.id === trip?.selectedStayId);
-  const selectedPlaces = useMemo(() => trip ? PLACES.filter((place) => trip.selectedPlaceIds.includes(place.id)) : [], [trip]);
+  const allPlaces = useMemo(() => trip ? getTripPlaces(trip) : [], [trip]);
+  const selectedPlaces = useMemo(() => trip ? allPlaces.filter((place) => trip.selectedPlaceIds.includes(place.id)) : [], [allPlaces, trip]);
 
   if ((!hasHydrated && !savedTrip) || (mode === 'share' && !savedTrip && !snapshotResolved)) {
     return <div className="page-loading"><Sparkles className="spin" size={24} /><span>일정을 불러오고 있어요</span></div>;
@@ -109,13 +111,13 @@ export function SharePrintScreen({ mode }: { mode: ReadonlyMode }) {
             <section className="readonly-day" key={day.id}>
               <header><span>DAY {dayIndex + 1}</span><div><h2>{day.title}</h2><p>{day.date}</p></div></header>
               {day.items.map((item, index) => {
-                const place = PLACES.find((value) => value.id === item.placeId);
-                return <div className="readonly-item" key={item.id}><time>{item.time}</time><span className="readonly-item__number">{item.kind === 'place' ? index + 1 : '·'}</span><div><strong>{item.title}</strong><small>{place ? `${place.category} · ${place.area} · ${place.price}` : item.kind}</small>{item.travelMinutes && <em>다음 장소까지 {item.travelMode} {item.travelMinutes}분</em>}</div></div>;
+                const place = getTripPlace(trip, item.placeId ?? '');
+                return <div className="readonly-item" key={item.id}><time>{item.time}</time><span className="readonly-item__number">{item.kind === 'place' ? index + 1 : '·'}</span><div><strong>{item.title}</strong><small>{place ? `${place.category} · ${place.area}${place.price ? ` · ${place.price}` : ''}` : item.kind}</small>{item.travelMinutes && <em>다음 장소까지 {item.travelMode} {item.travelMinutes}분</em>}</div></div>;
               })}
             </section>
           ))}
         </div>
-        {mode !== 'print' && <aside><MapPanel selectedIds={selectedPlaces.map((place) => place.id)} showRoute stay={stay ?? null} /></aside>}
+        {mode !== 'print' && <aside><MapPanel places={allPlaces} selectedIds={selectedPlaces.map((place) => place.id)} showRoute stay={stay ?? null} /></aside>}
       </div>
       {mode === 'result' && <footer className="readonly-footer"><span>일정이 저장되었어요. 필요할 때 공유 링크를 복사하세요.</span><div className="footer-actions"><button className="button button--secondary" onClick={() => void copyShareUrl()}><Copy size={16} /> 공유 링크 복사</button><Link href={`/trip/${trip.id}/print`} className="button button--primary"><Printer size={16} /> 인쇄하기</Link></div>{copyStatus && <p className="notice-toast" role="status">{copyStatus}</p>}</footer>}
     </div>
