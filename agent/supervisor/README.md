@@ -11,12 +11,11 @@ agent/supervisor/
 ├── README.md              이 문서
 ├── plan-agent/            SearchToPlanInput -> PlanToVerificationInput
 ├── search-agent/          (다른 담당자 산출물이 병합될 자리)
-└── verification-agent/    (다른 담당자 산출물이 병합될 자리)
+└── verification-agent/    PlanToVerificationInput -> VerificationResult
 ```
 
-`search-agent`와 `verification-agent`는 각각 다른 담당자가 만들고 나중에 이
-경로로 병합한다. **이 저장소의 plan-agent 작업자는 두 디렉터리에 파일을 만들지
-않는다.** 병합 충돌을 만들지 않기 위한 규칙이다.
+`verification-agent`는 현재 이 경로에서 실행합니다. `search-agent`는 다른 담당자
+산출물이 병합될 자리이며, supervisor는 각 하위 에이전트를 HTTP로 호출합니다.
 
 ## 데이터 흐름
 
@@ -31,7 +30,7 @@ agent/supervisor/
                  Plan Agent
                      ↓ PlanToVerificationInput
               Verification Agent
-                     ↓ { possible, checks }
+                     ↓ { possible, checks, feedback }
 ```
 
 `SearchToPlanInput`은 **두 출처가 합쳐진 것**이다. 한 에이전트의 산출물이 아니다.
@@ -62,7 +61,7 @@ agent/supervisor/
 |---|---|---|---|
 | search | (담당자 확정 예정) | 목적지·날짜·인원 등 검색 조건 | `selected` 블록 (`flight` / `stay` / `places`) |
 | plan | `POST /agent/itineraryGenerate` | `SearchToPlanInput` | `PlanToVerificationInput` |
-| verification | `POST /agent/itineraryVerify` | `PlanToVerificationInput` | `{ possible, checks }` |
+| verification | `POST /agent/itineraryVerify` | `PlanToVerificationInput` | `{ possible, checks, feedback }` |
 
 Search Agent는 `SearchToPlanInput` 전체를 만들지 않는다. `selected`만 만들고,
 `trip_info`는 프론트엔드가 만든다. 둘을 합쳐 Plan Agent에 보내는 것은 프론트엔드

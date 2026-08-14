@@ -42,7 +42,7 @@ class SupervisorState(TypedDict):
 
     source: dict  # SearchToPlanInput
     plan: dict | None  # PlanToVerificationInput
-    verification: dict | None  # {possible, checks}
+    verification: dict | None  # {possible, checks, feedback}
     reports: list[AcceptanceReport]
     failures: list[str]
     # 계약 위반으로 산출물을 반송한 횟수 (하위 구현 문제)
@@ -242,50 +242,36 @@ def _build_feedback_prompt(verification: dict | None) -> str:
     if not verification:
         return "검증 결과를 받지 못했습니다. 일정을 다시 확인해 주세요."
 
-    checks = verification.get("checks", {})
+    feedback = verification.get("feedback", {})
     lines: list[str] = []
+    labels = {
+        "physical_feasibility": "이동·시간",
+        "budget": "예산",
+        "operating_hours": "영업시간",
+        "daily_schedule": "일정 구조",
+        "must_visit": "필수 방문",
+        "avoid": "회피 조건",
+        "pace": "여행 속도",
+        "walking_level": "활동 강도",
+    }
 
-    for name, label in [
-        ("physical_feasibility", "이동·시간"),
-        ("operating_hours", "영업시간"),
-        ("daily_schedule", "일정 구조"),
-        ("pace", "여행 속도"),
-        ("walking_level", "활동 강도"),
-    ]:
-        check = checks.get(name)
-        if not isinstance(check, dict) or check.get("status") not in {"fail", "warning"}:
+    for bucket in ("dangers", "cautions"):
+        entries = feedback.get(bucket, []) if isinstance(feedback, dict) else []
+        if not isinstance(entries, list):
             continue
-        for issue in check.get("issues", []):
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
             where = ""
-            if issue.get("day") is not None:
-                where = f"Day {issue['day']}"
-            if issue.get("item_id"):
-                where += f" ({issue['item_id']})"
-            lines.append(f"- [{label}] {where}: {issue.get('message', '')}".strip())
-
-    budget_check = checks.get("budget")
-    if isinstance(budget_check, dict) and budget_check.get("status") == "fail":
-        lines.append(
-            f"- [예산] 예상 비용 {budget_check.get('estimated_total', 0):,.0f}"
-            f"{budget_check.get('currency', '')}가 예산"
-            f" {budget_check.get('budget_total', 0):,.0f}보다"
-            f" {budget_check.get('over_by', 0):,.0f} 많습니다. 비싼 장소를 빼 주세요."
-        )
-
-    must_visit = checks.get("must_visit")
-    if isinstance(must_visit, dict) and must_visit.get("missing"):
-        lines.append(
-            f"- [필수 방문] {', '.join(must_visit['missing'])}가 일정에 없습니다."
-        )
-
-    avoid = checks.get("avoid")
-    if isinstance(avoid, dict) and avoid.get("status") in {"fail", "warning"}:
-        for match in avoid.get("matched", []):
-            where = f"Day {match['day']}" if match.get("day") is not None else ""
-            lines.append(
-                f"- [회피 조건] {where} '{match.get('avoid', '')}': "
-                f"{match.get('message', '')}".strip()
-            )
+            if entry.get("day") is not None:
+                where = f"Day {entry['day']}"
+            if entry.get("item_id"):
+                where += f" ({entry['item_id']})"
+            label = labels.get(entry.get("check"), entry.get("check", "검증"))
+            line = f"- [{entry.get('level', '')}/{label}] {where}: {entry.get('message', '')}".strip()
+            if entry.get("attention"):
+                line += f" 확인사항: {entry['attention']}"
+            lines.append(line)
 
     if not lines:
         return (

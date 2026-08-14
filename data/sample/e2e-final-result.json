@@ -498,6 +498,17 @@
           }
         ]
       }
+    },
+    "feedback": {
+      "cautions": [],
+      "dangers": [
+        {
+          "level": "위험",
+          "check": "budget",
+          "code": "BUDGET_EXCEEDED",
+          "message": "예상 비용이 예산을 690600 KRW 초과합니다."
+        }
+      ]
     }
   },
   "acceptance": [
@@ -521,7 +532,8 @@
         "최상위 필드",
         "검사 항목 8종",
         "status 값 유효성",
-        "possible과 status 일관성"
+        "possible과 status 일관성",
+        "feedback 주의·위험 구조"
       ],
       "failures": []
     },
@@ -532,7 +544,8 @@
         "최상위 필드",
         "검사 항목 8종",
         "status 값 유효성",
-        "possible과 status 일관성"
+        "possible과 status 일관성",
+        "feedback 주의·위험 구조"
       ],
       "failures": []
     }

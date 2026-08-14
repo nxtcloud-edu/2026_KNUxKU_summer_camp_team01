@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 CheckStatus = Literal["pass", "warning", "fail", "skipped"]
+FindingLevel = Literal["주의", "위험"]
 
 
 class StrictModel(BaseModel):
@@ -122,9 +123,25 @@ class VerificationChecks(StrictModel):
     walking_level: StandardCheck
 
 
+class VerificationFinding(StrictModel):
+    level: FindingLevel
+    check: str
+    code: str
+    message: str
+    attention: str | None = None
+    day: int | None = None
+    item_id: str | None = None
+
+
+class VerificationFeedback(StrictModel):
+    cautions: list[VerificationFinding] = Field(default_factory=list)
+    dangers: list[VerificationFinding] = Field(default_factory=list)
+
+
 class VerificationResult(StrictModel):
     possible: bool
     checks: VerificationChecks
+    feedback: VerificationFeedback = Field(default_factory=VerificationFeedback)
 
 
 class AiHumanJudgement(StrictModel):

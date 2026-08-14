@@ -1,0 +1,4 @@
+# Windows-authored supervisor and sample files use CRLF.
+agent/supervisor/README.md whitespace=cr-at-eol
+agent/supervisor/src/supervisor/*.py whitespace=cr-at-eol
+data/sample/*.json whitespace=cr-at-eol

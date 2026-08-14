@@ -236,7 +236,7 @@ def check_plan_output(payload: Any, source: dict) -> AcceptanceReport:
 
 
 def check_verification_output(payload: Any) -> AcceptanceReport:
-    """Verification Agent 산출물이 `{possible, checks}` 형태인지 확인한다."""
+    """Verification Agent 산출물이 `{possible, checks, feedback}` 형태인지 확인한다."""
 
     report = AcceptanceReport(agent="verification", artifact="VerificationResult")
 
@@ -290,6 +290,36 @@ def check_verification_output(payload: Any) -> AcceptanceReport:
         report.failures.append("fail이 있는데 possible이 true입니다")
     if payload.get("possible") is False and not has_fail:
         report.failures.append("fail이 없는데 possible이 false입니다")
+
+    report.checked.append("feedback 주의·위험 구조")
+    feedback = payload.get("feedback")
+    if not isinstance(feedback, dict):
+        report.failures.append("feedback이 객체가 아닙니다")
+        return report
+
+    missing_feedback = {"cautions", "dangers"} - set(feedback)
+    if missing_feedback:
+        report.failures.append(f"feedback 필드 누락: {sorted(missing_feedback)}")
+
+    for bucket, expected_level in (("cautions", "주의"), ("dangers", "위험")):
+        entries = feedback.get(bucket)
+        if not isinstance(entries, list):
+            report.failures.append(f"feedback.{bucket}가 배열이 아닙니다")
+            continue
+        for index, entry in enumerate(entries):
+            at = f"feedback.{bucket}[{index}]"
+            if not isinstance(entry, dict):
+                report.failures.append(f"{at}이 객체가 아닙니다")
+                continue
+            if entry.get("level") != expected_level:
+                report.failures.append(f"{at}.level이 {expected_level!r}이 아닙니다")
+            for field in ("check", "code", "message"):
+                if not isinstance(entry.get(field), str) or not entry[field]:
+                    report.failures.append(f"{at}.{field}가 비어 있거나 문자열이 아닙니다")
+            if expected_level == "주의":
+                attention = entry.get("attention")
+                if not isinstance(attention, str) or not attention:
+                    report.failures.append(f"{at}.attention이 비어 있거나 문자열이 아닙니다")
 
     return report
 

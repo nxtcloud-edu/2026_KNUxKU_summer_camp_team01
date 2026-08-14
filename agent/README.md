@@ -10,7 +10,7 @@ Plan Agent
   └─ PlanToVerificationInput
        ↓
 Verification Agent
-  └─ { possible, checks }
+  └─ { possible, checks, feedback }
 ```
 
 모든 에이전트의 오케스트레이션은 LangGraph를 사용합니다.
@@ -103,7 +103,7 @@ node agent/tools/conformance.mjs
 구현 위치:
 
 ```text
-agent/verification-agent/
+agent/supervisor/verification-agent/
 ```
 
 현재 API:
@@ -112,6 +112,12 @@ agent/verification-agent/
 POST /agent/itineraryVerify
 Content-Type: application/json
 Accept: text/event-stream
+```
+
+저장소 루트에서 실행:
+
+```powershell
+uv run --project agent/supervisor/verification-agent uvicorn verification_agent.main:app --host 127.0.0.1 --port 8000
 ```
 
 입력은 `plan-to-verification.schema.json`과 동일합니다. 출력은 다음 구조입니다.
@@ -128,6 +134,10 @@ Accept: text/event-stream
     "avoid": {},
     "pace": {},
     "walking_level": {}
+  },
+  "feedback": {
+    "cautions": [],
+    "dangers": []
   }
 }
 ```
@@ -148,7 +158,9 @@ agent/
 │   └── plan-to-verification.example.json
 ├── tools/
 │   └── conformance.mjs
-└── verification-agent/
-    ├── pyproject.toml
-    └── src/verification_agent/
+└── supervisor/
+    ├── README.md
+    └── verification-agent/
+        ├── pyproject.toml
+        └── src/verification_agent/
 ```
