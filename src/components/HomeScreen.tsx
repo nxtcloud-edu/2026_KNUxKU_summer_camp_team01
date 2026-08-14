@@ -7,12 +7,10 @@ import { useMemo, useState } from 'react';
 
 import { BrandHeader } from '@/components/AppShell';
 import { getCityById, isDemoCity, searchCities } from '@/lib/cities';
-import { CITIES } from '@/lib/data';
+import { CITIES, ORIGIN_CITIES } from '@/lib/data';
 import { isVerificationCurrent } from '@/lib/itinerary';
-import { getTripDestination, getTripOrigin, locationSubtitle } from '@/lib/locations';
 import { useTripStore } from '@/lib/store';
 import type { City } from '@/lib/types';
-import { useLocationAutocomplete } from '@/lib/useLocationAutocomplete';
 import messages from '../../messages/ko.json';
 
 function LocationSearch({ options, query, selected, placeholder, onQueryChange, onSelect }: {
@@ -23,8 +21,7 @@ function LocationSearch({ options, query, selected, placeholder, onQueryChange, 
   onQueryChange: (value: string) => void;
   onSelect: (location: City | null) => void;
 }) {
-  const { locations, loading, error, fromGoogle } = useLocationAutocomplete(query, options);
-  const results = query.trim() ? searchCities(query, 20) : [];
+  const results = query.trim() ? searchCities(query, 20).filter((item) => options.some((option) => option.id === item.id)) : [];
 
   return (
     <div className="city-search">
@@ -39,7 +36,7 @@ function LocationSearch({ options, query, selected, placeholder, onQueryChange, 
       {query && !selected && results.length > 0 && (
         <div className="city-search__menu">
           {results.map((item) => (
-            <button key={item.id} onClick={() => { onSelect(item.id); onQueryChange(''); }}>
+            <button key={item.id} onClick={() => { onSelect(item); onQueryChange(''); }}>
               <span>{item.flag}</span><strong>{item.name}</strong><small>{item.country} · {item.airportCodes.join(' · ')}</small>{isDemoCity(item) && <em>체험 데이터</em>}
             </button>
           ))}
@@ -59,14 +56,14 @@ export function HomeScreen() {
   const removeTrip = useTripStore((state) => state.removeTrip);
   const hasHydrated = useTripStore((state) => state.hasHydrated);
   const tripList = useMemo(() => Object.values(trips).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)), [trips]);
-  const selectedOrigin = getCityById(selectedOriginId);
-  const selectedCity = getCityById(selectedCityId);
 
-  const start = (cityId?: string, originId = selectedOriginId ?? undefined) => {
+  const start = () => {
     const params = new URLSearchParams();
-    if (origin) params.set('origin', origin.id);
-    if (city) params.set('city', city.id);
-    if (origin || city) sessionStorage.setItem('voyagent:pending-locations', JSON.stringify({ origin, destination: city }));
+    if (selectedOrigin) params.set('origin', selectedOrigin.id);
+    if (selectedCity) params.set('city', selectedCity.id);
+    if (selectedOrigin || selectedCity) {
+      sessionStorage.setItem('voyagent:pending-locations', JSON.stringify({ origin: selectedOrigin, destination: selectedCity }));
+    }
     router.push(`/plan/new${params.size ? `?${params.toString()}` : ''}`);
   };
 
@@ -78,8 +75,8 @@ export function HomeScreen() {
         <h1>{messages.home.title1}<br /><span>{messages.home.title2}</span></h1>
         <p>{messages.home.description1}<br />{messages.home.description2}</p>
         <div className="quick-start">
-          <LocationSearch query={originQuery} selectedId={selectedOriginId} placeholder={messages.home.originPlaceholder} onQueryChange={setOriginQuery} onSelect={setSelectedOriginId} />
-          <LocationSearch query={destinationQuery} selectedId={selectedCityId} placeholder={messages.home.placeholder} onQueryChange={setDestinationQuery} onSelect={setSelectedCityId} />
+          <LocationSearch options={ORIGIN_CITIES} query={originQuery} selected={selectedOrigin} placeholder={messages.home.originPlaceholder} onQueryChange={setOriginQuery} onSelect={setSelectedOrigin} />
+          <LocationSearch options={CITIES} query={destinationQuery} selected={selectedCity} placeholder={messages.home.placeholder} onQueryChange={setDestinationQuery} onSelect={setSelectedCity} />
           <button
             aria-label={selectedOrigin && selectedCity ? `${selectedOrigin.name}에서 ${selectedCity.name} 여행 계획 짜기` : messages.home.start}
             className="button button--primary button--large"

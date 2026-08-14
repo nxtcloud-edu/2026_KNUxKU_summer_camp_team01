@@ -341,7 +341,7 @@ export const fromSearchPayload = (trip: Trip, payload: unknown): AgentSearchResu
     }];
   });
 
-  const stays = recordArray(staysResult.candidates).flatMap((candidate, index): StayOffer[] => {
+  const stays = recordArray(staysResult.candidates).flatMap((candidate): StayOffer[] => {
     const stay = isRecord(candidate.stay) ? candidate.stay : {};
     const id = text(stay.id);
     if (!id) return [];
@@ -362,15 +362,13 @@ export const fromSearchPayload = (trip: Trip, payload: unknown): AgentSearchResu
       station: text(stay.note, '교통 정보를 확인해 주세요.'),
       tag: 'Search Agent',
       image: `https://picsum.photos/seed/${encodeURIComponent(id)}/800/520`,
-      x: 30 + (index % 3) * 25,
-      y: 35 + (index % 2) * 25,
       latitude: number(stay.lat),
       longitude: number(stay.lng),
     }];
   });
 
   const categoryMap: Record<string, Place['category']> = { 관광지: '명소', 식사: '맛집', 카페: '맛집', 쇼핑: '쇼핑', 휴식: '자연', 숙소: '명소' };
-  const places = recordArray(placesResult.candidates).flatMap((candidate, index): Place[] => {
+  const places = recordArray(placesResult.candidates).flatMap((candidate): Place[] => {
     const place = isRecord(candidate.place) ? candidate.place : {};
     const id = text(place.id);
     if (!id) return [];
@@ -387,8 +385,6 @@ export const fromSearchPayload = (trip: Trip, payload: unknown): AgentSearchResu
       summary: text(place.note, 'Search Agent가 검증한 장소입니다.'),
       note: text(place.note, 'Search Agent 추천'),
       image: `https://picsum.photos/seed/${encodeURIComponent(id)}/640/420`,
-      x: 20 + (index % 4) * 20,
-      y: 25 + (index % 3) * 25,
       latitude: number(place.lat),
       longitude: number(place.lng),
       openingHours: [text(place.opening_hours, '운영시간 확인 필요')],

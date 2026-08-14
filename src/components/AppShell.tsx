@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, type ReactNode } from 'react';
 
-import { getTripDestination } from '@/lib/locations';
 import { getCityById } from '@/lib/cities';
 import type { StepId, Trip } from '@/lib/types';
 

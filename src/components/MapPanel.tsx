@@ -20,6 +20,7 @@ const MARKER_STROKE = '#ffffff';
 const CANDIDATE_FILL = '#ffffff';
 const CANDIDATE_STROKE = '#ef4444';
 const STAY_FILL = '#52525b';
+const EMPTY_PLACES: TripPlace[] = [];
 
 const MAP_OPTIONS: google.maps.MapOptions = {
   disableDefaultUI: false,
