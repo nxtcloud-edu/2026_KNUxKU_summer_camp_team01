@@ -1,0 +1,36 @@
+{
+  "trip_info": {
+    "destination": "도쿄",
+    "start_date": "2026-06-15",
+    "end_date": "2026-06-17",
+    "num_travelers": 2,
+    "budget_total": 1200000,
+    "budget_currency": "KRW",
+    "budget_includes": [
+      "숙소",
+      "식사",
+      "관광지"
+    ],
+    "transport_mode": "대중교통",
+    "day_start_time": "09:00",
+    "day_end_time": "22:00",
+    "persona": {
+      "description": "역사 명소와 맛집을 선호하는 도쿄 2인 여행",
+      "must_visit": [
+        "센소지"
+      ],
+      "avoid": [
+        "장시간 도보"
+      ],
+      "pace": "보통",
+      "max_walking_level": "중간"
+    }
+  },
+  "origin_iata": "ICN",
+  "destination_iata": "NRT",
+  "include_flights": true,
+  "flight_trip_type": "round_trip",
+  "include_stays": true,
+  "max_results": 5,
+  "place_count": 5
+}

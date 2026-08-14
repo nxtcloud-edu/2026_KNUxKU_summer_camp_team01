@@ -448,6 +448,9 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .place-card { align-items: flex-start; border: 1px solid var(--border); border-radius: 8px; display: flex; min-height: 112px; overflow: hidden; padding: 10px; position: relative; }
 .place-card:hover, .place-card.is-active { background: var(--surface-hover); border-color: var(--border-strong); }
 .place-card.is-selected { background: var(--primary-subtle); border-color: var(--primary-border); box-shadow: inset 3px 0 var(--primary); }
+.place-card__select { align-items: center; align-self: center; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 5px; color: var(--primary-fg); display: inline-flex; flex: 0 0 auto; height: 24px; justify-content: center; margin-right: 8px; width: 24px; }
+.place-card.is-selected .place-card__select { background: var(--primary); border-color: var(--primary); }
+.place-card__select:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .place-card__add { align-items: center; align-self: center; background: var(--primary); border: 1px solid var(--primary); border-radius: 50%; box-shadow: 0 3px 8px color-mix(in oklch, var(--primary) 28%, transparent); color: var(--primary-fg); display: inline-flex; flex: 0 0 auto; height: 32px; justify-content: center; margin-right: 10px; transition: transform 140ms cubic-bezier(.2,0,0,1), box-shadow 140ms cubic-bezier(.2,0,0,1); width: 32px; }
 .place-card__add:hover:not(:disabled), .place-card__add:focus-visible { box-shadow: 0 5px 13px color-mix(in oklch, var(--primary) 38%, transparent); transform: translateY(-1px); }
 .place-card__add.is-added { background: var(--success); border-color: var(--success); box-shadow: none; cursor: default; opacity: 1; }

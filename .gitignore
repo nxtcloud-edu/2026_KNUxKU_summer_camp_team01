@@ -1,50 +1,78 @@
-# Dependencies
-node_modules/
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+credentials.json
+service-account*.json
 
-# Next.js build output
+# Node and Next.js
+node_modules/
 .next/
 out/
-
-# Other build output
-build/
-dist/
-
-# TypeScript
+.vercel/
 *.tsbuildinfo
-
-# Test coverage
+.npm
+.eslintcache
 coverage/
+playwright-report/
+test-results/
 
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-!.env.example
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.tox/
+*.egg-info/
+.eggs/
+dist/
+build/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
 
-# Logs
+# Runtime output and caches
+.cache/
+runs/
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-
-# Deployment
-.vercel/
-
-# Caches and temporary files
-.cache/
 *.tmp
 *.temp
 
-# Editor settings
+# Editors and operating systems
 .vscode/*
-!.vscode/extensions.json
 !.vscode/settings.json
+!.vscode/extensions.json
 .idea/
-
-# Operating system files
+*.swp
+*.swo
 .DS_Store
+.DS_Store?
+._*
 Thumbs.db
-Desktop.ini
+desktop.ini
+
+# Contract assets must remain tracked
+!.env.example
+!agent/schemas/
+!agent/schemas/**
+!agent/fixtures/
+!agent/fixtures/**
+!agent/tools/
+!agent/tools/**

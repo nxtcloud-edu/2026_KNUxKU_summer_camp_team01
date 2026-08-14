@@ -14,7 +14,7 @@ export const CITIES: City[] = [
 ];
 
 export const PLACES: Place[] = [
-  { id: 'sensoji', name: '센소지', localName: '浅草寺', category: '역사', area: '아사쿠사', rating: 4.5, reviews: 32841, duration: 90, price: '무료', summary: '628년에 창건된 도쿄에서 가장 오래된 사찰. 가미나리몬과 나카미세 상점가가 이어집니다.', note: '이른 아침에 방문하면 한적하게 둘러볼 수 있어요.', image: 'https://picsum.photos/seed/sensoji/480/360', latitude: 35.7147, longitude: 139.7967 },
+  { id: 'sensoji', name: '센소지', localName: '浅草寺', category: '역사', area: '아사쿠사', rating: 4.5, reviews: 32841, duration: 90, price: '무료', summary: '628년에 창건된 도쿄에서 가장 오래된 사찰. 가미나리몬과 나카미세 상점가가 이어집니다.', note: '이른 아침에 방문하면 한적하게 둘러볼 수 있어요.', image: 'https://picsum.photos/seed/sensoji/480/360', latitude: 35.7148, longitude: 139.7967 },
   { id: 'skytree', name: '도쿄 스카이트리', category: '명소', area: '오시아게', rating: 4.4, reviews: 58120, duration: 120, price: '2,100엔', summary: '도쿄 전경을 한눈에 볼 수 있는 634m 높이의 전망대입니다.', note: '해 질 무렵 방문하면 낮과 야경을 함께 볼 수 있어요.', image: 'https://picsum.photos/seed/skytree/480/360', latitude: 35.7101, longitude: 139.8107, reservation: true },
   { id: 'museum', name: '도쿄 국립박물관', category: '미술관', area: '우에노', rating: 4.6, reviews: 21004, duration: 150, price: '1,000엔', summary: '일본 최대 규모의 박물관으로 국보와 동아시아 미술품을 전시합니다.', note: '상설관만 보아도 두 시간 이상 필요해요.', image: 'https://picsum.photos/seed/tokyo-museum/480/360', latitude: 35.7188, longitude: 139.7765, closed: '월 휴관' },
   { id: 'meiji', name: '메이지 신궁', category: '역사', area: '하라주쿠', rating: 4.6, reviews: 40122, duration: 90, price: '무료', summary: '도심 한가운데 울창한 숲길을 지나 만나는 고요한 신궁입니다.', note: '오전 산책 코스로 배치하면 이동이 편해요.', image: 'https://picsum.photos/seed/meiji/480/360', latitude: 35.6764, longitude: 139.6993 },

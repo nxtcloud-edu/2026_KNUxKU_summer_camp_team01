@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools==82.0.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "voyagent-search-agent"
+version = "0.1.0"
+description = "LangGraph search orchestration for Voyagent"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi==0.124.4",
+  "httpx==0.28.1",
+  "jsonschema==4.26.0",
+  "langgraph==1.2.11",
+  "pydantic==2.13.4",
+  "python-dotenv==1.2.2",
+  "uvicorn==0.38.0"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+voyagent_search = ["schemas/*.json"]

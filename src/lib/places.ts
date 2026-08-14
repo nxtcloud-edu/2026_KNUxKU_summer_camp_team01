@@ -1,13 +1,13 @@
-import { PLACES } from '@/lib/data';
 import type { ImportedPlace, Trip, TripPlace } from '@/lib/types';
 
-export const getTripPlace = (trip: Pick<Trip, 'importedPlaces'>, id: string): TripPlace | undefined =>
-  trip.importedPlaces?.[id] ?? PLACES.find((place) => place.id === id);
+export const getTripPlace = (trip: Pick<Trip, 'importedPlaces' | 'searchPlaceOffers'>, id: string): TripPlace | undefined =>
+  trip.importedPlaces?.[id] ?? trip.searchPlaceOffers?.find((place) => place.id === id);
 
-export const getTripPlaces = (trip: Pick<Trip, 'importedPlaces'>): TripPlace[] => {
+export const getTripPlaces = (trip: Pick<Trip, 'importedPlaces' | 'searchPlaceOffers'>): TripPlace[] => {
   const imported = Object.values(trip.importedPlaces ?? {});
+  const searched = trip.searchPlaceOffers ?? [];
   const importedIds = new Set(imported.map((place) => place.id));
-  return [...PLACES.filter((place) => !importedIds.has(place.id)), ...imported];
+  return [...searched.filter((place) => !importedIds.has(place.id)), ...imported];
 };
 
 export const isImportedPlace = (place: TripPlace): place is ImportedPlace =>

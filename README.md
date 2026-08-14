@@ -6,7 +6,7 @@
 
 > 도시와 날짜만 정하면, AI 에이전트가 항공권·숙소·관광지를 찾아 **검증된 여행 일정표**까지 만들어 주는 웹앱.
 
-사용자가 확정하는 것은 **목적지와 날짜 두 개**뿐이다. 이후 여행 스타일 설문을 거치면 에이전트가 항공권과 숙소를 찾아 주고, 관심사에 맞는 관광지를 큐레이션해 보여주며, 선택한 장소로 일자별 일정을 짠 뒤 휴관일·이동시간·예산·접근성 등 10개 규칙으로 스스로 점검한다. 검색·생성·검증의 모든 단계에서 **에이전트의 추론 과정이 실시간으로 노출**된다.
+사용자가 확정하는 것은 **목적지와 날짜 두 개**뿐이다. 이후 여행 스타일 설문을 거치면 에이전트가 항공권과 숙소를 찾아 주고, 관심사에 맞는 관광지를 큐레이션해 보여주며, 선택한 장소로 일자별 일정을 짠 뒤 물리적 시간·휴관일·예산은 결정론 규칙으로, 페이스·걷기 수준은 AI로 점검한다.
 
 ## 현재 상태
 
@@ -19,7 +19,7 @@
 |---|---|---|
 | [`spec.md`](./spec.md) | 프론트엔드 UI/UX 전체 명세 (15장). 화면 10개의 와이어프레임·컴포넌트 규격·인터랙션·상태·한국어 카피, 전체 TypeScript 타입, 목 데이터와 에이전트 스트리밍 계약, 검증 규칙 10개, 테스트 전략, 구현 로드맵 | 전원 |
 | [`design.md`](./design.md) | 위 명세를 v0 / Figma AI / Cursor 등 AI 디자인 도구용 프롬프트로 변환한 세트. 공통 시스템 프롬프트 + 화면별 10개 + 컴포넌트 8개 + 교정용 프롬프트 | 디자인 · FE |
-| [`agent/`](./agent/README.md) | **AI 에이전트 개발 문서 세트.** 프론트엔드와 에이전트 사이의 계약서, 에이전트 행동 명세, 연동 가이드, 협업 규칙 + 기계 판독 스키마·픽스처·계약 테스트 러너 | 에이전트 · FE |
+| [`agent/`](./agent/README.md) | **AI 에이전트 계약.** Search→Plan 및 Plan→Verification canonical schema, fixture, 계약 검사 도구와 검증 에이전트 구현 | 에이전트 · FE |
 
 **처음 보는 사람은** `spec.md`의 0장(문서 개요)과 1장(제품 개요)만 읽으면 전체를 파악할 수 있다.
 **바로 만들어 보려면** `design.md`의 B절(공통 시스템 프롬프트)과 C-1(홈 화면)을 v0에 붙여넣는다.
@@ -29,17 +29,14 @@
 
 | 파일 | 내용 |
 |---|---|
-| [`agent/README.md`](./agent/README.md) | 진입점. 5분 요약 · 문서 지도 · 시작하기 · 흔한 실수 5개 |
-| [`agent/contract.md`](./agent/contract.md) | **계약서.** SSE 전송 계층, `AgentEvent` 9종, 작업 5개의 입출력, 필수 필드 등급, 불변식, 에러, 버전 관리 |
-| [`agent/behavior.md`](./agent/behavior.md) | 행동 명세. 추론 노출 원칙, 한국어 카피 규칙, 페르소나 반영 매핑, LLM↔결정론 경계, 작업별 판단 기준, 품질 루브릭 |
-| [`agent/integration.md`](./agent/integration.md) | 연동 가이드. 프록시 참고 구현, 환경 변수, 작업 단위 점진 전환(M0~M5), 관측성, 트러블슈팅 |
-| [`agent/collaboration.md`](./agent/collaboration.md) | 협업 규칙. 소유권 경계, 계약 변경 절차, DoD, 마일스톤, **결정 대기 목록 16건**, 리스크 |
-| `agent/schemas/` · `agent/fixtures/` · `agent/tools/` | 기계 판독 스키마, 입력 픽스처와 골든 스트림, 계약 테스트 러너 |
+| [`agent/README.md`](./agent/README.md) | 두 handoff 계약과 검증 에이전트 워크플로 |
+| [`agent/schemas/search-to-plan.schema.json`](./agent/schemas/search-to-plan.schema.json) | Search Agent → Plan Agent 입력 계약 |
+| [`agent/schemas/plan-to-verification.schema.json`](./agent/schemas/plan-to-verification.schema.json) | Plan Agent → Verification Agent 입력 계약 |
+| `agent/fixtures/` | 각 handoff와 1:1로 대응하는 예제 |
+| [`agent/tools/conformance.mjs`](./agent/tools/conformance.mjs) | schema·fixture·단계 간 연속성 검사 |
 
-계약 준수는 의존성 없이 바로 검사할 수 있다.
-
-```bash
-node agent/tools/conformance.mjs http://localhost:8000
+```powershell
+node agent/tools/conformance.mjs
 ```
 
 ## 계획된 스택
@@ -69,10 +66,29 @@ node agent/tools/conformance.mjs http://localhost:8000
 **프론트엔드** — [`spec.md` 14장 구현 로드맵](./spec.md#14-구현-로드맵)의 26단계를 순서대로 진행한다.
 시간이 부족할 때의 최소 데모 경로는 [14.3](./spec.md#143-최소-데모-경로-시간이-부족할-때)에 정리되어 있다.
 
-**에이전트** — [`agent/collaboration.md` 6장 마일스톤](./agent/collaboration.md#6-마일스톤)의 M0~M5를 진행한다.
-M0(계약을 지키는 스텁 서버)은 프론트 진행 상황과 무관하게 **지금 바로 착수할 수 있다.**
+## 백엔드 API
 
-**착수 전 결정이 필요한 항목** 2건이 있다. [`agent/collaboration.md` 7장](./agent/collaboration.md#7-결정-대기-목록)에서 확인한다.
+백엔드는 Next.js App Router의 서버 라우트로 실행되며, live 모드에서는 로컬 Supervisor를 통해 Search → Plan → Verification 파이프라인을 호출한다.
 
-- 목 데이터 소유권과 `Place.id` 안정성 (M1 착수 전)
-- 저장소 구조 — 단일 vs 분리 (킥오프)
+```bash
+npm ci
+npm run dev
+
+# 상태 확인
+curl http://localhost:3000/api/health
+
+# SSE 에이전트 호출
+curl -N -X POST http://localhost:3000/api/agent/flightSearch \
+  -H "Content-Type: application/json" \
+  -d '{"originId":"seoul","destinationId":"tokyo"}'
+```
+
+지원 작업은 `flightSearch`, `staySearch`, `placeDiscovery`, `itineraryGenerate`, `itineraryVerify`다. 응답은 `text/event-stream`이며 각 프레임은 명세 6.3의 `AgentEvent` JSON을 `data:` 필드에 담는다. `GET /api/health`는 배포 후 헬스 체크에 사용한다.
+
+전체 검증은 `npm run check`로 실행한다. SSE 연출 속도는 선택적으로 `AGENT_STREAM_DELAY_MS`(0~2000ms)로 조절할 수 있다.
+
+**에이전트** — [`agent/README.md`](./agent/README.md)의 Search→Plan→Verification handoff를 기준으로 구현하고, 변경 시 schema와 fixture를 함께 갱신한다.
+
+```powershell
+node agent/tools/conformance.mjs
+```

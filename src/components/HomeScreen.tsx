@@ -7,27 +7,27 @@ import { useMemo, useState } from 'react';
 
 import { BrandHeader } from '@/components/AppShell';
 import { getCityById, isDemoCity, searchCities } from '@/lib/cities';
-import { CITIES } from '@/lib/data';
+import { CITIES, ORIGIN_CITIES } from '@/lib/data';
 import { isVerificationCurrent } from '@/lib/itinerary';
 import { useTripStore } from '@/lib/store';
+import type { City } from '@/lib/types';
 import messages from '../../messages/ko.json';
 
-/** Autocomplete over every airport/city in the bundled international dataset (src/lib/cities.ts). */
-function LocationSearch({ query, selectedId, placeholder, onQueryChange, onSelect }: {
+function LocationSearch({ options, query, selected, placeholder, onQueryChange, onSelect }: {
+  options: City[];
   query: string;
-  selectedId: string | null;
+  selected: City | null;
   placeholder: string;
   onQueryChange: (value: string) => void;
-  onSelect: (id: string | null) => void;
+  onSelect: (location: City | null) => void;
 }) {
-  const selected = getCityById(selectedId);
-  const results = query.trim() ? searchCities(query, 20) : [];
+  const results = query.trim() ? searchCities(query, 20).filter((item) => options.some((option) => option.id === item.id)) : [];
 
   return (
     <div className="city-search">
       <Search size={18} />
       <input
-        value={selected ? `${selected.flag} ${selected.name} (${selected.airportCodes.join(' · ')})` : query}
+        value={selected ? `${selected.flag} ${selected.name}` : query}
         onChange={(event) => { onSelect(null); onQueryChange(event.target.value); }}
         onFocus={() => { if (selected) { onSelect(null); onQueryChange(''); } }}
         placeholder={placeholder}
@@ -36,7 +36,7 @@ function LocationSearch({ query, selectedId, placeholder, onQueryChange, onSelec
       {query && !selected && results.length > 0 && (
         <div className="city-search__menu">
           {results.map((item) => (
-            <button key={item.id} onClick={() => { onSelect(item.id); onQueryChange(''); }}>
+            <button key={item.id} onClick={() => { onSelect(item); onQueryChange(''); }}>
               <span>{item.flag}</span><strong>{item.name}</strong><small>{item.country} · {item.airportCodes.join(' · ')}</small>{isDemoCity(item) && <em>체험 데이터</em>}
             </button>
           ))}
@@ -50,19 +50,20 @@ export function HomeScreen() {
   const router = useRouter();
   const [originQuery, setOriginQuery] = useState('');
   const [destinationQuery, setDestinationQuery] = useState('');
-  const [selectedOriginId, setSelectedOriginId] = useState<string | null>(null);
-  const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
+  const [selectedOrigin, setSelectedOrigin] = useState<City | null>(null);
+  const [selectedCity, setSelectedCity] = useState<City | null>(null);
   const trips = useTripStore((state) => state.trips);
   const removeTrip = useTripStore((state) => state.removeTrip);
   const hasHydrated = useTripStore((state) => state.hasHydrated);
   const tripList = useMemo(() => Object.values(trips).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)), [trips]);
-  const selectedOrigin = getCityById(selectedOriginId);
-  const selectedCity = getCityById(selectedCityId);
 
-  const start = (cityId?: string, originId = selectedOriginId ?? undefined) => {
+  const start = () => {
     const params = new URLSearchParams();
-    if (originId) params.set('origin', originId);
-    if (cityId) params.set('city', cityId);
+    if (selectedOrigin) params.set('origin', selectedOrigin.id);
+    if (selectedCity) params.set('city', selectedCity.id);
+    if (selectedOrigin || selectedCity) {
+      sessionStorage.setItem('voyagent:pending-locations', JSON.stringify({ origin: selectedOrigin, destination: selectedCity }));
+    }
     router.push(`/plan/new${params.size ? `?${params.toString()}` : ''}`);
   };
 
@@ -74,17 +75,17 @@ export function HomeScreen() {
         <h1>{messages.home.title1}<br /><span>{messages.home.title2}</span></h1>
         <p>{messages.home.description1}<br />{messages.home.description2}</p>
         <div className="quick-start">
-          <LocationSearch query={originQuery} selectedId={selectedOriginId} placeholder={messages.home.originPlaceholder} onQueryChange={setOriginQuery} onSelect={setSelectedOriginId} />
-          <LocationSearch query={destinationQuery} selectedId={selectedCityId} placeholder={messages.home.placeholder} onQueryChange={setDestinationQuery} onSelect={setSelectedCityId} />
+          <LocationSearch options={ORIGIN_CITIES} query={originQuery} selected={selectedOrigin} placeholder={messages.home.originPlaceholder} onQueryChange={setOriginQuery} onSelect={setSelectedOrigin} />
+          <LocationSearch options={CITIES} query={destinationQuery} selected={selectedCity} placeholder={messages.home.placeholder} onQueryChange={setDestinationQuery} onSelect={setSelectedCity} />
           <button
             aria-label={selectedOrigin && selectedCity ? `${selectedOrigin.name}에서 ${selectedCity.name} 여행 계획 짜기` : messages.home.start}
             className="button button--primary button--large"
-            onClick={() => start(selectedCityId ?? undefined)}
+            onClick={() => start()}
           >
             {messages.home.start}<ArrowRight size={16} />
           </button>
         </div>
-        <div className="popular-cities"><span>{messages.home.popular}</span>{CITIES.map((city) => <button key={city.id} onClick={() => { setSelectedCityId(city.id); setDestinationQuery(''); }}>{city.flag} {city.name}</button>)}</div>
+        <div className="popular-cities"><span>{messages.home.popular}</span>{CITIES.map((city) => <button key={city.id} onClick={() => { setSelectedCity(city); setDestinationQuery(''); }}>{city.flag} {city.name}</button>)}</div>
       </section>
 
       <section className="trip-section">

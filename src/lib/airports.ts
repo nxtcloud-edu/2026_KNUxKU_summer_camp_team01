@@ -1,4 +1,4 @@
-import type { Airport } from '@/lib/types';
+import type { Airport, City } from '@/lib/types';
 
 import airportsData from '@/lib/airports.json';
 
@@ -42,4 +42,13 @@ export const searchAirports = (query: string, limit = 20): Airport[] => {
   }
   scored.sort((a, b) => a.score - b.score || a.airport.code.localeCompare(b.airport.code));
   return scored.slice(0, limit).map((entry) => entry.airport);
+};
+
+/** Accepts only IATA codes present in the bundled factual airport dataset. */
+export const resolvePrimaryAirport = (
+  city: Pick<City, 'name' | 'nameEn' | 'airportCodes'> | null | undefined,
+): string | undefined => {
+  return city?.airportCodes
+    .map((code) => code.trim().toUpperCase())
+    .find((code) => Boolean(getAirportByCode(code)));
 };
