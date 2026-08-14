@@ -48,11 +48,13 @@ import {
 import { useEffect, useRef, useState } from 'react';
 
 import { AgentPanel } from '@/components/AgentPanel';
+import { AirportCombobox } from '@/components/AirportCombobox';
 import { AppShell } from '@/components/AppShell';
 import { MapPanel } from '@/components/MapPanel';
 import { PlaceDetailModal } from '@/components/PlaceDetailModal';
 import type { PlaceDetail } from '@/components/PlaceDetailModal';
-import { CITIES, INTERESTS, ORIGIN_CITIES, PLACES } from '@/lib/data';
+import { getCityById, isDemoCity, searchCities } from '@/lib/cities';
+import { CITIES, FLIGHTS, INTERESTS, ORIGIN_CITIES, PLACES, STAYS } from '@/lib/data';
 import { isVerificationCurrent } from '@/lib/itinerary';
 import { getTripDestination, getTripOrigin, locationSubtitle } from '@/lib/locations';
 import { createManualUrlPlace, parseGoogleMapsUrl, parsePlaceFile } from '@/lib/placeImport';
@@ -220,12 +222,17 @@ function CityStep({ trip, update }: { trip: Trip; update: (patch: Partial<Trip>)
   const endDateRef = useRef<HTMLInputElement>(null);
   const [originQuery, setOriginQuery] = useState('');
   const [destinationQuery, setDestinationQuery] = useState('');
-  const [originMenuOpen, setOriginMenuOpen] = useState(!trip.originId);
-  const [destinationMenuOpen, setDestinationMenuOpen] = useState(!trip.destinationId);
-  const origin = getTripOrigin(trip);
-  const city = getTripDestination(trip);
-  const originSearch = useLocationAutocomplete(originQuery, ORIGIN_CITIES);
-  const destinationSearch = useLocationAutocomplete(destinationQuery, CITIES);
+  // "explicitly editing" flags: whether the user asked to change an already-selected city.
+  // Deliberately NOT derived from `!trip.originId`/`!trip.destinationId` at mount time, because
+  // the origin/destination can be filled in asynchronously (e.g. from the URL query params set by
+  // the home screen) after this component has already mounted — keeping these `false` by default
+  // lets the "selected" hero card show up correctly whenever a city becomes available.
+  const [originMenuOpen, setOriginMenuOpen] = useState(false);
+  const [destinationMenuOpen, setDestinationMenuOpen] = useState(false);
+  const origin = getCityById(trip.originId);
+  const city = getCityById(trip.destinationId);
+  const filteredOrigins = originQuery.trim() ? searchCities(originQuery, 20) : ORIGIN_CITIES;
+  const filteredDestinations = destinationQuery.trim() ? searchCities(destinationQuery, 20) : CITIES;
   const routeReady = Boolean(origin && city);
   const openDatePicker = (input: HTMLInputElement | null, disabled: boolean) => {
     if (!input || disabled) return;
@@ -240,14 +247,8 @@ function CityStep({ trip, update }: { trip: Trip; update: (patch: Partial<Trip>)
   useEffect(() => {
     const originId = searchParams.get('origin');
     const cityId = searchParams.get('city');
-    let pending: { origin?: City | null; destination?: City | null } = {};
-    try {
-      pending = JSON.parse(sessionStorage.getItem('voyagent:pending-locations') ?? '{}') as typeof pending;
-    } catch {
-      sessionStorage.removeItem('voyagent:pending-locations');
-    }
-    const targetOrigin = pending.origin?.id ? pending.origin : ORIGIN_CITIES.find((item) => item.id === originId);
-    const targetCity = pending.destination?.id ? pending.destination : CITIES.find((item) => item.id === cityId);
+    const targetOrigin = getCityById(originId);
+    const targetCity = getCityById(cityId);
     const patch: Partial<Trip> = {};
     if (targetOrigin && !trip.originId) {
       patch.originId = targetOrigin.id;
@@ -268,8 +269,9 @@ function CityStep({ trip, update }: { trip: Trip; update: (patch: Partial<Trip>)
     setOriginQuery('');
   };
 
-  const selectDestination = (location: City) => {
-    update({ destinationId: location.id, destinationLocation: location, title: `${location.name} 여행`, selectedFlightId: null, selectedStayId: null, selectedPlaceIds: [], placeDurations: {}, importedPlaces: {}, itinerary: null, verification: null });
+  const selectDestination = (id: string) => {
+    const selected = getCityById(id);
+    update({ destinationId: id, title: `${selected?.name ?? '새'} 여행`, selectedFlightId: null, selectedStayId: null, selectedPlaceIds: [], placeDurations: {}, importedPlaces: {}, itinerary: null, verification: null });
     setDestinationMenuOpen(false);
     setDestinationQuery('');
   };
@@ -281,7 +283,7 @@ function CityStep({ trip, update }: { trip: Trip; update: (patch: Partial<Trip>)
         <div className="field-label"><span>{messages.city.origin}</span>{origin && <Check size={14} />}</div>
         {origin && !originMenuOpen ? (
           <div className="city-hero" style={{ backgroundImage: `url(${origin.image})` }}>
-            <div><strong><span>{origin.flag}</span>{origin.name}</strong><small>{locationSubtitle(origin)}</small></div>
+            <div><strong><span>{origin.flag}</span>{origin.name}</strong><small>{[origin.country, origin.airportCodes.join(' · '), origin.timezone].filter(Boolean).join(' · ')}</small></div>
             <button className="button button--glass" onClick={() => setOriginMenuOpen(true)}>변경</button>
           </div>
         ) : (
@@ -289,10 +291,8 @@ function CityStep({ trip, update }: { trip: Trip; update: (patch: Partial<Trip>)
             <div className="input-with-icon"><Search size={17} /><input autoFocus value={originQuery} onChange={(event) => setOriginQuery(event.target.value)} placeholder={messages.city.chooseOrigin} /></div>
             <div className="city-options">
               <span className="option-group">{originQuery ? '검색 결과' : '출발 도시'}</span>
-              {originSearch.loading && <p className="field-hint">Google Places에서 도시를 찾고 있어요…</p>}
-              {originSearch.error && <p className="form-error" role="alert">{originSearch.error}</p>}
-              {!originSearch.loading && !originSearch.error && originSearch.locations.map((item, index) => <button type="button" key={item.id} className={index === 0 ? 'is-active' : ''} onClick={() => selectOrigin(item)}><span>{item.flag}</span><strong>{item.name}</strong><small>{locationSubtitle(item)}</small><em>{originSearch.fromGoogle ? 'Google Places' : '지원 도시'}</em></button>)}
-            </div>
+              {filteredOrigins.map((item, index) => <button key={item.id} className={index === 0 ? 'is-active' : ''} onClick={() => selectOrigin(item.id)}><span>{item.flag}</span><strong>{item.name}</strong><small>{item.airportCodes.join(' · ')}</small>{isDemoCity(item) && <em>체험 데이터</em>}</button>)}
+            </div>}
           </div>
         )}
       </section>
@@ -300,7 +300,7 @@ function CityStep({ trip, update }: { trip: Trip; update: (patch: Partial<Trip>)
         <div className="field-label"><span>{messages.city.destination}</span>{city && <Check size={14} />}</div>
         {city && !destinationMenuOpen ? (
           <div className="city-hero" style={{ backgroundImage: `url(${city.image})` }}>
-            <div><strong><span>{city.flag}</span>{city.name}</strong><small>{locationSubtitle(city)}</small></div>
+            <div><strong><span>{city.flag}</span>{city.name}</strong><small>{[city.country, city.airportCodes.join(' · '), city.timezone].filter(Boolean).join(' · ')}</small></div>
             <button className="button button--glass" onClick={() => setDestinationMenuOpen(true)}>변경</button>
           </div>
         ) : (
@@ -308,10 +308,8 @@ function CityStep({ trip, update }: { trip: Trip; update: (patch: Partial<Trip>)
             <div className="input-with-icon"><Search size={17} /><input value={destinationQuery} onChange={(event) => setDestinationQuery(event.target.value)} placeholder={messages.city.chooseCity} /></div>
             <div className="city-options">
               <span className="option-group">{destinationQuery ? '검색 결과' : '인기 도시'}</span>
-              {destinationSearch.loading && <p className="field-hint">Google Places에서 도시를 찾고 있어요…</p>}
-              {destinationSearch.error && <p className="form-error" role="alert">{destinationSearch.error}</p>}
-              {!destinationSearch.loading && !destinationSearch.error && destinationSearch.locations.map((item, index) => <button type="button" key={item.id} className={index === 0 ? 'is-active' : ''} onClick={() => selectDestination(item)}><span>{item.flag}</span><strong>{item.name}</strong><small>{locationSubtitle(item)}</small><em>{destinationSearch.fromGoogle ? 'Google Places' : '지원 도시'}</em></button>)}
-            </div>
+              {filteredDestinations.map((item, index) => <button key={item.id} className={index === 0 ? 'is-active' : ''} onClick={() => selectDestination(item.id)}><span>{item.flag}</span><strong>{item.name}</strong><small>{item.country} · {item.nameEn}</small>{isDemoCity(item) && <em>체험 데이터</em>}</button>)}
+            </div>}
           </div>
         )}
       </section>
@@ -439,8 +437,14 @@ function FlightsStep({ trip, update }: { trip: Trip; update: (patch: Partial<Tri
   const [preferredAirlineCodes, setPreferredAirlineCodes] = useState<string[]>(['KE', 'JL']);
   const airlines = [{ code: 'KE', name: '대한항공' }, { code: 'OZ', name: '아시아나항공' }, { code: 'JL', name: '일본항공' }, { code: 'NH', name: '전일본공수' }];
   const togglePreferredAirline = (code: string) => setPreferredAirlineCodes((current) => current.includes(code) ? current.filter((item) => item !== code) : [...current, code]);
-  const origin = getTripOrigin(trip);
-  const destination = getTripDestination(trip);
+  const origin = getCityById(trip.originId);
+  const destination = getCityById(trip.destinationId);
+  const [arrivalAirportCodes, setArrivalAirportCodes] = useState<string[]>(destination?.airportCodes ?? []);
+  const [arrivalAirportsDestinationId, setArrivalAirportsDestinationId] = useState(destination?.id);
+  if (destination?.id !== arrivalAirportsDestinationId) {
+    setArrivalAirportsDestinationId(destination?.id);
+    setArrivalAirportCodes(destination?.airportCodes ?? []);
+  }
   const departureWindows = [
     { id: 'night', label: '새벽', range: '00–06', from: 0, to: 6 },
     { id: 'morning', label: '오전', range: '06–12', from: 6, to: 12 },
@@ -463,8 +467,13 @@ function FlightsStep({ trip, update }: { trip: Trip; update: (patch: Partial<Tri
     if (preferenceDelta !== 0) return preferenceDelta;
     return sortMode === 'price' ? a.price - b.price : durationMinutes(a.duration) - durationMinutes(b.duration);
   });
-  if (phase === 'searching') return <div className="stream-page"><PageHeading eyebrow="AGENT · FLIGHT SEARCH" title="조건에 맞는 항공권을 비교하고 있어요" description="검색 과정과 판단 근거를 실시간으로 보여드릴게요." /><AgentPanel type="항공권" task="flightSearch" input={{ trip }} onDone={(payload) => { const result = readAgentSearch(payload); if (result) applyAgentSearch(trip.id, result.flights, result.stays, result.places, result.providers); setPhase('results'); }} onAbort={() => setPhase('survey')} /><SkeletonCards count={3} /></div>;
-  if (phase === 'survey') return <div className="form-page"><PageHeading eyebrow="STEP 3 · 항공권" title="항공권을 찾기 전에" description="조건을 알려주시면 맞는 것만 골라드려요. 모두 선택 사항이에요." /><div className="route-summary"><Plane size={20} /><div><strong>{origin?.name ?? '출발지'} ({origin?.airportCodes.join(' · ') ?? '-'}) → {destination?.name ?? '목적지'} ({destination?.airportCodes.join(' · ') ?? '-'})</strong><span>{trip.startDate} 출발 · {trip.endDate} 귀국 · 성인 {trip.persona.adults}명</span></div><button>수정</button></div><div className="survey-fields"><Question title="도착 공항"><div className="interest-list">{destination?.airportCodes.map((code) => <button className="is-selected" key={code}>{destination.name} {code} <Check size={13} /></button>)}</div></Question><Question title="경유"><div className="segmented"><button className="is-active">직항만</button><button>경유도 괜찮아요</button></div></Question><Question title="가는 날 출발 시간대" meta={`${selectedWindow.label} ${selectedWindow.range}`}><div className="flight-time-timeline" role="radiogroup" aria-label="가는 날 출발 시간대">{departureWindows.map((window) => <button type="button" role="radio" aria-checked={departureWindow === window.id} className={departureWindow === window.id ? 'is-selected' : ''} key={window.id} onClick={() => { if (departureWindow !== window.id) update({ selectedFlightId: null, itinerary: null, verification: null }); setDepartureWindow(window.id); }}><span className="timeline-dot" /><strong>{window.label}</strong><small>{window.range}</small></button>)}</div></Question><Question title="선호 항공사" meta={preferredAirlineCodes.length === 0 ? '무관' : `${preferredAirlineCodes.length}개 선택`}><div className="airline-box" role="group" aria-label="선호 항공사 선택">{airlines.map((airline) => { const selected = preferredAirlineCodes.includes(airline.code); return <button type="button" key={airline.code} className={selected ? 'is-selected' : ''} aria-pressed={selected} onClick={() => togglePreferredAirline(airline.code)}><span>{airline.code}</span>{airline.name}{selected && <Check size={14} />}</button>; })}</div><p className="airline-hint">모두 해제하면 항공사 무관으로 검색해요.</p></Question><Question title="1인당 가격 상한"><input className="range" type="range" min="280000" max="950000" defaultValue="900000" /><div className="range-labels"><span>28만원</span><strong>90만원</strong><span>95만원</span></div></Question></div><button className="button button--primary button--wide" onClick={() => setPhase('searching')}><Sparkles size={16} /> 항공권 찾기</button></div>;
+  useEffect(() => {
+    if (phase !== 'searching') return;
+    const timer = window.setTimeout(() => setPhase('results'), 2300);
+    return () => window.clearTimeout(timer);
+  }, [phase]);
+  if (phase === 'searching') return <div className="stream-page"><PageHeading eyebrow="AGENT · FLIGHT SEARCH" title="조건에 맞는 항공권을 비교하고 있어요" description="검색 과정과 판단 근거를 실시간으로 보여드릴게요." /><AgentPanel type="항공권" /><SkeletonCards count={3} /></div>;
+  if (phase === 'survey') return <div className="form-page"><PageHeading eyebrow="STEP 3 · 항공권" title="항공권을 찾기 전에" description="조건을 알려주시면 맞는 것만 골라드려요. 모두 선택 사항이에요." /><div className="route-summary"><Plane size={20} /><div><strong>{origin?.name ?? '출발지'} ({origin?.airportCodes.join(' · ') ?? '-'}) → {destination?.name ?? '목적지'} ({destination?.airportCodes.join(' · ') ?? '-'})</strong><span>{trip.startDate} 출발 · {trip.endDate} 귀국 · 성인 {trip.persona.adults}명</span></div><button>수정</button></div><div className="survey-fields"><Question title="도착 공항" meta={arrivalAirportCodes.length ? `${arrivalAirportCodes.length}개 선택` : '공항을 선택해 주세요'}><AirportCombobox value={arrivalAirportCodes} onChange={setArrivalAirportCodes} priorityCodes={destination?.airportCodes ?? []} placeholder="도착 공항을 검색하세요 (예: NRT, Narita, Tokyo, 일본)" /></Question><Question title="경유"><div className="segmented"><button className="is-active">직항만</button><button>경유도 괜찮아요</button></div></Question><Question title="가는 날 출발 시간대" meta={`${selectedWindow.label} ${selectedWindow.range}`}><div className="flight-time-timeline" role="radiogroup" aria-label="가는 날 출발 시간대">{departureWindows.map((window) => <button type="button" role="radio" aria-checked={departureWindow === window.id} className={departureWindow === window.id ? 'is-selected' : ''} key={window.id} onClick={() => { if (departureWindow !== window.id) update({ selectedFlightId: null, itinerary: null, verification: null }); setDepartureWindow(window.id); }}><span className="timeline-dot" /><strong>{window.label}</strong><small>{window.range}</small></button>)}</div></Question><Question title="선호 항공사" meta={preferredAirlineCodes.length === 0 ? '무관' : `${preferredAirlineCodes.length}개 선택`}><div className="airline-box" role="group" aria-label="선호 항공사 선택">{airlines.map((airline) => { const selected = preferredAirlineCodes.includes(airline.code); return <button type="button" key={airline.code} className={selected ? 'is-selected' : ''} aria-pressed={selected} onClick={() => togglePreferredAirline(airline.code)}><span>{airline.code}</span>{airline.name}{selected && <Check size={14} />}</button>; })}</div><p className="airline-hint">모두 해제하면 항공사 무관으로 검색해요.</p></Question><Question title="1인당 가격 상한"><input className="range" type="range" min="280000" max="950000" defaultValue="900000" /><div className="range-labels"><span>28만원</span><strong>90만원</strong><span>95만원</span></div></Question></div><button className="button button--primary button--wide" onClick={() => setPhase('searching')}><Sparkles size={16} /> 항공권 찾기</button></div>;
   if (availableFlights.length === 0) return <div className="form-page"><PageHeading eyebrow="STEP 3 · 항공권" title={routeFlights.length ? '선택한 시간대의 항공편이 없어요' : '이 노선의 데모 항공편이 아직 없어요'} description={routeFlights.length ? `${selectedWindow.label} ${selectedWindow.range} 출발 조건을 바꿔 다시 찾아보세요.` : `${origin?.name ?? '출발지'}에서 ${destination?.name ?? '목적지'}로 가는 항공편 데이터는 준비 중입니다.`} /><div className="empty-state"><Plane size={36} /><h3>{routeFlights.length ? '다른 출발 시간대를 선택해 주세요' : '항공권을 선택하려면 지원 노선으로 변경해 주세요'}</h3><p>{routeFlights.length ? '검색 조건을 바꾸면 이용 가능한 데모 항공편을 확인할 수 있어요.' : '현재 항공권 데모 데이터는 서울 → 도쿄 노선만 지원하며, 항공권 요청 시 선택 전에는 다음 단계로 진행할 수 없습니다.'}</p><button className="button button--secondary" onClick={() => { update({ selectedFlightId: null, itinerary: null, verification: null }); setPhase('survey'); }}>검색 조건 다시 보기</button></div></div>;
   return <div className="results-page"><div className="agent-summary"><Sparkles size={15} /><strong>{availableFlights.length}개 항공권을 찾았어요.</strong><span>가격과 첫날 활용도를 고려하면 대한항공이 가장 균형이 좋아요.</span><button>추론 보기</button></div><div className="results-toolbar"><div className="segmented" aria-label="항공권 정렬"><button className={sortMode === 'price' ? 'is-active' : ''} onClick={() => setSortMode('price')}>최저가</button><button className={sortMode === 'duration' ? 'is-active' : ''} onClick={() => setSortMode('duration')}>최단시간</button></div><span>{sortedFlights.length}개 표시</span></div><div className="flight-list">{sortedFlights.map((flight) => <button type="button" aria-pressed={trip.selectedFlightId === flight.id} className={`flight-card ${trip.selectedFlightId === flight.id ? 'is-selected' : ''}`} key={flight.id} onClick={() => update({ selectedFlightId: trip.selectedFlightId === flight.id ? null : flight.id, itinerary: null, verification: null })}><div className="offer-top"><span className="status-badge">{flight.tag}</span><div><strong>{flight.price.toLocaleString()}원</strong><small>1인당</small></div></div><div className="airline"><span>{flight.airline.slice(0, 1)}</span><strong>{flight.airline}</strong><small>{flight.code}</small></div><div className="flight-leg"><strong>{flight.outbound.split(' → ')[0]}</strong><div><span>{flight.duration}</span><i /><small>직항</small></div><strong>{flight.outbound.split(' → ')[1]}</strong></div><div className="flight-leg"><strong>{flight.inbound.split(' → ')[0]}</strong><div><span>{flight.duration}</span><i /><small>직항</small></div><strong>{flight.inbound.split(' → ')[1]}</strong></div><div className="offer-note"><Sparkles size={13} />{flight.note}</div></button>)}</div><button className="button button--secondary" onClick={() => { update({ selectedFlightId: null, itinerary: null, verification: null }); setPhase('survey'); }}>조건 다시 설정</button></div>;
 }
@@ -475,6 +484,7 @@ function StaysStep({ trip, update }: { trip: Trip; update: (patch: Partial<Trip>
   const selectedStay = getTripStay(trip, trip.selectedStayId);
   const [phase, setPhase] = useState<'survey' | 'searching' | 'results'>(selectedStay ? 'results' : 'survey');
   const [detailPlace, setDetailPlace] = useState<PlaceDetail | null>(null);
+  const [activeStayId, setActiveStayId] = useState<string | null>(null);
   const [selectedTypes, setSelectedTypes] = useState<Array<'hotel' | 'apartment' | 'hostel' | 'ryokan'>>(['hotel']);
   const [priorities, setPriorities] = useState<Array<'central' | 'station' | 'attraction' | 'quiet'>>(['central', 'station']);
   const [maxPrice, setMaxPrice] = useState(Math.max(220000, selectedStay?.price ?? 0));
@@ -525,7 +535,7 @@ function StaysStep({ trip, update }: { trip: Trip; update: (patch: Partial<Trip>
 
   if (phase === 'searching') return <div className="stream-page"><PageHeading eyebrow="AGENT · STAY SEARCH" title="숙소 위치와 가격을 비교하고 있어요" description="일정에 편리한 동네와 이동 시간을 함께 계산합니다." /><AgentPanel type="숙소" task="staySearch" input={{ trip }} onDone={(payload) => { const result = readAgentSearch(payload); if (result) applyAgentSearch(trip.id, result.flights, result.stays, result.places, result.providers); setPhase('results'); }} onAbort={() => setPhase('survey')} /><SkeletonCards count={3} /></div>;
   if (phase === 'survey') return <div className="form-page"><PageHeading eyebrow="STEP 4 · 숙소" title="숙소를 찾기 전에" description="위치와 예산만 정해도 충분해요." /><div className="route-summary"><BedDouble size={20} /><div><strong>도쿄 · {trip.startDate} 체크인</strong><span>{getNights(trip.startDate, trip.endDate)}박 · 성인 {trip.persona.adults}명 · 객실 1개</span></div><button>수정</button></div><div className="survey-fields"><Question title="어떤 숙소를 찾으세요?" meta={selectedTypes.length ? `${selectedTypes.length}개 선택` : '전체'}><div className="interest-list">{typeOptions.map((option) => { const selected = selectedTypes.includes(option.id); return <button type="button" aria-pressed={selected} className={selected ? 'is-selected' : ''} key={option.id} onClick={() => toggleType(option.id)}>{option.label}{selected && <Check size={13} />}</button>; })}</div></Question><Question title="위치는 뭐가 중요해요?" meta={`${priorities.length}/2`}><div className="interest-list">{priorityOptions.map((option) => { const selected = priorities.includes(option.id); return <button type="button" aria-pressed={selected} className={selected ? 'is-selected' : ''} key={option.id} onClick={() => togglePriority(option.id)}>{option.label}{selected && <Check size={13} />}</button>; })}</div></Question><Question title="1박 예산" meta={`${maxPrice.toLocaleString()}원 이하`}><div className="budget-range"><output>{maxPrice.toLocaleString()}원</output><input className="range" type="range" min="70000" max="480000" step="10000" value={maxPrice} onChange={(event) => changeMaxPrice(Number(event.target.value))} /></div><div className="range-labels"><span>7만원</span><strong>현재 {maxPrice.toLocaleString()}원</strong><span>48만원</span></div></Question><Question title="최소 평점"><div className="segmented">{[0, 7, 8, 9].map((rating) => <button type="button" className={minRating === rating ? 'is-active' : ''} aria-pressed={minRating === rating} key={rating} onClick={() => changeMinRating(rating)}>{rating === 0 ? '무관' : `${rating.toFixed(1)}+`}</button>)}</div></Question></div><button className="button button--primary button--wide" onClick={() => setPhase('searching')}><Sparkles size={16} /> 숙소 찾기</button></div>;
-  return <div className="split-page"><section className="split-list"><div className="agent-summary"><Sparkles size={15} /><strong>{filteredStays.length}곳을 찾았어요.</strong><span>선택한 위치, 가격, 평점 조건을 모두 반영했습니다.</span></div><div className="results-toolbar"><div><button className="button button--secondary button--small" onClick={() => setPhase('survey')}>필터 ({selectedTypes.length + priorities.length + (minRating > 0 ? 1 : 0)})</button><button className="button button--ghost button--small">추천순 <ChevronDown size={14} /></button></div><span>{filteredStays.length}곳</span></div>{filteredStays.length === 0 ? <div className="empty-state"><BedDouble size={34} /><h3>조건에 맞는 숙소가 없어요</h3><p>예산이나 평점, 위치 조건을 조정해 주세요.</p><button className="button button--secondary" onClick={() => setPhase('survey')}>조건 수정</button></div> : <div className="stay-list">{filteredStays.map((stay) => <article className="stay-card-shell" key={stay.id}><button type="button" aria-pressed={trip.selectedStayId === stay.id} className={`stay-card ${trip.selectedStayId === stay.id ? 'is-selected' : ''}`} key={stay.id} onClick={() => update({ selectedStayId: trip.selectedStayId === stay.id ? null : stay.id, itinerary: null, verification: null })}><div className="stay-card__image" style={{ backgroundImage: `url(${stay.image})` }}><span>1/6</span></div><div className="stay-card__body"><span className="status-badge">{stay.tag}</span><h3>{stay.name}</h3><p>★★★★ 호텔 · {stay.area}</p><div className="stay-rating"><i /> <strong>{stay.rating}</strong> 훌륭해요 <span>({stay.reviews.toLocaleString()})</span></div><small><TrainFront size={13} />{stay.station}</small><em>무료 취소 가능</em><div className="stay-price"><strong>{stay.price.toLocaleString()}원</strong><span>/1박 · 총 {stay.total.toLocaleString()}원</span></div></div></button><button className="stay-detail-action" type="button" onClick={() => openStayDetail(stay)} aria-label={`${stay.name} 상세히 보기`}><MapPinned size={14} /> 상세히 보기</button></article>)}</div>}</section><aside className="split-map"><MapPanel places={getTripPlaces(trip)} selectedIds={trip.selectedPlaceIds} stay={selectedStay ?? filteredStays[0] ?? null} /></aside><PlaceDetailModal place={detailPlace} onClose={() => setDetailPlace(null)} /></div>;
+  return <div className="split-page"><section className="split-list"><div className="agent-summary"><Sparkles size={15} /><strong>{filteredStays.length}곳을 찾았어요.</strong><span>선택한 위치, 가격, 평점 조건을 모두 반영했습니다.</span></div><div className="results-toolbar"><div><button className="button button--secondary button--small" onClick={() => setPhase('survey')}>필터 ({selectedTypes.length + priorities.length + (minRating > 0 ? 1 : 0)})</button><button className="button button--ghost button--small">추천순 <ChevronDown size={14} /></button></div><span>{filteredStays.length}곳</span></div>{filteredStays.length === 0 ? <div className="empty-state"><BedDouble size={34} /><h3>조건에 맞는 숙소가 없어요</h3><p>예산이나 평점, 위치 조건을 조정해 주세요.</p><button className="button button--secondary" onClick={() => setPhase('survey')}>조건 수정</button></div> : <div className="stay-list">{filteredStays.map((stay) => <article className="stay-card-shell" key={stay.id}><button type="button" aria-pressed={trip.selectedStayId === stay.id} className={`stay-card ${trip.selectedStayId === stay.id ? 'is-selected' : ''} ${activeStayId === stay.id ? 'is-active' : ''}`} key={stay.id} onClick={() => { setActiveStayId(stay.id); update({ selectedStayId: trip.selectedStayId === stay.id ? null : stay.id, itinerary: null, verification: null }); }}><div className="stay-card__image" style={{ backgroundImage: `url(${stay.image})` }}><span>1/6</span></div><div className="stay-card__body"><span className="status-badge">{stay.tag}</span><h3>{stay.name}</h3><p>★★★★ 호텔 · {stay.area}</p><div className="stay-rating"><i /> <strong>{stay.rating}</strong> 훌륭해요 <span>({stay.reviews.toLocaleString()})</span></div><small><TrainFront size={13} />{stay.station}</small><em>무료 취소 가능</em><div className="stay-price"><strong>{stay.price.toLocaleString()}원</strong><span>/1박 · 총 {stay.total.toLocaleString()}원</span></div></div></button><button className="stay-detail-action" type="button" onClick={() => openStayDetail(stay)} aria-label={`${stay.name} 상세히 보기`}><MapPinned size={14} /> 상세히 보기</button></article>)}</div>}</section><aside className="split-map"><MapPanel places={getTripPlaces(trip)} selectedIds={trip.selectedPlaceIds} activeId={activeStayId} onMarkerClick={setActiveStayId} focusActive stay={selectedStay ?? filteredStays.find((stay) => stay.id === activeStayId) ?? filteredStays[0] ?? null} /></aside><PlaceDetailModal place={detailPlace} onClose={() => setDetailPlace(null)} /></div>;
 }
 
 type MapLinkRow = {

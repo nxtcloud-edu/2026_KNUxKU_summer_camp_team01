@@ -2,7 +2,7 @@
 
 강원대x고려대 Summer Agentic AI 심화 몰입 캠프 1팀 레포지토리입니다.
 
-## Voyagent — AI 여행 플래너
+## JustGO — AI 여행 플래너
 
 > 도시와 날짜만 정하면, AI 에이전트가 항공권·숙소·관광지를 찾아 **검증된 여행 일정표**까지 만들어 주는 웹앱.
 
@@ -19,9 +19,28 @@
 |---|---|---|
 | [`spec.md`](./spec.md) | 프론트엔드 UI/UX 전체 명세 (15장). 화면 10개의 와이어프레임·컴포넌트 규격·인터랙션·상태·한국어 카피, 전체 TypeScript 타입, 목 데이터와 에이전트 스트리밍 계약, 검증 규칙 10개, 테스트 전략, 구현 로드맵 | 전원 |
 | [`design.md`](./design.md) | 위 명세를 v0 / Figma AI / Cursor 등 AI 디자인 도구용 프롬프트로 변환한 세트. 공통 시스템 프롬프트 + 화면별 10개 + 컴포넌트 8개 + 교정용 프롬프트 | 디자인 · FE |
+| [`agent/`](./agent/README.md) | **AI 에이전트 개발 문서 세트.** 프론트엔드와 에이전트 사이의 계약서, 에이전트 행동 명세, 연동 가이드, 협업 규칙 + 기계 판독 스키마·픽스처·계약 테스트 러너 | 에이전트 · FE |
 
 **처음 보는 사람은** `spec.md`의 0장(문서 개요)과 1장(제품 개요)만 읽으면 전체를 파악할 수 있다.
 **바로 만들어 보려면** `design.md`의 B절(공통 시스템 프롬프트)과 C-1(홈 화면)을 v0에 붙여넣는다.
+**에이전트를 만든다면** [`agent/README.md`](./agent/README.md)의 5분 요약부터 읽는다.
+
+### `agent/` 폴더 안내
+
+| 파일 | 내용 |
+|---|---|
+| [`agent/README.md`](./agent/README.md) | 진입점. 5분 요약 · 문서 지도 · 시작하기 · 흔한 실수 5개 |
+| [`agent/contract.md`](./agent/contract.md) | **계약서.** SSE 전송 계층, `AgentEvent` 9종, 작업 5개의 입출력, 필수 필드 등급, 불변식, 에러, 버전 관리 |
+| [`agent/behavior.md`](./agent/behavior.md) | 행동 명세. 추론 노출 원칙, 한국어 카피 규칙, 페르소나 반영 매핑, LLM↔결정론 경계, 작업별 판단 기준, 품질 루브릭 |
+| [`agent/integration.md`](./agent/integration.md) | 연동 가이드. 프록시 참고 구현, 환경 변수, 작업 단위 점진 전환(M0~M5), 관측성, 트러블슈팅 |
+| [`agent/collaboration.md`](./agent/collaboration.md) | 협업 규칙. 소유권 경계, 계약 변경 절차, DoD, 마일스톤, **결정 대기 목록 16건**, 리스크 |
+| `agent/schemas/` · `agent/fixtures/` · `agent/tools/` | 기계 판독 스키마, 입력 픽스처와 골든 스트림, 계약 테스트 러너 |
+
+계약 준수는 의존성 없이 바로 검사할 수 있다.
+
+```bash
+node agent/tools/conformance.mjs http://localhost:8000
+```
 
 ## 계획된 스택
 
@@ -30,7 +49,7 @@
 | 프레임워크 | Next.js 15 (App Router) + TypeScript |
 | 스타일 | Tailwind CSS + shadcn/ui, OKLCH 토큰 |
 | 상태 | Zustand (+ localStorage 지속화) + TanStack Query |
-| 지도 | MapLibre GL JS + OpenFreeMap (**API 키 불필요**) |
+| 지도 | Google Maps JavaScript API (`@react-google-maps/api`, **API 키 필요** — `.env.example` 참고) |
 | 드래그&드롭 | dnd-kit |
 | 에이전트 | 목 스트리밍 계층 → `MockTransport` ↔ `SseTransport` 교체 가능 |
 | 배포 | Vercel |
@@ -47,7 +66,7 @@
 
 ## 다음 단계
 
-[`spec.md` 14장 구현 로드맵](./spec.md#14-구현-로드맵)의 26단계를 순서대로 진행한다.
+**프론트엔드** — [`spec.md` 14장 구현 로드맵](./spec.md#14-구현-로드맵)의 26단계를 순서대로 진행한다.
 시간이 부족할 때의 최소 데모 경로는 [14.3](./spec.md#143-최소-데모-경로-시간이-부족할-때)에 정리되어 있다.
 
 ## 백엔드 API
@@ -70,3 +89,10 @@ curl -N -X POST http://localhost:3000/api/agent/flightSearch \
 지원 작업은 `flightSearch`, `staySearch`, `placeDiscovery`, `itineraryGenerate`, `itineraryVerify`다. 응답은 `text/event-stream`이며 각 프레임은 명세 6.3의 `AgentEvent` JSON을 `data:` 필드에 담는다. `GET /api/health`는 배포 후 헬스 체크에 사용한다.
 
 전체 검증은 `npm run check`로 실행한다. SSE 연출 속도는 선택적으로 `AGENT_STREAM_DELAY_MS`(0~2000ms)로 조절할 수 있다.
+**에이전트** — [`agent/collaboration.md` 6장 마일스톤](./agent/collaboration.md#6-마일스톤)의 M0~M5를 진행한다.
+M0(계약을 지키는 스텁 서버)은 프론트 진행 상황과 무관하게 **지금 바로 착수할 수 있다.**
+
+**착수 전 결정이 필요한 항목** 2건이 있다. [`agent/collaboration.md` 7장](./agent/collaboration.md#7-결정-대기-목록)에서 확인한다.
+
+- 목 데이터 소유권과 `Place.id` 안정성 (M1 착수 전)
+- 저장소 구조 — 단일 vs 분리 (킥오프)

@@ -6,7 +6,8 @@ import { ArrowRight, CheckCircle2, Compass, MoreHorizontal, Search, Sparkles, Tr
 import { useMemo, useState } from 'react';
 
 import { BrandHeader } from '@/components/AppShell';
-import { CITIES, ORIGIN_CITIES } from '@/lib/data';
+import { getCityById, isDemoCity, searchCities } from '@/lib/cities';
+import { CITIES } from '@/lib/data';
 import { isVerificationCurrent } from '@/lib/itinerary';
 import { getTripDestination, getTripOrigin, locationSubtitle } from '@/lib/locations';
 import { useTripStore } from '@/lib/store';
@@ -23,6 +24,7 @@ function LocationSearch({ options, query, selected, placeholder, onQueryChange, 
   onSelect: (location: City | null) => void;
 }) {
   const { locations, loading, error, fromGoogle } = useLocationAutocomplete(query, options);
+  const results = query.trim() ? searchCities(query, 20) : [];
 
   return (
     <div className="city-search">
@@ -34,13 +36,11 @@ function LocationSearch({ options, query, selected, placeholder, onQueryChange, 
         placeholder={placeholder}
         aria-label={placeholder}
       />
-      {query && !selected && (
+      {query && !selected && results.length > 0 && (
         <div className="city-search__menu">
-          {loading && <p className="field-hint">Google Places에서 도시를 찾고 있어요…</p>}
-          {error && <p className="form-error" role="alert">{error}</p>}
-          {!loading && !error && locations.map((item) => (
-            <button type="button" key={item.id} onClick={() => { onSelect(item); onQueryChange(''); }}>
-              <span>{item.flag}</span><strong>{item.name}</strong><small>{locationSubtitle(item)}</small><em>{fromGoogle ? 'Google Places' : '지원 도시'}</em>
+          {results.map((item) => (
+            <button key={item.id} onClick={() => { onSelect(item.id); onQueryChange(''); }}>
+              <span>{item.flag}</span><strong>{item.name}</strong><small>{item.country} · {item.airportCodes.join(' · ')}</small>{isDemoCity(item) && <em>체험 데이터</em>}
             </button>
           ))}
         </div>
@@ -59,7 +59,10 @@ export function HomeScreen() {
   const removeTrip = useTripStore((state) => state.removeTrip);
   const hasHydrated = useTripStore((state) => state.hasHydrated);
   const tripList = useMemo(() => Object.values(trips).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)), [trips]);
-  const start = (city = selectedCity, origin = selectedOrigin) => {
+  const selectedOrigin = getCityById(selectedOriginId);
+  const selectedCity = getCityById(selectedCityId);
+
+  const start = (cityId?: string, originId = selectedOriginId ?? undefined) => {
     const params = new URLSearchParams();
     if (origin) params.set('origin', origin.id);
     if (city) params.set('city', city.id);
@@ -75,8 +78,8 @@ export function HomeScreen() {
         <h1>{messages.home.title1}<br /><span>{messages.home.title2}</span></h1>
         <p>{messages.home.description1}<br />{messages.home.description2}</p>
         <div className="quick-start">
-          <LocationSearch options={ORIGIN_CITIES} query={originQuery} selected={selectedOrigin} placeholder={messages.home.originPlaceholder} onQueryChange={setOriginQuery} onSelect={setSelectedOrigin} />
-          <LocationSearch options={CITIES} query={destinationQuery} selected={selectedCity} placeholder={messages.home.placeholder} onQueryChange={setDestinationQuery} onSelect={setSelectedCity} />
+          <LocationSearch query={originQuery} selectedId={selectedOriginId} placeholder={messages.home.originPlaceholder} onQueryChange={setOriginQuery} onSelect={setSelectedOriginId} />
+          <LocationSearch query={destinationQuery} selectedId={selectedCityId} placeholder={messages.home.placeholder} onQueryChange={setDestinationQuery} onSelect={setSelectedCityId} />
           <button
             aria-label={selectedOrigin && selectedCity ? `${selectedOrigin.name}에서 ${selectedCity.name} 여행 계획 짜기` : messages.home.start}
             className="button button--primary button--large"
@@ -97,8 +100,8 @@ export function HomeScreen() {
         ) : (
           <div className="trip-grid">
             {tripList.map((trip) => {
-              const origin = getTripOrigin(trip);
-              const city = getTripDestination(trip);
+              const origin = getCityById(trip.originId);
+              const city = getCityById(trip.destinationId);
               const progress = Math.round((trip.completedSteps.length / 7) * 100);
               return (
                 <article className="trip-card" key={trip.id}>

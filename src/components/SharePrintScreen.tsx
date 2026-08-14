@@ -7,8 +7,8 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { BrandHeader } from '@/components/AppShell';
 import { MapPanel } from '@/components/MapPanel';
-import { getTripDestination } from '@/lib/locations';
-import { getTripFlight, getTripStay } from '@/lib/searchResults';
+import { getCityById } from '@/lib/cities';
+import { FLIGHTS, STAYS } from '@/lib/data';
 import { isVerificationCurrent } from '@/lib/itinerary';
 import { getTripPlace, getTripPlaces } from '@/lib/places';
 import { useTripStore } from '@/lib/store';
@@ -66,9 +66,9 @@ export function SharePrintScreen({ mode }: { mode: ReadonlyMode }) {
   }, [copyStatus]);
 
   const trip = savedTrip ?? (mode === 'share' ? snapshot : null);
-  const city = trip ? getTripDestination(trip) : undefined;
-  const flight = trip ? getTripFlight(trip, trip.selectedFlightId) : undefined;
-  const stay = trip ? getTripStay(trip, trip.selectedStayId) : undefined;
+  const city = getCityById(trip?.destinationId);
+  const flight = FLIGHTS.find((item) => item.id === trip?.selectedFlightId);
+  const stay = STAYS.find((item) => item.id === trip?.selectedStayId);
   const allPlaces = useMemo(() => trip ? getTripPlaces(trip) : [], [trip]);
   const selectedPlaces = useMemo(() => trip ? allPlaces.filter((place) => trip.selectedPlaceIds.includes(place.id)) : [], [allPlaces, trip]);
 
@@ -88,7 +88,7 @@ export function SharePrintScreen({ mode }: { mode: ReadonlyMode }) {
     return <div className="share-empty"><Sparkles size={30} /><h1>{isSavedResult ? '저장된 일정을 찾을 수 없어요' : '일정을 불러올 수 없어요'}</h1><p>{isSavedResult ? 'URL이 올바른지 확인하거나, 일정을 저장한 브라우저에서 다시 열어 주세요.' : '링크가 잘렸거나 아직 일정이 완성되지 않았어요.'}</p><Link href="/" className="button button--primary">홈으로</Link></div>;
   }
 
-  const heroLabel = mode === 'result' ? '저장된 여행 일정' : mode === 'share' ? '공유된 여행 일정' : 'VOYAGENT TRIP PLAN';
+  const heroLabel = mode === 'result' ? '저장된 여행 일정' : mode === 'share' ? '공유된 여행 일정' : 'JUSTGO TRIP PLAN';
 
   return (
     <div className={`readonly-page ${mode === 'print' ? 'print-page' : ''}`}>

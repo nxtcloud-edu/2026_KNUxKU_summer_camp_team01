@@ -22,6 +22,17 @@ export type City = {
   source?: 'catalog' | 'google-places';
 };
 
+export type Airport = {
+  /** IATA 3-letter code, e.g. 'ICN' */
+  code: string;
+  name: string;
+  city: string;
+  country: string;
+  /** ISO 3166-1 alpha-2 country code, e.g. 'KR' */
+  countryCode: string;
+  flag: string;
+};
+
 export type PlaceCategory = '명소' | '역사' | '자연' | '미술관' | '맛집' | '쇼핑';
 
 export type TripPlace = {
@@ -37,8 +48,6 @@ export type TripPlace = {
   summary?: string;
   note?: string;
   image?: string;
-  x?: number;
-  y?: number;
   closed?: string;
   reservation?: boolean;
   description?: string;
@@ -60,8 +69,8 @@ export type Place = TripPlace & {
   summary: string;
   note: string;
   image: string;
-  x: number;
-  y: number;
+  latitude: number;
+  longitude: number;
 };
 
 export type ImportedPlace = TripPlace & {
@@ -98,10 +107,8 @@ export type StayOffer = {
   station: string;
   tag: string;
   image: string;
-  x: number;
-  y: number;
-  latitude?: number;
-  longitude?: number;
+  latitude: number;
+  longitude: number;
 };
 
 export type ItineraryItem = {

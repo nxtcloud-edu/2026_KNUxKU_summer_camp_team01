@@ -457,7 +457,7 @@ export const useTripStore = typeof window === 'undefined'
   ? create<TripStore>()(tripStoreCreator)
   : create<TripStore>()(
     persist(tripStoreCreator, {
-      name: 'voyagent:trips',
+      name: 'justgo:trips',
       version: 1,
       storage: createJSONStorage(() => window.localStorage),
       partialize: (state) => ({ trips: state.trips }),
