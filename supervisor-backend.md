@@ -1,19 +1,46 @@
 # Supervisor Backend 사용 가이드
 
-Supervisor 백엔드 실행 포트, 엔드포인트, 최초 일정 생성 `curl`, 기존 일정
-재검증 `curl` 예제를 먼저 정리한 문서입니다.
+## 바로 필요한 정보
+
+| 구분 | 포트 번호 | 기본 URL | Endpoint |
+|---|---:|---|---|
+| Supervisor | `8000` | `http://127.0.0.1:8000` | `GET /health`, `POST /agent/plan` |
+| Plan Agent | `8001` | `http://127.0.0.1:8001` | `POST /agent/itineraryGenerate`, `POST /agent/itineraryReplan` |
+| Verification Agent | `8003` | `http://127.0.0.1:8003` | `POST /agent/itineraryVerify` |
+
+### 핵심 호출 URL
+
+```text
+Supervisor 상태 확인
+GET http://127.0.0.1:8000/health
+
+최초 일정 생성
+POST http://127.0.0.1:8000/agent/plan
+
+기존 일정 재검증
+POST http://127.0.0.1:8003/agent/itineraryVerify
+```
+
+> 최초 일정 생성은 Supervisor로 호출합니다.  
+> 기존 일정 재검증은 Supervisor가 아니라 Verification Agent로 직접 호출합니다.
 
 ---
 
 ## 1. Supervisor 실행 포트 / Endpoint
 
-### 기본 주소
+### Supervisor 포트 번호
+
+```text
+8000
+```
+
+### Supervisor 기본 URL
 
 ```text
 http://127.0.0.1:8000
 ```
 
-### Supervisor Endpoint
+### Supervisor Endpoint 목록
 
 | 기능 | Method | Endpoint | 설명 |
 |---|---|---|---|
