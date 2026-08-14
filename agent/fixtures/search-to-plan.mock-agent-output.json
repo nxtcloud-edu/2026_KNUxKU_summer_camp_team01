@@ -1,0 +1,88 @@
+{
+  "schema_version": "1.0",
+  "trip_info": {
+    "destination": "도쿄",
+    "start_date": "2026-10-15",
+    "end_date": "2026-10-17",
+    "num_travelers": 2,
+    "budget_total": 1200000.0,
+    "budget_currency": "KRW",
+    "budget_includes": [
+      "숙소",
+      "식사",
+      "관광지"
+    ],
+    "transport_mode": "대중교통",
+    "day_start_time": "09:00",
+    "day_end_time": "22:00",
+    "persona": {
+      "description": "도쿄의 대표 장소와 현지 경험을 선호하는 여행",
+      "must_visit": [],
+      "avoid": [
+        "장시간 도보"
+      ],
+      "pace": "보통",
+      "max_walking_level": "중간"
+    }
+  },
+  "selected": {
+    "flight": {
+      "id": "mock-flight-1",
+      "outbound": {
+        "depart_at": "2026-10-15T09:00:00+09:00",
+        "arrive_at": "2026-10-15T11:20:00+09:00",
+        "duration_min": 140
+      },
+      "inbound": {
+        "depart_at": "2026-10-17T18:00:00+09:00",
+        "arrive_at": "2026-10-17T20:30:00+09:00",
+        "duration_min": 150
+      },
+      "total_price": {
+        "amount": 520000.0,
+        "currency": "KRW"
+      }
+    },
+    "stay": {
+      "id": "stay-asakusa-view",
+      "name": "아사쿠사 뷰 호텔",
+      "lat": 35.7154,
+      "lng": 139.7934,
+      "price": 165000.0,
+      "price_unit": "per_stay",
+      "check_in_time": "15:00",
+      "check_out_time": "11:00",
+      "note": "[DEMO DATA] 합성 숙소 정보 · 도쿄 중심부"
+    },
+    "places": [
+      {
+        "id": "tokyo-sensoji",
+        "name": "센소지",
+        "category": "관광지",
+        "lat": 35.7148,
+        "lng": 139.7967,
+        "price": 0.0,
+        "price_unit": "per_person",
+        "opening_hours": "06:00-17:00",
+        "closed_days": [],
+        "expected_duration_min": 90,
+        "physical_intensity": "중간",
+        "note": "[DEMO DATA] 합성 관광지 정보"
+      },
+      {
+        "id": "tokyo-skytree",
+        "name": "도쿄 스카이트리",
+        "category": "관광지",
+        "lat": 35.7101,
+        "lng": 139.8107,
+        "price": 21000.0,
+        "price_unit": "per_person",
+        "opening_hours": "10:00-21:00",
+        "closed_days": [],
+        "expected_duration_min": 120,
+        "physical_intensity": "중간",
+        "note": "[DEMO DATA] 합성 관광지 정보"
+      }
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+# Local secrets and environment overrides
+.env
+.env.*
+!.env.example
+
+# Python generated files
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+
+# Search Agent build artifacts
+agent/search-agent/build/
+agent/search-agent/dist/
