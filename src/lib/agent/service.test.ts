@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createAgentEvents } from '@/lib/agent/events';
 import { AgentInputError, buildItinerary, validateTaskInput, verifyItinerary } from '@/lib/agent/service';
+import { PLACES } from '@/lib/data';
 import { createTrip } from '@/lib/types';
 
 describe('agent input validation', () => {
@@ -19,6 +20,7 @@ describe('planning service', () => {
     const trip = createTrip('test-trip');
     trip.startDate = '2026-08-17';
     trip.endDate = '2026-08-20';
+    trip.searchPlaceOffers = PLACES.filter((place) => ['sensoji', 'skytree'].includes(place.id));
     trip.selectedPlaceIds = ['sensoji', 'skytree'];
 
     const itinerary = buildItinerary(trip);
@@ -49,6 +51,7 @@ describe('planning service', () => {
     const trip = createTrip('verify-trip');
     trip.startDate = '2026-08-17';
     trip.endDate = '2026-08-17';
+    trip.searchPlaceOffers = PLACES.filter((place) => ['museum', 'skytree'].includes(place.id));
     trip.selectedPlaceIds = ['museum', 'skytree'];
 
     const checks = verifyItinerary(buildItinerary(trip));

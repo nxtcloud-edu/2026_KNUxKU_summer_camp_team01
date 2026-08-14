@@ -45,6 +45,7 @@ async function* parseSse(response: Response): AsyncGenerator<UpstreamEvent> {
 }
 
 export const liveAgentEnabled = () => process.env.AGENT_MODE === 'live';
+export const demoAgentEnabled = () => process.env.AGENT_MODE === 'demo';
 
 export async function* createLiveAgentEvents(
   task: AgentTaskId,

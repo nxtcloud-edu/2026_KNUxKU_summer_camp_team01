@@ -1,11 +1,10 @@
-import { FLIGHTS, STAYS } from '@/lib/data';
 import type { FlightOffer, StayOffer, Trip } from '@/lib/types';
 
 export const getTripFlights = (trip: Pick<Trip, 'searchFlightOffers'>): FlightOffer[] =>
-  trip.searchFlightOffers?.length ? trip.searchFlightOffers : FLIGHTS;
+  trip.searchFlightOffers ?? [];
 
 export const getTripStays = (trip: Pick<Trip, 'searchStayOffers'>): StayOffer[] =>
-  trip.searchStayOffers?.length ? trip.searchStayOffers : STAYS;
+  trip.searchStayOffers ?? [];
 
 export const getTripFlight = (trip: Pick<Trip, 'searchFlightOffers'>, id: string | null): FlightOffer | undefined =>
   getTripFlights(trip).find((offer) => offer.id === id);

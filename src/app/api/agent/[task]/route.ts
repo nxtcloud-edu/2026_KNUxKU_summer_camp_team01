@@ -1,6 +1,6 @@
 import { createAgentEvents } from '@/lib/agent/events';
 import { isAgentTask } from '@/lib/agent/contracts';
-import { createLiveAgentEvents, liveAgentEnabled } from '@/lib/agent/liveEvents';
+import { createLiveAgentEvents, demoAgentEnabled, liveAgentEnabled } from '@/lib/agent/liveEvents';
 import { AgentInputError, validateTaskInput } from '@/lib/agent/service';
 
 export const runtime = 'nodejs';
@@ -29,6 +29,10 @@ export async function POST(request: Request, context: { params: Promise<{ task: 
   } catch (error) {
     const detail = error instanceof AgentInputError ? error.message : '올바른 JSON 요청 본문이 필요합니다.';
     return problem(400, 'Invalid agent input', detail);
+  }
+
+  if (!liveAgentEnabled() && !demoAgentEnabled()) {
+    return problem(503, 'Agent mode is not configured', 'AGENT_MODE를 live로 설정해야 합니다. 정적 데모는 AGENT_MODE=demo에서만 사용할 수 있습니다.');
   }
 
   const stream = new ReadableStream<Uint8Array>({

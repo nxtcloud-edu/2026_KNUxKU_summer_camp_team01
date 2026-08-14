@@ -3,7 +3,6 @@
 import { BedDouble, LocateFixed, Minus, Plus } from 'lucide-react';
 import { useState } from 'react';
 
-import { PLACES } from '@/lib/data';
 import { getMappablePlaces } from '@/lib/places';
 import type { TripPlace } from '@/lib/types';
 
@@ -11,6 +10,7 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 2.5;
 const ZOOM_STEP = 0.25;
 const FOCUS_SCALE = 1.35;
+const EMPTY_PLACES: TripPlace[] = [];
 
 export function MapPanel({
   selectedIds = [],
@@ -18,7 +18,7 @@ export function MapPanel({
   onMarkerClick,
   showRoute = false,
   stay,
-  places = PLACES,
+  places = EMPTY_PLACES,
   focusActive = false,
 }: {
   selectedIds?: string[];

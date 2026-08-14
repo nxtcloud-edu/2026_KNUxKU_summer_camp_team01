@@ -5,6 +5,7 @@ import {
   toSupervisorInput,
   toVerificationInput,
 } from '@/lib/agent/supervisor';
+import { FLIGHTS, PLACES, STAYS } from '@/lib/data';
 import { createTrip } from '@/lib/types';
 
 const createSelectedTrip = () => {
@@ -12,6 +13,9 @@ const createSelectedTrip = () => {
   trip.destinationId = 'tokyo';
   trip.startDate = '2026-08-17';
   trip.endDate = '2026-08-20';
+  trip.searchFlightOffers = FLIGHTS.filter((offer) => offer.id === 'ke703');
+  trip.searchStayOffers = STAYS.filter((stay) => stay.id === 'gracery');
+  trip.searchPlaceOffers = PLACES.filter((place) => ['sensoji', 'skytree'].includes(place.id));
   trip.selectedFlightId = 'ke703';
   trip.selectedStayId = 'gracery';
   trip.selectedPlaceIds = ['sensoji'];
