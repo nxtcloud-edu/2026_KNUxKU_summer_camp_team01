@@ -43,6 +43,16 @@ def _normalize(value: str) -> str:
     return value.strip().casefold()
 
 
+def _name_matches(required: str, candidate: str) -> bool:
+    required_norm = _normalize(required)
+    candidate_norm = _normalize(candidate)
+    return bool(
+        required_norm
+        and candidate_norm
+        and (required_norm in candidate_norm or candidate_norm in required_norm)
+    )
+
+
 def _issue(code: str, message: str, day: int | None = None, item_id: str | None = None) -> CheckIssue:
     return CheckIssue(code=code, message=message, day=day, item_id=item_id)
 
@@ -201,13 +211,11 @@ def check_budget(payload: PlanToVerificationInput) -> BudgetCheck:
 
 
 def check_must_visit(payload: PlanToVerificationInput) -> MustVisitCheck:
-    item_names = {
-        _normalize(item.name) for day in payload.plan.days for item in day.items
-    }
+    item_names = [item.name for day in payload.plan.days for item in day.items]
     missing = [
         place
         for place in payload.trip_info.persona.must_visit
-        if _normalize(place) not in item_names
+        if not any(_name_matches(place, name) for name in item_names)
     ]
     return MustVisitCheck(status="fail" if missing else "pass", missing=missing)
 

@@ -129,10 +129,16 @@ def allocate(
         return result
 
     by_id = {place.id: place for place in places}
-    must_visit_names = {name.strip().casefold() for name in trip.persona.must_visit}
-
     def is_must_visit(place: SelectedPlace) -> bool:
-        return place.name.strip().casefold() in must_visit_names
+        place_name = place.name.strip().casefold()
+        return any(
+            required.strip().casefold()
+            and (
+                required.strip().casefold() in place_name
+                or place_name in required.strip().casefold()
+            )
+            for required in trip.persona.must_visit
+        )
 
     # 방문 가능 날짜를 미리 계산한다.
     feasible: dict[str, list[str]] = {

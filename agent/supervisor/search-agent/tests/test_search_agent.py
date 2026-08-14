@@ -257,6 +257,7 @@ class DemoEnrichmentTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["trip_info"]["destination"], "파리")
         self.assertEqual(payload["selected"]["stay"]["name"], "Hôtel de Test Paris")
         self.assertIn("[DEMO DATA]", payload["selected"]["places"][0]["note"])
+        self.assertEqual(payload["selected"]["places"][0]["opening_hours"], "09:00-18:00")
 
 
 class SearchAgentIntegrationTests(unittest.IsolatedAsyncioTestCase):

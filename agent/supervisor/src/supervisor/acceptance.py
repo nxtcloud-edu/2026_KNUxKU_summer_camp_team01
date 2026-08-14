@@ -33,6 +33,16 @@ _DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _ITEM_ID_PATTERN = re.compile(r"^d[1-9]\d*-[1-9]\d*$")
 
 
+def _name_matches(required: str, candidate: str) -> bool:
+    required_norm = str(required or "").strip().casefold()
+    candidate_norm = str(candidate or "").strip().casefold()
+    return bool(
+        required_norm
+        and candidate_norm
+        and (required_norm in candidate_norm or candidate_norm in required_norm)
+    )
+
+
 @dataclass
 class AcceptanceReport:
     agent: str
@@ -223,13 +233,13 @@ def check_plan_output(payload: Any, source: dict) -> AcceptanceReport:
 
     # ── 필수 방문지 ──
     report.checked.append("필수 방문지 반영")
-    scheduled = {
-        str(item.get("name", "")).strip().casefold()
+    scheduled = [
+        str(item.get("name", ""))
         for day in days
         for item in day.get("items", [])
-    }
+    ]
     for required in trip.get("persona", {}).get("must_visit", []):
-        if str(required).strip().casefold() not in scheduled:
+        if not any(_name_matches(str(required), name) for name in scheduled):
             report.failures.append(f"필수 방문지 '{required}'가 일정에 없습니다")
 
     return report

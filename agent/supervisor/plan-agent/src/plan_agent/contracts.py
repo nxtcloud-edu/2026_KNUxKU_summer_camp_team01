@@ -109,11 +109,11 @@ def check_input_usable(payload: SearchToPlanInput) -> list[Violation]:
 
     # 필수 방문지가 선택 목록에 실제로 있는지. 없으면 어떻게 배치해도
     # `must_visit` 검사가 fail이다.
-    available = {_normalize(place.name) for place in payload.selected.places}
+    available = [place.name for place in payload.selected.places]
     if payload.selected.stay is not None:
-        available.add(_normalize(payload.selected.stay.name))
+        available.append(payload.selected.stay.name)
     for required in trip.persona.must_visit:
-        if _normalize(required) not in available:
+        if not any(_name_matches(required, name) for name in available):
             violations.append(
                 Violation(
                     code="MUST_VISIT_NOT_SELECTED",
@@ -169,6 +169,16 @@ def check_input_usable(payload: SearchToPlanInput) -> list[Violation]:
 
 def _normalize(value: str) -> str:
     return value.strip().casefold()
+
+
+def _name_matches(required: str, candidate: str) -> bool:
+    required_norm = _normalize(required)
+    candidate_norm = _normalize(candidate)
+    return bool(
+        required_norm
+        and candidate_norm
+        and (required_norm in candidate_norm or candidate_norm in required_norm)
+    )
 
 
 # ── 산출 단계 검사 (rules.py 복제) ────────────────────────────
@@ -415,13 +425,11 @@ def check_operating_hours(payload: PlanToVerificationInput) -> list[Violation]:
 def check_must_visit(payload: PlanToVerificationInput) -> list[Violation]:
     """rules.py `check_must_visit`와 같은 판정."""
 
-    names = {
-        _normalize(item.name) for day in payload.plan.days for item in day.items
-    }
+    names = [item.name for day in payload.plan.days for item in day.items]
     missing = [
         place
         for place in payload.trip_info.persona.must_visit
-        if _normalize(place) not in names
+        if not any(_name_matches(place, name) for name in names)
     ]
     if not missing:
         return []

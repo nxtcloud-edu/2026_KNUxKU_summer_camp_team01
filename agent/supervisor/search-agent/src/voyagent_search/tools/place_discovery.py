@@ -2,12 +2,41 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from ..contracts import Category, PlaceCandidate, SearchRequest, SelectedPlace
 from .fact_check import verify_place
 
 _WEEKDAYS = {"월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"}
+_DAY_PATTERN = re.compile(r"(월요일|화요일|수요일|목요일|금요일|토요일|일요일)")
+_HHMM_PATTERN = re.compile(r"([01]?\d|2[0-3]):([0-5]\d)")
+_KOREAN_TIME_PATTERN = re.compile(r"(오전|오후)\s*([0-1]?\d|2[0-3]):([0-5]\d)")
+
+
+def _format_hhmm(hour: int, minute: int) -> str:
+    return f"{hour:02d}:{minute:02d}"
+
+
+def _korean_time_to_hhmm(match: re.Match[str]) -> str:
+    period, hour_text, minute_text = match.groups()
+    hour = int(hour_text)
+    minute = int(minute_text)
+    if period == "오후" and hour < 12:
+        hour += 12
+    if period == "오전" and hour == 12:
+        hour = 0
+    return _format_hhmm(hour, minute)
+
+
+def _extract_hour_range(text: str) -> str | None:
+    converted = _KOREAN_TIME_PATTERN.sub(_korean_time_to_hhmm, text)
+    matches = _HHMM_PATTERN.findall(converted)
+    if len(matches) < 2:
+        return None
+    start_hour, start_minute = map(int, matches[0])
+    end_hour, end_minute = map(int, matches[1])
+    return f"{_format_hhmm(start_hour, start_minute)}-{_format_hhmm(end_hour, end_minute)}"
 
 
 def _name(raw: dict[str, Any]) -> str:
@@ -35,10 +64,34 @@ def _category(raw: dict[str, Any]) -> Category:
 
 def _opening_hours(raw: dict[str, Any]) -> str:
     if raw.get("openingHoursText"):
-        return str(raw["openingHoursText"])
+        normalized = _extract_hour_range(str(raw["openingHoursText"]))
+        return normalized or str(raw["openingHoursText"])
     regular = raw.get("regularOpeningHours") or {}
     descriptions = regular.get("weekdayDescriptions") or []
-    return "; ".join(map(str, descriptions)) or "정보 확인 필요"
+    for description in map(str, descriptions):
+        if "휴무" in description:
+            continue
+        normalized = _extract_hour_range(description)
+        if normalized:
+            return normalized
+    return "정보 확인 필요"
+
+
+def _closed_days(raw: dict[str, Any]) -> list[str]:
+    explicit = [day for day in raw.get("closedDays", []) if day in _WEEKDAYS]
+    if explicit:
+        return explicit
+
+    regular = raw.get("regularOpeningHours") or {}
+    descriptions = regular.get("weekdayDescriptions") or []
+    closed: list[str] = []
+    for description in map(str, descriptions):
+        if "휴무" not in description:
+            continue
+        match = _DAY_PATTERN.search(description)
+        if match:
+            closed.append(match.group(1))
+    return closed
 
 
 def _note(raw: dict[str, Any]) -> str:
@@ -59,7 +112,6 @@ def normalize_places(
         record_id = str(raw.get("id", f"row-{index}"))
         try:
             location = raw.get("location") or {}
-            closed_days = [day for day in raw["closedDays"] if day in _WEEKDAYS]
             place = SelectedPlace(
                 id=str(raw["id"]),
                 name=_name(raw),
@@ -69,7 +121,7 @@ def normalize_places(
                 price=float(raw["estimatedPrice"]),
                 price_unit=str(raw["priceUnit"]),
                 opening_hours=_opening_hours(raw),
-                closed_days=closed_days,
+                closed_days=_closed_days(raw),
                 expected_duration_min=int(raw["expectedDurationMin"]),
                 physical_intensity=str(raw["physicalIntensity"]),
                 note=_note(raw),

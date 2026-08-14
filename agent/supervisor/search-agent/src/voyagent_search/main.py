@@ -25,6 +25,7 @@ from .graph import hybrid_demo_provider_bundle, mock_provider_bundle, run_search
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 SSE_HEADERS = {
     "Cache-Control": "no-cache",

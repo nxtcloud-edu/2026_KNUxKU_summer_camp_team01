@@ -93,5 +93,22 @@ class GooglePlacesClient:
     async def search_places(self, request: SearchRequest) -> list[dict[str, Any]]:
         """장소 Places 원문만 반환하며 입장료·체류시간·활동강도를 만들지 않는다."""
 
-        query = request.place_query or f"{request.trip_info.destination} 관광 명소 맛집"
-        return await self._search(query, request)
+        if request.place_query:
+            return await self._search(request.place_query, request)
+
+        rows: list[dict[str, Any]] = []
+        seen_ids: set[str] = set()
+
+        async def add_results(query: str) -> None:
+            for row in await self._search(query, request):
+                row_id = str(row.get("id", ""))
+                if row_id in seen_ids:
+                    continue
+                seen_ids.add(row_id)
+                rows.append(row)
+
+        for name in request.trip_info.persona.must_visit:
+            await add_results(f"{request.trip_info.destination} {name}")
+
+        await add_results(f"{request.trip_info.destination} 관광 명소 맛집")
+        return rows[: request.max_results]
