@@ -1,8 +1,8 @@
 """Supervisor LangGraph — 하위 에이전트를 순서대로 호출하고 수락 검사한다.
 
-    dispatch_plan ──> accept_plan ──> dispatch_verification ──> accept_verification
-                          │                                            │
-                     실패 시 재하달(상한 있음)                    실패 시 보고
+    dispatch_search ──> dispatch_plan ──> accept_plan ──> dispatch_verification
+                              │                               │
+                         실패 시 재하달(상한 있음)        accept_verification
 
 ## supervisor는 직접 일하지 않는다
 
@@ -13,9 +13,8 @@
 3. 미달이면 재하달한다 (상한 있음)
 4. 전체 시간 예산을 배분한다
 
-Search Agent는 아직 다른 담당자가 만들고 있다. 그래서 현재 그래프는
-`SearchToPlanInput`을 **입력으로 받는다**. Search가 붙으면 그 앞에
-`dispatch_search` 노드를 추가한다.
+입력에 `selected`가 있으면 이미 SearchToPlanInput으로 보고 Plan부터 시작한다.
+`selected`가 없으면 SearchRequest로 보고 Search Agent를 먼저 호출한다.
 """
 
 from __future__ import annotations
@@ -40,7 +39,7 @@ logger = logging.getLogger(__name__)
 class SupervisorState(TypedDict):
     """그래프를 흐르는 상태."""
 
-    source: dict  # SearchToPlanInput
+    source: dict  # SearchRequest 또는 SearchToPlanInput
     plan: dict | None  # PlanToVerificationInput
     verification: dict | None  # {possible, checks, feedback}
     reports: list[AcceptanceReport]
@@ -63,6 +62,35 @@ def _budget_for(state: SupervisorState, requested_ms: int) -> int:
     """하위 호출에 줄 시간. 남은 전체 예산을 넘지 않는다."""
 
     return max(1_000, min(requested_ms, _remaining_ms(state)))
+
+
+def _has_selected_source(state: SupervisorState) -> bool:
+    return isinstance(state.get("source"), dict) and "selected" in state["source"]
+
+
+def _should_plan_after_search(state: SupervisorState) -> str:
+    return "create" if _has_selected_source(state) else "finish"
+
+
+async def _dispatch_search(state: SupervisorState) -> dict:
+    """Search Agent에 검색과 선택 결과 생성을 하달한다."""
+
+    if _remaining_ms(state) <= 0:
+        return {"failures": state["failures"] + ["전체 시간 예산을 초과했습니다"]}
+
+    try:
+        result = await call_agent(
+            agent="search",
+            url=f"{CONFIG.search_url}/agent/search",
+            body=state["source"],
+            timeout_ms=_budget_for(state, CONFIG.search_timeout_ms),
+            on_progress=state.get("on_progress"),
+        )
+    except AgentCallFailed as error:
+        logger.error("Search Agent 호출 실패: %s", error)
+        return {"failures": state["failures"] + [f"search: {error.message}"]}
+
+    return {"source": result.payload}
 
 
 async def _dispatch_plan(state: SupervisorState) -> dict:
@@ -306,6 +334,7 @@ def _accept_verification(state: SupervisorState) -> dict:
 
 def build_supervisor_graph():
     builder = StateGraph(SupervisorState)
+    builder.add_node("dispatch_search", _dispatch_search)
     builder.add_node("dispatch_plan", _dispatch_plan)
     builder.add_node("accept_plan", _accept_plan)
     builder.add_node("reissue", _mark_reissue)
@@ -316,8 +345,23 @@ def build_supervisor_graph():
     # 기존 일정을 검증부터 다시 시작해 재계획 경로로 들어간다.
     builder.add_conditional_edges(
         START,
-        lambda state: "verify" if state.get("plan") else "create",
-        {"create": "dispatch_plan", "verify": "dispatch_verification"},
+        lambda state: (
+            "verify"
+            if state.get("plan")
+            else "create"
+            if _has_selected_source(state)
+            else "search"
+        ),
+        {
+            "search": "dispatch_search",
+            "create": "dispatch_plan",
+            "verify": "dispatch_verification",
+        },
+    )
+    builder.add_conditional_edges(
+        "dispatch_search",
+        _should_plan_after_search,
+        {"create": "dispatch_plan", "finish": END},
     )
     builder.add_edge("dispatch_plan", "accept_plan")
     builder.add_conditional_edges(

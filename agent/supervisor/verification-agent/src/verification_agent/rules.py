@@ -5,6 +5,7 @@ from datetime import date, time, timedelta
 
 from .models import (
     AvoidCheck,
+    AvoidMatch,
     BudgetCheck,
     CheckIssue,
     MustVisitCheck,
@@ -24,6 +25,8 @@ BUDGET_ALIASES = {
     "휴식": {"휴식", "relax"},
     "숙소": {"숙소", "stay"},
 }
+PACE_MAX_ITEMS = {"여유": 3, "보통": 4, "빡빡": 7}
+INTENSITY_RANK = {"낮음": 0, "중": 1, "중간": 1, "높음": 2}
 OPENING_HOURS_PATTERN = re.compile(
     r"^\s*(\d{2}):(\d{2})\s*[-~–]\s*(\d{2}):(\d{2})\s*$"
 )
@@ -209,15 +212,113 @@ def check_must_visit(payload: PlanToVerificationInput) -> MustVisitCheck:
     return MustVisitCheck(status="fail" if missing else "pass", missing=missing)
 
 
+def check_avoid(payload: PlanToVerificationInput) -> AvoidCheck:
+    matches: list[AvoidMatch] = []
+    avoid_terms = [
+        (value, value.strip().casefold())
+        for value in payload.trip_info.persona.avoid
+        if value.strip()
+    ]
+    for day in payload.plan.days:
+        for item in day.items:
+            haystack = " ".join(
+                [item.name, item.category, item.note, item.physical_intensity]
+            ).casefold()
+            for original, normalized in avoid_terms:
+                if normalized in haystack:
+                    matches.append(
+                        AvoidMatch(
+                            avoid=original,
+                            message=(
+                                f"회피 조건 '{original}'이 일정 항목 '{item.name}'과 "
+                                "직접적으로 겹칠 수 있습니다."
+                            ),
+                            day=day.day,
+                            item_id=item.id,
+                        )
+                    )
+                    continue
+                travel = item.travel_from_prev
+                if (
+                    "도보" in normalized
+                    and travel is not None
+                    and travel.distance_km >= 3.0
+                ):
+                    matches.append(
+                        AvoidMatch(
+                            avoid=original,
+                            message=(
+                                f"회피 조건 '{original}'이 있는데 '{item.name}'로 이동하는 "
+                                f"구간 거리가 {travel.distance_km:g}km입니다."
+                            ),
+                            day=day.day,
+                            item_id=item.id,
+                        )
+                    )
+    return AvoidCheck(status="warning" if matches else "pass", matched=matches)
+
+
+def check_pace(payload: PlanToVerificationInput) -> StandardCheck:
+    max_items = PACE_MAX_ITEMS.get(payload.trip_info.persona.pace, 4)
+    issues: list[CheckIssue] = []
+    for day in payload.plan.days:
+        visit_count = sum(1 for item in day.items if item.category != "숙소")
+        if visit_count > max_items:
+            issues.append(
+                _issue(
+                    "PACE_TOO_DENSE",
+                    (
+                        f"요청한 페이스({payload.trip_info.persona.pace}) 기준 하루 "
+                        f"{max_items}곳 이하가 적절하지만 {visit_count}곳이 배치됐습니다."
+                    ),
+                    day.day,
+                )
+            )
+    return StandardCheck(status="warning" if issues else "pass", issues=issues)
+
+
+def check_walking_level(payload: PlanToVerificationInput) -> StandardCheck:
+    limit = INTENSITY_RANK.get(payload.trip_info.persona.max_walking_level, 1)
+    issues: list[CheckIssue] = []
+    for day in payload.plan.days:
+        for item in day.items:
+            item_rank = INTENSITY_RANK.get(item.physical_intensity, 1)
+            if item_rank > limit:
+                issues.append(
+                    _issue(
+                        "WALKING_LEVEL_EXCEEDED",
+                        (
+                            f"요청한 최대 걷기 수준({payload.trip_info.persona.max_walking_level})보다 "
+                            f"활동 강도({item.physical_intensity})가 높은 일정입니다."
+                        ),
+                        day.day,
+                        item.id,
+                    )
+                )
+            travel = item.travel_from_prev
+            if limit == 0 and travel is not None and travel.distance_km >= 2.0:
+                issues.append(
+                    _issue(
+                        "LONG_TRAVEL_DISTANCE_FOR_LOW_WALKING",
+                        (
+                            f"걷기 수준을 낮음으로 요청했지만 '{item.name}' 이동 구간 거리가 "
+                            f"{travel.distance_km:g}km입니다."
+                        ),
+                        day.day,
+                        item.id,
+                    )
+                )
+    return StandardCheck(status="fail" if issues else "pass", issues=issues)
+
+
 def build_rule_checks(payload: PlanToVerificationInput) -> VerificationChecks:
-    ai_pending = StandardCheck(status="skipped", issues=[])
     return VerificationChecks(
         physical_feasibility=check_physical_feasibility(payload),
         budget=check_budget(payload),
         operating_hours=check_operating_hours(payload),
         daily_schedule=check_daily_schedule(payload),
         must_visit=check_must_visit(payload),
-        avoid=AvoidCheck(status="skipped", matched=[]),
-        pace=ai_pending,
-        walking_level=ai_pending.model_copy(deep=True),
+        avoid=check_avoid(payload),
+        pace=check_pace(payload),
+        walking_level=check_walking_level(payload),
     )

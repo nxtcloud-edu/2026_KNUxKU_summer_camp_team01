@@ -710,7 +710,7 @@ class SearchAgentContractTests(unittest.TestCase):
 
     def test_packaged_schema_matches_repository_canonical_schema(self) -> None:
         repository_schema = json.loads(
-            (Path(__file__).resolve().parents[2] / "schemas" / "search-to-plan.schema.json").read_text(encoding="utf-8")
+            (Path(__file__).resolve().parents[3] / "schemas" / "search-to-plan.schema.json").read_text(encoding="utf-8")
         )
         packaged_schema = json.loads(
             (Path(__file__).resolve().parents[1] / "src" / "voyagent_search" / "schemas" / "search-to-plan.schema.json").read_text(encoding="utf-8")

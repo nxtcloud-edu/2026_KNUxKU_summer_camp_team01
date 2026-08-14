@@ -5,6 +5,7 @@
 | 구분 | 포트 번호 | 기본 URL | Endpoint |
 |---|---:|---|---|
 | Supervisor | `8000` | `http://127.0.0.1:8000` | `GET /health`, `POST /agent/plan` |
+| Search Agent | `8002` | `http://127.0.0.1:8002` | `GET /health`, `POST /agent/search` |
 | Plan Agent | `8001` | `http://127.0.0.1:8001` | `POST /agent/itineraryGenerate`, `POST /agent/itineraryReplan` |
 | Verification Agent | `8003` | `http://127.0.0.1:8003` | `POST /agent/itineraryVerify` |
 
@@ -17,11 +18,15 @@ GET http://127.0.0.1:8000/health
 최초 일정 생성
 POST http://127.0.0.1:8000/agent/plan
 
+Search Agent 단독 호출
+POST http://127.0.0.1:8002/agent/search
+
 기존 일정 재검증
 POST http://127.0.0.1:8003/agent/itineraryVerify
 ```
 
-> 최초 일정 생성은 Supervisor로 호출합니다.  
+> 최초 일정 생성은 Supervisor로 호출합니다.
+> 입력에 `selected`가 없으면 Supervisor가 Search Agent를 먼저 호출합니다.
 > 기존 일정 재검증은 Supervisor가 아니라 Verification Agent로 직접 호출합니다.
 
 ---
@@ -54,6 +59,7 @@ http://127.0.0.1:8000
 
 | Agent | 기본 주소 | Method | Endpoint | 설명 |
 |---|---|---|---|---|
+| Search Agent | `http://127.0.0.1:8002` | `POST` | `/agent/search` | 검색 요청을 Plan Agent 입력으로 변환 |
 | Plan Agent | `http://127.0.0.1:8001` | `POST` | `/agent/itineraryGenerate` | 일정 생성 |
 | Plan Agent | `http://127.0.0.1:8001` | `POST` | `/agent/itineraryReplan` | 검증 피드백 기반 재계획 |
 | Verification Agent | `http://127.0.0.1:8003` | `POST` | `/agent/itineraryVerify` | 기존 일정 재검증 |
@@ -64,7 +70,23 @@ http://127.0.0.1:8000
 
 Supervisor의 `/agent/plan`을 호출합니다.
 
-입력 파일:
+Search Agent까지 포함한 전체 루프 입력 파일:
+
+```text
+data/sample/search-request.input.json
+```
+
+실행 명령:
+
+```bash
+curl -N -sS \
+  -X POST http://127.0.0.1:8000/agent/plan \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: text/event-stream' \
+  --data-binary @data/sample/search-request.input.json
+```
+
+이미 Search Agent 결과가 준비된 경우 입력 파일:
 
 ```text
 data/sample/search-to-plan.input.json
@@ -89,7 +111,7 @@ curl -N -sS \
   -X POST http://127.0.0.1:8000/agent/plan \
   -H 'Content-Type: application/json' \
   -H 'Accept: text/event-stream' \
-  --data-binary @data/sample/search-to-plan.input.json \
+  --data-binary @data/sample/search-request.input.json \
   | tee /tmp/supervisor.sse
 ```
 
@@ -139,6 +161,13 @@ curl -N -sS \
 
 각 서버는 별도 터미널에서 실행합니다.
 
+### Search Agent 실행
+
+```bash
+cd agent/supervisor/search-agent
+PYTHONPATH=src python -m uvicorn voyagent_search.main:app --host 127.0.0.1 --port 8002
+```
+
 ### Plan Agent 실행
 
 ```bash
@@ -175,9 +204,10 @@ curl -s http://127.0.0.1:8000/health | jq
 ```json
 {
   "status": "ok",
+  "search_url": "http://127.0.0.1:8002",
   "plan_url": "http://127.0.0.1:8001",
   "verification_url": "http://127.0.0.1:8003",
-  "hard_timeout_ms": 40000
+  "hard_timeout_ms": 120000
 }
 ```
 
@@ -226,9 +256,9 @@ VERIFICATION_AGENT_PORT=8003
 PLAN_AGENT_URL=http://127.0.0.1:8001
 VERIFICATION_AGENT_URL=http://127.0.0.1:8003
 
-AGENT_HARD_TIMEOUT_MS=40000
-PLAN_AGENT_TIMEOUT_MS=20000
-VERIFICATION_AGENT_TIMEOUT_MS=15000
+AGENT_HARD_TIMEOUT_MS=120000
+PLAN_AGENT_TIMEOUT_MS=60000
+VERIFICATION_AGENT_TIMEOUT_MS=45000
 
 SUPERVISOR_AUTO_REPLAN=1
 SUPERVISOR_MAX_REISSUE=1

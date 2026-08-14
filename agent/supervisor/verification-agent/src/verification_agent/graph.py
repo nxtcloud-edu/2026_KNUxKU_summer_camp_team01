@@ -109,6 +109,10 @@ def _run_rule_checks(state: VerificationState) -> dict[str, VerificationChecks]:
     return {"checks": build_rule_checks(state["payload"])}
 
 
+def _prefer_ai(ai_check, rule_check):
+    return rule_check if ai_check.status == "skipped" else ai_check
+
+
 async def _run_ai_checks(state: VerificationState) -> dict[str, VerificationChecks]:
     checks = state["checks"]
     if checks is None:
@@ -118,9 +122,11 @@ async def _run_ai_checks(state: VerificationState) -> dict[str, VerificationChec
     return {
         "checks": checks.model_copy(
             update={
-                "avoid": judgement.avoid,
-                "pace": judgement.pace,
-                "walking_level": judgement.walking_level,
+                "avoid": _prefer_ai(judgement.avoid, checks.avoid),
+                "pace": _prefer_ai(judgement.pace, checks.pace),
+                "walking_level": _prefer_ai(
+                    judgement.walking_level, checks.walking_level
+                ),
             },
             deep=True,
         )

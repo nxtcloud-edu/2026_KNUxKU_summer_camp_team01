@@ -136,7 +136,7 @@ def _build_config() -> Config:
     return Config(
         port=_get_int("PLAN_AGENT_PORT", 8001),
         log_level=_get("LOG_LEVEL", "info").upper(),
-        own_timeout_ms=_get_int("PLAN_AGENT_TIMEOUT_MS", 20_000),
+        own_timeout_ms=_get_int("PLAN_AGENT_TIMEOUT_MS", 60_000),
         google_maps_api_key=_get("GOOGLE_MAPS_API_KEY"),
         routes_timeout_s=_get_float("ROUTES_TIMEOUT_S", 8.0),
         routes_cache_enabled=_get("ROUTES_CACHE", "on").casefold() != "off",

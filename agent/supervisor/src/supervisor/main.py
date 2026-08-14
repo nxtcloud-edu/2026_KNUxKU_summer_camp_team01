@@ -53,6 +53,7 @@ def _stream(events: AsyncIterator[str]) -> StreamingResponse:
 async def health() -> dict:
     return {
         "status": "ok",
+        "search_url": CONFIG.search_url,
         "plan_url": CONFIG.plan_url,
         "verification_url": CONFIG.verification_url,
         "hard_timeout_ms": CONFIG.hard_timeout_ms,

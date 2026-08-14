@@ -12,6 +12,7 @@ python agent/supervisor/plan-agent/tools/save_samples.py
 
 | 파일 | 계약 | 내용 |
 |---|---|---|
+| `search-request.input.json` | `SearchRequest` | Supervisor가 Search Agent부터 호출할 때 쓰는 더미 입력 |
 | `search-to-plan.input.json` | `SearchToPlanInput` | Search Agent가 Plan Agent에 넘기는 것 |
 | `plan-to-verification.output.json` | `PlanToVerificationInput` | Plan Agent가 Verification Agent에 넘기는 것 |
 | `meta.json` | — | 입출력 요약과 검증 결과 |

@@ -107,15 +107,15 @@ def _build() -> SupervisorConfig:
     return SupervisorConfig(
         port=_get_int("SUPERVISOR_PORT", 8000),
         log_level=_get("LOG_LEVEL", "info").upper(),
-        hard_timeout_ms=_get_int("AGENT_HARD_TIMEOUT_MS", 40_000),
+        hard_timeout_ms=_get_int("AGENT_HARD_TIMEOUT_MS", 120_000),
         search_url=_get("SEARCH_AGENT_URL", f"http://127.0.0.1:{search_port}"),
         plan_url=_get("PLAN_AGENT_URL", f"http://127.0.0.1:{plan_port}"),
         verification_url=_get(
             "VERIFICATION_AGENT_URL", f"http://127.0.0.1:{verification_port}"
         ),
         search_timeout_ms=_get_int("SEARCH_AGENT_TIMEOUT_MS", 15_000),
-        plan_timeout_ms=_get_int("PLAN_AGENT_TIMEOUT_MS", 20_000),
-        verification_timeout_ms=_get_int("VERIFICATION_AGENT_TIMEOUT_MS", 15_000),
+        plan_timeout_ms=_get_int("PLAN_AGENT_TIMEOUT_MS", 60_000),
+        verification_timeout_ms=_get_int("VERIFICATION_AGENT_TIMEOUT_MS", 45_000),
         max_reissue=_get_int("SUPERVISOR_MAX_REISSUE", 1),
         auto_replan=_get_int("SUPERVISOR_AUTO_REPLAN", 1),
     )

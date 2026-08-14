@@ -93,7 +93,65 @@ def _parse_response(response: Any) -> AiHumanJudgement:
     text = getattr(response, "output_text", None) or getattr(response, "text", None)
     if not text:
         raise ValueError("Gemini interaction did not contain structured output")
-    return AiHumanJudgement.model_validate_json(text)
+    text = _strip_json_fence(str(text))
+    try:
+        return AiHumanJudgement.model_validate_json(text)
+    except ValueError:
+        return AiHumanJudgement.model_validate(_coerce_loose_judgement(json.loads(text)))
+
+
+def _strip_json_fence(text: str) -> str:
+    stripped = text.strip()
+    if not stripped.startswith("```"):
+        return stripped
+    lines = stripped.splitlines()
+    if len(lines) >= 3 and lines[0].startswith("```") and lines[-1].strip() == "```":
+        return "\n".join(lines[1:-1]).strip()
+    return stripped
+
+
+def _coerce_status(value: Any) -> str:
+    status = str(value or "skipped").strip().casefold()
+    return status if status in {"pass", "warning", "fail", "skipped"} else "skipped"
+
+
+def _coerce_standard_check(raw: Any) -> dict[str, Any]:
+    if not isinstance(raw, dict):
+        return {"status": "skipped", "issues": []}
+    status = _coerce_status(raw.get("status", raw.get("result")))
+    reason = str(raw.get("reason") or raw.get("message") or "").strip()
+    issues = raw.get("issues")
+    if isinstance(issues, list):
+        return {"status": status, "issues": issues}
+    if reason and status in {"warning", "fail", "skipped"}:
+        return {"status": status, "issues": [{"code": "AI_JUDGEMENT", "message": reason}]}
+    return {"status": status, "issues": []}
+
+
+def _coerce_avoid_check(raw: Any) -> dict[str, Any]:
+    if not isinstance(raw, dict):
+        return {"status": "skipped", "matched": []}
+    status = _coerce_status(raw.get("status", raw.get("result")))
+    matched = raw.get("matched")
+    if isinstance(matched, list):
+        return {"status": status, "matched": matched}
+    reason = str(raw.get("reason") or raw.get("message") or "").strip()
+    if reason and status in {"warning", "fail"}:
+        return {
+            "status": status,
+            "matched": [{"avoid": "persona", "message": reason}],
+        }
+    return {"status": status, "matched": []}
+
+
+def _coerce_loose_judgement(raw: Any) -> dict[str, Any]:
+    if not isinstance(raw, dict):
+        raise ValueError("Gemini judgement must be a JSON object")
+    return {
+        "avoid": _coerce_avoid_check(raw.get("avoid")),
+        "pace": _coerce_standard_check(raw.get("pace")),
+        "walking_level": _coerce_standard_check(raw.get("walking_level")),
+    }
 
 
 async def judge_human_constraints(

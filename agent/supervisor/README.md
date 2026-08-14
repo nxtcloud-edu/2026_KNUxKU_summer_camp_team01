@@ -9,13 +9,13 @@
 ```text
 agent/supervisor/
 ├── README.md              이 문서
+├── search-agent/          SearchRequest -> SearchToPlanInput
 ├── plan-agent/            SearchToPlanInput -> PlanToVerificationInput
-├── search-agent/          (다른 담당자 산출물이 병합될 자리)
 └── verification-agent/    PlanToVerificationInput -> VerificationResult
 ```
 
-`verification-agent`는 현재 이 경로에서 실행합니다. `search-agent`는 다른 담당자
-산출물이 병합될 자리이며, supervisor는 각 하위 에이전트를 HTTP로 호출합니다.
+`search-agent`, `plan-agent`, `verification-agent`는 같은 계층의 독립 서비스이며,
+supervisor는 각 하위 에이전트를 HTTP SSE 호출로 실행합니다.
 
 ## 데이터 흐름
 
@@ -26,6 +26,8 @@ agent/supervisor/
         │ trip_info                      │ selected
         │  (persona 포함)                 │  (flight / stay / places)
         └────────────┬───────────────────┘
+        SearchRequest ↓
+                 Search Agent
                      ↓ SearchToPlanInput
                  Plan Agent
                      ↓ PlanToVerificationInput
@@ -59,13 +61,14 @@ agent/supervisor/
 
 | 에이전트 | 엔드포인트 | 입력 | 출력 payload |
 |---|---|---|---|
-| search | (담당자 확정 예정) | 목적지·날짜·인원 등 검색 조건 | `selected` 블록 (`flight` / `stay` / `places`) |
+| search | `POST /agent/search` | `SearchRequest` | `SearchToPlanInput` |
 | plan | `POST /agent/itineraryGenerate` | `SearchToPlanInput` | `PlanToVerificationInput` |
 | verification | `POST /agent/itineraryVerify` | `PlanToVerificationInput` | `{ possible, checks, feedback }` |
 
-Search Agent는 `SearchToPlanInput` 전체를 만들지 않는다. `selected`만 만들고,
-`trip_info`는 프론트엔드가 만든다. 둘을 합쳐 Plan Agent에 보내는 것은 프론트엔드
-또는 supervisor의 일이다.
+Supervisor의 `POST /agent/plan`은 두 입력을 모두 받을 수 있다.
+
+- `SearchRequest`: Search Agent를 먼저 호출한 뒤 Plan Agent로 넘긴다.
+- `SearchToPlanInput`: 이미 검색 결과가 선택된 입력이므로 Plan Agent부터 호출한다.
 
 이벤트는 [`../schemas/agent-event.schema.json`](../schemas/agent-event.schema.json)의
 4종(`status` · `progress` · `done` · `error`)만 사용한다. 모든 스트림은
