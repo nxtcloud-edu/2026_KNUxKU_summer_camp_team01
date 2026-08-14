@@ -105,4 +105,25 @@ describe('Supervisor contract adapter', () => {
       mode: '대중교통', estimated_min: 15,
     });
   });
+
+  it('maps an airport arrival item to its coordinates when verifying an itinerary', () => {
+    const trip = createSelectedTrip();
+    trip.itinerary = [{
+      id: 'day-1',
+      date: '2026-08-17',
+      title: '도착',
+      items: [{
+        id: 'arrival', kind: 'flight', time: '11:20', title: 'NRT 공항 도착', duration: 80,
+        travelMinutes: 78, travelMode: '대중교통',
+      }],
+    }];
+
+    const input = toVerificationInput(trip);
+
+    expect(input.plan.days[0].items[0]).toMatchObject({
+      name: 'NRT 공항 도착',
+      lat: 35.772,
+      lng: 140.3929,
+    });
+  });
 });

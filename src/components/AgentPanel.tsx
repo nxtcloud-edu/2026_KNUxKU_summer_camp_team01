@@ -19,12 +19,14 @@ export function AgentPanel({
   input,
   onDone,
   onAbort,
+  onError,
 }: {
   type?: string;
   task: AgentTaskId;
   input: unknown;
   onDone?: (payload: unknown) => void;
   onAbort?: () => void;
+  onError?: (message: string) => void;
 }) {
   const [status, setStatus] = useState(`${type}을 찾고 있어요`);
   const [thought, setThought] = useState('여행 날짜와 인원, 선택하신 취향을 함께 살펴보고 있어요.');
@@ -36,12 +38,14 @@ export function AgentPanel({
   const activeRequestRef = useRef<ActiveRequest | null>(null);
   const onDoneRef = useRef(onDone);
   const onAbortRef = useRef(onAbort);
+  const onErrorRef = useRef(onError);
   const inputKey = JSON.stringify(input);
 
   useEffect(() => {
     onDoneRef.current = onDone;
     onAbortRef.current = onAbort;
-  }, [onAbort, onDone]);
+    onErrorRef.current = onError;
+  }, [onAbort, onDone, onError]);
 
   useEffect(() => {
     const requestKey = `${task}:${retryKey}:${inputKey}`;
@@ -72,11 +76,20 @@ export function AgentPanel({
           if (event.type === 'progress') setProgress(Math.round(event.value * 100));
           if (event.type === 'tool_call') setTools((current) => [...current, { id: event.id, name: event.name, label: event.label }]);
           if (event.type === 'tool_result') setTools((current) => current.map((tool) => tool.id === event.id ? { ...tool, resultLabel: event.label, ok: event.ok } : tool));
-          if (event.type === 'error' && event.code !== 'aborted') setError(event.message);
+          if (event.type === 'error' && event.code !== 'aborted') {
+            setError(event.message);
+            if (onErrorRef.current) onErrorRef.current(event.message);
+            else onAbortRef.current?.();
+          }
           if (event.type === 'done') onDoneRef.current?.(event.payload);
         }
       } catch (streamError) {
-        if (!controller.signal.aborted) setError(streamError instanceof Error ? streamError.message : '에이전트 연결에 실패했습니다.');
+        if (!controller.signal.aborted) {
+          const message = streamError instanceof Error ? streamError.message : '에이전트 연결에 실패했습니다.';
+          setError(message);
+          if (onErrorRef.current) onErrorRef.current(message);
+          else onAbortRef.current?.();
+        }
       }
     };
     void consume();

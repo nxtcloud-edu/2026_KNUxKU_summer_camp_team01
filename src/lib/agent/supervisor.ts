@@ -103,6 +103,13 @@ const COORDINATES: Record<string, { lat: number; lng: number }> = {
   sequence: { lat: 35.691, lng: 139.702 },
 };
 
+const AIRPORT_COORDINATES: Record<string, { lat: number; lng: number }> = {
+  ICN: { lat: 37.4602, lng: 126.4407 },
+  GMP: { lat: 37.5583, lng: 126.7906 },
+  NRT: { lat: 35.772, lng: 140.3929 },
+  HND: { lat: 35.5494, lng: 139.7798 },
+};
+
 const CATEGORY_MAP: Record<TripPlace['category'], SupervisorCategory> = {
   명소: '관광지',
   역사: '관광지',
@@ -155,6 +162,11 @@ const placeCoordinates = (place: TripPlace) => {
     throw new SupervisorContractError(`${place.name}의 위도·경도가 없어 Supervisor에 전달할 수 없습니다.`);
   }
   return { lat: lat as number, lng: lng as number };
+};
+
+const airportCoordinates = (title: string) => {
+  const code = title.match(/\b[A-Z]{3}\b/)?.[0];
+  return code ? AIRPORT_COORDINATES[code] : undefined;
 };
 
 const toSelectedPlace = (trip: Trip, place: TripPlace): SupervisorSelectedPlace => {
@@ -259,7 +271,7 @@ export const toSupervisorInput = (trip: Trip): SupervisorInput => {
 const toPlanItem = (trip: Trip, item: ItineraryItem, previousItem: ItineraryItem | undefined, dayIndex: number, itemIndex: number): SupervisorPlanItem => {
   const place = item.placeId ? getTripPlace(trip, item.placeId) : getTripPlaces(trip).find((candidate) => candidate.name === item.title);
   const stay = item.kind === 'stay' ? STAYS.find((candidate) => candidate.id === trip.selectedStayId) : undefined;
-  const coordinate = place ? placeCoordinates(place) : stay ? COORDINATES[stay.id] : undefined;
+  const coordinate = place ? placeCoordinates(place) : stay ? COORDINATES[stay.id] : item.kind === 'flight' ? airportCoordinates(item.title) : undefined;
   if (!coordinate) throw new SupervisorContractError(`${item.title}의 좌표가 없어 일정을 검증할 수 없습니다.`);
   const category: SupervisorCategory = item.kind === 'stay' ? '숙소' : item.kind === 'meal' ? '식사' : place ? CATEGORY_MAP[place.category] : '관광지';
   const endMinutes = item.time.split(':').map(Number);
