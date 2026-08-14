@@ -3,7 +3,6 @@
 import { create, type StateCreator } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { PLACES, VERIFICATION_CHECKS } from '@/lib/data';
 import {
   applyItineraryEdit as applyEditToItinerary,
   cloneItinerary,
@@ -12,7 +11,6 @@ import {
   type ItineraryEdit,
 } from '@/lib/itinerary';
 import { getTripPlace } from '@/lib/places';
-import { getTripFlight, getTripStay } from '@/lib/searchResults';
 import { createTrip, type FlightOffer, type ImportedPlace, type ItineraryDay, type Place, type StayOffer, type StepId, type Trip, type VerificationCheck } from '@/lib/types';
 
 type TripPatch = Partial<Omit<Trip, 'persona'>> & { persona?: Partial<Trip['persona']> };
@@ -26,10 +24,8 @@ type TripStore = {
   completeStep: (id: string, step: StepId, next: StepId) => void;
   togglePlace: (id: string, placeId: string) => void;
   importPlaces: (id: string, places: ImportedPlace[], selectedIds: string[], durations: Record<string, number>) => void;
-  addSelectedPlacesToItinerary: (id: string) => number;
   addPlaceToItinerary: (id: string, placeId: string) => boolean;
   removePlaceFromItinerary: (id: string, placeId: string) => boolean;
-  generateItinerary: (id: string) => void;
   applyAgentPlan: (id: string, itinerary: ItineraryDay[], verification: VerificationCheck[] | null) => void;
   applyAgentSearch: (id: string, flights: FlightOffer[], stays: StayOffer[], places: Place[], providers: Record<string, string>) => void;
   applyItineraryEdit: (tripId: string, edit: ItineraryEdit) => void;
@@ -37,16 +33,9 @@ type TripStore = {
   moveItineraryItem: (id: string, sourceDayId: string, itemId: string, targetDayId: string, targetIndex: number) => void;
   addPlacesToItinerary: (id: string, dayId: string, placeIds: string[]) => void;
   removeItineraryItem: (id: string, dayId: string, itemId: string) => void;
-  verifyItinerary: (id: string) => void;
   applyAgentVerification: (id: string, verification: VerificationCheck[]) => void;
   saveItinerary: (id: string) => boolean;
   removeTrip: (id: string) => void;
-};
-
-const addDays = (iso: string, amount: number) => {
-  const base = iso ? new Date(`${iso}T12:00:00`) : new Date();
-  base.setDate(base.getDate() + amount);
-  return base.toISOString().slice(0, 10);
 };
 
 const normalizeTrip = (trip: Trip): Trip => {
@@ -107,47 +96,6 @@ const createPlaceItem = (trip: Trip, placeId: string, itemId: string, index: num
     travelMinutes: 12,
     travelMode: preferredTravelMode(trip, index),
   };
-};
-
-const buildItinerary = (trip: Trip): ItineraryDay[] => {
-  const selected = [...new Set(trip.selectedPlaceIds)]
-    .map((id) => getTripPlace(trip, id))
-    .filter((place): place is NonNullable<typeof place> => Boolean(place));
-  const places = selected.length > 0 ? selected : PLACES.slice(0, 5);
-  const dayCount = Math.max(1, Math.min(5, trip.startDate && trip.endDate
-    ? Math.round((new Date(trip.endDate).getTime() - new Date(trip.startDate).getTime()) / 86400000) + 1
-    : 3));
-  const days: ItineraryDay[] = Array.from({ length: dayCount }, (_, index) => ({
-    id: `day-${index + 1}`,
-    date: addDays(trip.startDate, index),
-    title: ['도착 · 아사쿠사', '시부야 · 하라주쿠', '우에노 · 도요스', '긴자 · 도심 산책', '마지막 여유 일정'][index] ?? '도쿄 탐험',
-    items: [],
-  }));
-  const selectedFlight = getTripFlight(trip, trip.selectedFlightId);
-  if (selectedFlight) {
-    const arrival = selectedFlight.outbound.split(' → ')[1]?.split(' ') ?? [];
-    days[0].items.push({ id: 'arrival', kind: 'flight', time: arrival[0] ?? '11:20', title: `${arrival[1] ?? '목적지'} 공항 도착`, duration: 80, travelMinutes: 78, travelMode: '대중교통' });
-  }
-  const selectedStay = getTripStay(trip, trip.selectedStayId);
-  if (selectedStay) {
-    days[0].items.push({ id: 'checkin', kind: 'stay', time: '14:00', title: `${selectedStay.name} 체크인`, duration: 30, travelMinutes: 8, travelMode: '도보' });
-  }
-  places.forEach((place, index) => {
-    const dayIndex = index % dayCount;
-    const dayPosition = days[dayIndex].items.filter((item) => item.kind === 'place').length;
-    const hour = 10 + dayPosition * 3 + (dayIndex === 0 ? 4 : 0);
-    days[dayIndex].items.push({
-      id: `item-${place.id}`,
-      placeId: place.id,
-      kind: 'place',
-      time: `${String(Math.min(hour, 20)).padStart(2, '0')}:00`,
-      title: place.name,
-      duration: trip.placeDurations?.[place.id] ?? place.duration,
-      travelMinutes: 8 + ((index * 7) % 23),
-      travelMode: preferredTravelMode(trip, index),
-    });
-  });
-  return days;
 };
 
 const uniqueItemId = (itinerary: ItineraryDay[], placeId: string) => {
@@ -211,7 +159,8 @@ const tripStoreCreator: StateCreator<TripStore> = (set) => ({
     const selectedPlaceIds = current.selectedPlaceIds.includes(placeId)
       ? current.selectedPlaceIds.filter((value) => value !== placeId)
       : [...current.selectedPlaceIds, placeId];
-    return { trips: { ...state.trips, [id]: { ...current, selectedPlaceIds, savedAt: null, updatedAt: new Date().toISOString() } } };
+    const next = structuralReset({ ...current, selectedPlaceIds, itinerary: null, updatedAt: new Date().toISOString() });
+    return { trips: { ...state.trips, [id]: next } };
   }),
   importPlaces: (id, places, selectedIds, durations) => set((state) => {
     const current = normalizeTrip(state.trips[id] ?? createTrip(id));
@@ -227,36 +176,6 @@ const tripStoreCreator: StateCreator<TripStore> = (set) => ({
     });
     return { trips: { ...state.trips, [id]: next } };
   }),
-  addSelectedPlacesToItinerary: (id) => {
-    let addedCount = 0;
-    set((state) => {
-      const current = normalizeTrip(state.trips[id] ?? createTrip(id));
-      const selectedPlaceIds = [...new Set(current.selectedPlaceIds)].filter((placeId) => Boolean(getTripPlace(current, placeId)));
-      if (selectedPlaceIds.length === 0) return state;
-      if (!current.itinerary?.length) {
-        const itinerary = buildItinerary({ ...current, selectedPlaceIds });
-        addedCount = itinerary.flatMap((day) => day.items).filter((item) => item.kind === 'place').length;
-        return { trips: { ...state.trips, [id]: editedTrip({ ...current, selectedPlaceIds }, itinerary) } };
-      }
-      const scheduled = new Set(current.itinerary.flatMap((day) => day.items.flatMap((item) => item.placeId ? [item.placeId] : [])));
-      const placesToAdd = selectedPlaceIds.filter((placeId) => !scheduled.has(placeId));
-      if (placesToAdd.length === 0) return state;
-      let itinerary = current.itinerary;
-      placesToAdd.forEach((placeId, index) => {
-        const targetDay = itinerary.reduce((leastBusy, day) => (
-          day.items.filter((item) => item.kind === 'place').length < leastBusy.items.filter((item) => item.kind === 'place').length ? day : leastBusy
-        ));
-        const item = createPlaceItem(current, placeId, uniqueItemId(itinerary, placeId), scheduled.size + index);
-        if (!item) return;
-        itinerary = itinerary.map((day) => day.id === targetDay.id
-          ? recalculateDayTimes({ ...day, items: [...day.items, item] })
-          : day);
-        addedCount += 1;
-      });
-      return { trips: { ...state.trips, [id]: editedTrip({ ...current, selectedPlaceIds }, itinerary) } };
-    });
-    return addedCount;
-  },
   addPlaceToItinerary: (id, placeId) => {
     let added = false;
     set((state) => {
@@ -265,11 +184,9 @@ const tripStoreCreator: StateCreator<TripStore> = (set) => ({
       const scheduled = new Set(current.itinerary?.flatMap((day) => day.items.flatMap((item) => item.placeId ? [item.placeId] : [])) ?? []);
       if (scheduled.has(placeId)) return state;
       const selectedPlaceIds = [...new Set([...current.selectedPlaceIds, placeId])];
-      if (!current.itinerary?.length) {
-        const itinerary = buildItinerary({ ...current, selectedPlaceIds: [placeId] });
-        added = true;
-        return { trips: { ...state.trips, [id]: editedTrip({ ...current, selectedPlaceIds }, itinerary) } };
-      }
+      // Initial itinerary creation belongs to the Supervisor. This action only
+      // edits an itinerary that has already been generated and accepted.
+      if (!current.itinerary?.length) return state;
       const targetDay = current.itinerary.reduce((leastBusy, day) => (
         day.items.filter((item) => item.kind === 'place').length < leastBusy.items.filter((item) => item.kind === 'place').length ? day : leastBusy
       ));
@@ -302,11 +219,6 @@ const tripStoreCreator: StateCreator<TripStore> = (set) => ({
     });
     return removed;
   },
-  generateItinerary: (id) => set((state) => {
-    const current = normalizeTrip(state.trips[id] ?? createTrip(id));
-    const next = structuralReset({ ...current, itinerary: buildItinerary(current), updatedAt: new Date().toISOString() });
-    return { trips: { ...state.trips, [id]: next } };
-  }),
   applyAgentPlan: (id, itinerary, verification) => set((state) => {
     const current = normalizeTrip(state.trips[id] ?? createTrip(id));
     const updatedAt = new Date().toISOString();
@@ -396,21 +308,6 @@ const tripStoreCreator: StateCreator<TripStore> = (set) => ({
     const remainingPlaceIds = new Set(itinerary.flatMap((day) => day.items.flatMap((item) => item.placeId ? [item.placeId] : [])));
     const selectedPlaceIds = current.selectedPlaceIds.filter((placeId) => remainingPlaceIds.has(placeId));
     return { trips: { ...state.trips, [id]: editedTrip({ ...current, selectedPlaceIds }, itinerary) } };
-  }),
-  verifyItinerary: (id) => set((state) => {
-    const current = normalizeTrip(state.trips[id] ?? createTrip(id));
-    return {
-      trips: {
-        ...state.trips,
-        [id]: {
-          ...current,
-          verification: VERIFICATION_CHECKS,
-          verifiedItinerary: current.itinerary ? cloneItinerary(current.itinerary) : null,
-          savedAt: null,
-          updatedAt: new Date().toISOString(),
-        },
-      },
-    };
   }),
   applyAgentVerification: (id, verification) => set((state) => {
     const current = normalizeTrip(state.trips[id] ?? createTrip(id));

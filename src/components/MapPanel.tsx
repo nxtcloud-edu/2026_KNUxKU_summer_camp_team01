@@ -33,6 +33,19 @@ const MAP_OPTIONS: google.maps.MapOptions = {
 
 type StayMarker = Pick<StayOffer, 'latitude' | 'longitude'> & { id?: string; name?: string };
 
+type MapPanelProps = {
+  selectedIds?: string[];
+  activeId?: string | null;
+  onMarkerClick?: (id: string) => void;
+  showRoute?: boolean;
+  stay?: StayMarker | null;
+  places?: TripPlace[];
+  /** Smoothly pans/zooms the map onto the active place instead of leaving the camera static. */
+  focusActive?: boolean;
+  /** Set to false when the caller already shows place details elsewhere (e.g. a presentation drawer). */
+  showInfoWindow?: boolean;
+};
+
 /** Moves the camera smoothly when the browser/API supports moveCamera(), otherwise falls back to an instant pan + zoom. */
 function animateCamera(map: google.maps.Map, center: google.maps.LatLngLiteral, zoom: number) {
   const withMoveCamera = map as google.maps.Map & { moveCamera?: (options: { center: google.maps.LatLngLiteral; zoom: number }) => void };
@@ -44,7 +57,7 @@ function animateCamera(map: google.maps.Map, center: google.maps.LatLngLiteral, 
   map.setZoom(zoom);
 }
 
-export function MapPanel({
+function LoadedMapPanel({
   selectedIds = [],
   activeId,
   onMarkerClick,
@@ -53,18 +66,7 @@ export function MapPanel({
   places = EMPTY_PLACES,
   focusActive = false,
   showInfoWindow = true,
-}: {
-  selectedIds?: string[];
-  activeId?: string | null;
-  onMarkerClick?: (id: string) => void;
-  showRoute?: boolean;
-  stay?: StayMarker | null;
-  places?: TripPlace[];
-  /** Smoothly pans/zooms the map onto the active place instead of leaving the camera static. */
-  focusActive?: boolean;
-  /** Set to false when the caller already shows place details elsewhere (e.g. a presentation drawer). */
-  showInfoWindow?: boolean;
-}) {
+}: MapPanelProps) {
   const { isLoaded, loadError } = useJsApiLoader({ id: SCRIPT_ID, googleMapsApiKey: GOOGLE_MAPS_API_KEY });
   const [map, setMap] = useState<google.maps.Map | null>(null);
 
@@ -172,12 +174,12 @@ export function MapPanel({
     };
   }, [isLoaded]);
 
-  if (!GOOGLE_MAPS_API_KEY || loadError) {
+  if (loadError) {
     return (
       <div className={`map-panel map-panel--fallback ${focusActive ? 'map-panel--focusable' : ''}`} aria-label="도쿄 여행 지도">
         <MapPinOff size={26} />
         <strong>지도를 표시할 수 없어요</strong>
-        <span>{loadError ? 'Google Maps를 불러오지 못했어요.' : 'Google Maps API 키가 설정되지 않았어요.'}</span>
+        <span>Google Maps를 불러오지 못했어요.</span>
       </div>
     );
   }
@@ -244,4 +246,20 @@ export function MapPanel({
       </div>
     </div>
   );
+}
+
+export function MapPanel(props: MapPanelProps) {
+  // Do not invoke the loader with an empty key: Google emits a console warning
+  // before this component can render its intentional no-key fallback.
+  if (!GOOGLE_MAPS_API_KEY) {
+    return (
+      <div className={`map-panel map-panel--fallback ${props.focusActive ? 'map-panel--focusable' : ''}`} aria-label="도쿄 여행 지도">
+        <MapPinOff size={26} />
+        <strong>지도를 표시할 수 없어요</strong>
+        <span>Google Maps API 키가 설정되지 않았어요.</span>
+      </div>
+    );
+  }
+
+  return <LoadedMapPanel {...props} />;
 }

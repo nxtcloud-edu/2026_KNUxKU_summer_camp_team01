@@ -65,9 +65,7 @@ export async function* createLiveAgentEvents(
     const trip = input.trip;
     const isGenerate = task === 'itineraryGenerate';
     const isVerify = task === 'itineraryVerify';
-    const baseUrl = isVerify
-      ? process.env.VERIFICATION_AGENT_URL ?? 'http://127.0.0.1:8003'
-      : process.env.SUPERVISOR_AGENT_URL ?? 'http://127.0.0.1:8000';
+    const baseUrl = process.env.SUPERVISOR_AGENT_URL ?? 'http://127.0.0.1:8000';
     const path = isGenerate ? '/agent/plan' : isVerify ? '/agent/itineraryVerify' : '/agent/search';
     const body = isGenerate ? toSupervisorInput(trip) : isVerify ? toVerificationInput(trip) : toSearchInput(trip);
     const timeoutMs = Math.max(1_000, Number(process.env.AGENT_HARD_TIMEOUT_MS ?? 45_000) || 45_000);

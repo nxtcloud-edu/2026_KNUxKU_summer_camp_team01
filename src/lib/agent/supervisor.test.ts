@@ -75,7 +75,7 @@ describe('Supervisor contract adapter', () => {
       name: '센소지',
       category: '관광지',
       expected_duration_min: 120,
-      lat: 35.7147,
+      lat: 35.7148,
       lng: 139.7967,
     });
     expect(Object.keys(input.selected.places[0]).sort()).toEqual([

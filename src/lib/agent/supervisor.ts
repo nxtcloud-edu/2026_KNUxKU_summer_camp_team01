@@ -299,7 +299,6 @@ export const toSearchInput = (trip: Trip) => {
   }
   return {
     trip_info: getTripInfo(trip),
-    origin: origin?.name ?? trip.originId ?? '',
     origin_iata: originIata,
     destination_iata: destinationIata,
     include_flights: includeFlights,

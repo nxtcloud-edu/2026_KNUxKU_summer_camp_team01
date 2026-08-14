@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "voyagent-verification-agent"
+version = "0.1.0"
+description = "LangGraph skeleton for Voyagent plan feasibility verification"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi",
+  "google-genai>=2.18.0",
+  "langgraph",
+  "pydantic>=2",
+  "uvicorn[standard]"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
