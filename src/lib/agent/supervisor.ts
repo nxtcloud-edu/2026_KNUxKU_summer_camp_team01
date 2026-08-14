@@ -1,4 +1,5 @@
-import { CITIES, FLIGHTS, STAYS, VERIFICATION_CHECKS } from '@/lib/data';
+import { FLIGHTS, STAYS, VERIFICATION_CHECKS } from '@/lib/data';
+import { getTripDestination } from '@/lib/locations';
 import { getTripPlace, getTripPlaces } from '@/lib/places';
 import type { ItineraryDay, ItineraryItem, Trip, TripPlace, VerificationCheck } from '@/lib/types';
 
@@ -205,7 +206,7 @@ const parseFlightLeg = (value: string, date: string) => {
 };
 
 const getTripInfo = (trip: Trip): SupervisorTripInfo => {
-  const destination = CITIES.find((city) => city.id === trip.destinationId);
+  const destination = getTripDestination(trip);
   const places = getTripPlaces(trip).filter((place) => trip.selectedPlaceIds.includes(place.id));
   const interests = trip.persona.interests.join(', ');
   const description = trip.persona.companionDescription.trim()

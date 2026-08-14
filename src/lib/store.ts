@@ -53,6 +53,8 @@ const normalizeTrip = (trip: Trip): Trip => {
     ...defaults,
     ...trip,
     originId: typeof trip.originId === 'undefined' ? 'seoul' : trip.originId,
+    originLocation: trip.originLocation ?? null,
+    destinationLocation: trip.destinationLocation ?? null,
     persona: {
       ...defaults.persona,
       ...(trip.persona ?? {}),
@@ -154,6 +156,8 @@ const uniqueItemId = (itinerary: ItineraryDay[], placeId: string) => {
 const itineraryPatchKeys = new Set<keyof Trip>([
   'originId',
   'destinationId',
+  'originLocation',
+  'destinationLocation',
   'startDate',
   'endDate',
   'persona',

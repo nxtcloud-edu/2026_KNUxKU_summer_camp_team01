@@ -8,36 +8,39 @@ import { useMemo, useState } from 'react';
 import { BrandHeader } from '@/components/AppShell';
 import { CITIES, ORIGIN_CITIES } from '@/lib/data';
 import { isVerificationCurrent } from '@/lib/itinerary';
+import { getTripDestination, getTripOrigin, locationSubtitle } from '@/lib/locations';
 import { useTripStore } from '@/lib/store';
 import type { City } from '@/lib/types';
+import { useLocationAutocomplete } from '@/lib/useLocationAutocomplete';
 import messages from '../../messages/ko.json';
 
-function LocationSearch({ options, query, selectedId, placeholder, onQueryChange, onSelect }: {
+function LocationSearch({ options, query, selected, placeholder, onQueryChange, onSelect }: {
   options: City[];
   query: string;
-  selectedId: string | null;
+  selected: City | null;
   placeholder: string;
   onQueryChange: (value: string) => void;
-  onSelect: (id: string | null) => void;
+  onSelect: (location: City | null) => void;
 }) {
-  const selected = options.find((item) => item.id === selectedId);
-  const filtered = options.filter((item) => `${item.name} ${item.nameEn} ${item.country} ${item.airportCodes.join(' ')}`.toLowerCase().includes(query.toLowerCase()));
+  const { locations, loading, error, fromGoogle } = useLocationAutocomplete(query, options);
 
   return (
     <div className="city-search">
       <Search size={18} />
       <input
-        value={selected ? `${selected.flag} ${selected.name} (${selected.airportCodes.join(' · ')})` : query}
+        value={selected ? `${selected.flag} ${selected.name}` : query}
         onChange={(event) => { onSelect(null); onQueryChange(event.target.value); }}
         onFocus={() => { if (selected) { onSelect(null); onQueryChange(''); } }}
         placeholder={placeholder}
         aria-label={placeholder}
       />
-      {query && !selected && filtered.length > 0 && (
+      {query && !selected && (
         <div className="city-search__menu">
-          {filtered.map((item) => (
-            <button key={item.id} onClick={() => { onSelect(item.id); onQueryChange(''); }}>
-              <span>{item.flag}</span><strong>{item.name}</strong><small>{item.country} · {item.airportCodes.join(' · ')}</small><em>데모 데이터</em>
+          {loading && <p className="field-hint">Google Places에서 도시를 찾고 있어요…</p>}
+          {error && <p className="form-error" role="alert">{error}</p>}
+          {!loading && !error && locations.map((item) => (
+            <button type="button" key={item.id} onClick={() => { onSelect(item); onQueryChange(''); }}>
+              <span>{item.flag}</span><strong>{item.name}</strong><small>{locationSubtitle(item)}</small><em>{fromGoogle ? 'Google Places' : '지원 도시'}</em>
             </button>
           ))}
         </div>
@@ -50,19 +53,17 @@ export function HomeScreen() {
   const router = useRouter();
   const [originQuery, setOriginQuery] = useState('');
   const [destinationQuery, setDestinationQuery] = useState('');
-  const [selectedOriginId, setSelectedOriginId] = useState<string | null>(null);
-  const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
+  const [selectedOrigin, setSelectedOrigin] = useState<City | null>(null);
+  const [selectedCity, setSelectedCity] = useState<City | null>(null);
   const trips = useTripStore((state) => state.trips);
   const removeTrip = useTripStore((state) => state.removeTrip);
   const hasHydrated = useTripStore((state) => state.hasHydrated);
   const tripList = useMemo(() => Object.values(trips).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)), [trips]);
-  const selectedOrigin = ORIGIN_CITIES.find((item) => item.id === selectedOriginId);
-  const selectedCity = CITIES.find((item) => item.id === selectedCityId);
-
-  const start = (cityId?: string, originId = selectedOriginId ?? undefined) => {
+  const start = (city = selectedCity, origin = selectedOrigin) => {
     const params = new URLSearchParams();
-    if (originId) params.set('origin', originId);
-    if (cityId) params.set('city', cityId);
+    if (origin) params.set('origin', origin.id);
+    if (city) params.set('city', city.id);
+    if (origin || city) sessionStorage.setItem('voyagent:pending-locations', JSON.stringify({ origin, destination: city }));
     router.push(`/plan/new${params.size ? `?${params.toString()}` : ''}`);
   };
 
@@ -74,17 +75,17 @@ export function HomeScreen() {
         <h1>{messages.home.title1}<br /><span>{messages.home.title2}</span></h1>
         <p>{messages.home.description1}<br />{messages.home.description2}</p>
         <div className="quick-start">
-          <LocationSearch options={ORIGIN_CITIES} query={originQuery} selectedId={selectedOriginId} placeholder={messages.home.originPlaceholder} onQueryChange={setOriginQuery} onSelect={setSelectedOriginId} />
-          <LocationSearch options={CITIES} query={destinationQuery} selectedId={selectedCityId} placeholder={messages.home.placeholder} onQueryChange={setDestinationQuery} onSelect={setSelectedCityId} />
+          <LocationSearch options={ORIGIN_CITIES} query={originQuery} selected={selectedOrigin} placeholder={messages.home.originPlaceholder} onQueryChange={setOriginQuery} onSelect={setSelectedOrigin} />
+          <LocationSearch options={CITIES} query={destinationQuery} selected={selectedCity} placeholder={messages.home.placeholder} onQueryChange={setDestinationQuery} onSelect={setSelectedCity} />
           <button
             aria-label={selectedOrigin && selectedCity ? `${selectedOrigin.name}에서 ${selectedCity.name} 여행 계획 짜기` : messages.home.start}
             className="button button--primary button--large"
-            onClick={() => start(selectedCityId ?? undefined)}
+            onClick={() => start()}
           >
             {messages.home.start}<ArrowRight size={16} />
           </button>
         </div>
-        <div className="popular-cities"><span>{messages.home.popular}</span>{CITIES.map((city) => <button key={city.id} onClick={() => { setSelectedCityId(city.id); setDestinationQuery(''); }}>{city.flag} {city.name}</button>)}</div>
+        <div className="popular-cities"><span>{messages.home.popular}</span>{CITIES.map((city) => <button key={city.id} onClick={() => { setSelectedCity(city); setDestinationQuery(''); }}>{city.flag} {city.name}</button>)}</div>
       </section>
 
       <section className="trip-section">
@@ -96,8 +97,8 @@ export function HomeScreen() {
         ) : (
           <div className="trip-grid">
             {tripList.map((trip) => {
-              const origin = ORIGIN_CITIES.find((item) => item.id === trip.originId);
-              const city = CITIES.find((item) => item.id === trip.destinationId);
+              const origin = getTripOrigin(trip);
+              const city = getTripDestination(trip);
               const progress = Math.round((trip.completedSteps.length / 7) * 100);
               return (
                 <article className="trip-card" key={trip.id}>

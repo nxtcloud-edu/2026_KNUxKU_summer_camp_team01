@@ -54,10 +54,12 @@ import { PlaceDetailModal } from '@/components/PlaceDetailModal';
 import type { PlaceDetail } from '@/components/PlaceDetailModal';
 import { CITIES, FLIGHTS, INTERESTS, ORIGIN_CITIES, PLACES, STAYS } from '@/lib/data';
 import { isVerificationCurrent } from '@/lib/itinerary';
+import { getTripDestination, getTripOrigin, locationSubtitle } from '@/lib/locations';
 import { createManualUrlPlace, parseGoogleMapsUrl, parsePlaceFile } from '@/lib/placeImport';
 import { getTripPlace, getTripPlaces, isImportedPlace } from '@/lib/places';
 import { useTripStore } from '@/lib/store';
-import type { ImportedPlace, ItineraryDay, StepId, Trip, TripPlace, VerificationCheck } from '@/lib/types';
+import type { City, ImportedPlace, ItineraryDay, StepId, Trip, TripPlace, VerificationCheck } from '@/lib/types';
+import { useLocationAutocomplete } from '@/lib/useLocationAutocomplete';
 import messages from '../../messages/ko.json';
 
 const STEP_ORDER: StepId[] = ['city', 'persona', 'flights', 'stays', 'places', 'itinerary', 'verify'];
@@ -207,10 +209,10 @@ function CityStep({ trip, update }: { trip: Trip; update: (patch: Partial<Trip>)
   const [destinationQuery, setDestinationQuery] = useState('');
   const [originMenuOpen, setOriginMenuOpen] = useState(!trip.originId);
   const [destinationMenuOpen, setDestinationMenuOpen] = useState(!trip.destinationId);
-  const origin = ORIGIN_CITIES.find((item) => item.id === trip.originId);
-  const city = CITIES.find((item) => item.id === trip.destinationId);
-  const filteredOrigins = ORIGIN_CITIES.filter((item) => `${item.name} ${item.nameEn} ${item.airportCodes.join(' ')}`.toLowerCase().includes(originQuery.toLowerCase()));
-  const filteredDestinations = CITIES.filter((item) => `${item.name} ${item.nameEn} ${item.country} ${item.airportCodes.join(' ')}`.toLowerCase().includes(destinationQuery.toLowerCase()));
+  const origin = getTripOrigin(trip);
+  const city = getTripDestination(trip);
+  const originSearch = useLocationAutocomplete(originQuery, ORIGIN_CITIES);
+  const destinationSearch = useLocationAutocomplete(destinationQuery, CITIES);
   const routeReady = Boolean(origin && city);
   const openDatePicker = (input: HTMLInputElement | null, disabled: boolean) => {
     if (!input || disabled) return;
@@ -225,26 +227,36 @@ function CityStep({ trip, update }: { trip: Trip; update: (patch: Partial<Trip>)
   useEffect(() => {
     const originId = searchParams.get('origin');
     const cityId = searchParams.get('city');
-    const targetOrigin = ORIGIN_CITIES.find((item) => item.id === originId);
-    const targetCity = CITIES.find((item) => item.id === cityId);
+    let pending: { origin?: City | null; destination?: City | null } = {};
+    try {
+      pending = JSON.parse(sessionStorage.getItem('voyagent:pending-locations') ?? '{}') as typeof pending;
+    } catch {
+      sessionStorage.removeItem('voyagent:pending-locations');
+    }
+    const targetOrigin = pending.origin?.id ? pending.origin : ORIGIN_CITIES.find((item) => item.id === originId);
+    const targetCity = pending.destination?.id ? pending.destination : CITIES.find((item) => item.id === cityId);
     const patch: Partial<Trip> = {};
-    if (targetOrigin && !trip.originId) patch.originId = targetOrigin.id;
+    if (targetOrigin && !trip.originId) {
+      patch.originId = targetOrigin.id;
+      patch.originLocation = targetOrigin;
+    }
     if (targetCity && !trip.destinationId) {
       patch.destinationId = targetCity.id;
+      patch.destinationLocation = targetCity;
       patch.title = `${targetCity.name} 여행`;
     }
+    sessionStorage.removeItem('voyagent:pending-locations');
     if (Object.keys(patch).length > 0) update(patch);
   }, [searchParams, trip.destinationId, trip.originId, update]);
 
-  const selectOrigin = (id: string) => {
-    update({ originId: id, selectedFlightId: null, itinerary: null, verification: null });
+  const selectOrigin = (location: City) => {
+    update({ originId: location.id, originLocation: location, selectedFlightId: null, itinerary: null, verification: null });
     setOriginMenuOpen(false);
     setOriginQuery('');
   };
 
-  const selectDestination = (id: string) => {
-    const selected = CITIES.find((item) => item.id === id);
-    update({ destinationId: id, title: `${selected?.name ?? '새'} 여행`, selectedFlightId: null, selectedStayId: null, selectedPlaceIds: [], placeDurations: {}, importedPlaces: {}, itinerary: null, verification: null });
+  const selectDestination = (location: City) => {
+    update({ destinationId: location.id, destinationLocation: location, title: `${location.name} 여행`, selectedFlightId: null, selectedStayId: null, selectedPlaceIds: [], placeDurations: {}, importedPlaces: {}, itinerary: null, verification: null });
     setDestinationMenuOpen(false);
     setDestinationQuery('');
   };
@@ -256,16 +268,18 @@ function CityStep({ trip, update }: { trip: Trip; update: (patch: Partial<Trip>)
         <div className="field-label"><span>{messages.city.origin}</span>{origin && <Check size={14} />}</div>
         {origin && !originMenuOpen ? (
           <div className="city-hero" style={{ backgroundImage: `url(${origin.image})` }}>
-            <div><strong><span>{origin.flag}</span>{origin.name}</strong><small>{origin.country} · {origin.airportCodes.join(' · ')} · {origin.timezone}</small></div>
+            <div><strong><span>{origin.flag}</span>{origin.name}</strong><small>{locationSubtitle(origin)}</small></div>
             <button className="button button--glass" onClick={() => setOriginMenuOpen(true)}>변경</button>
           </div>
         ) : (
           <div className="city-combobox">
             <div className="input-with-icon"><Search size={17} /><input autoFocus value={originQuery} onChange={(event) => setOriginQuery(event.target.value)} placeholder={messages.city.chooseOrigin} /></div>
-            {(!originQuery || filteredOrigins.length > 0) && <div className="city-options">
+            <div className="city-options">
               <span className="option-group">{originQuery ? '검색 결과' : '출발 도시'}</span>
-              {filteredOrigins.map((item, index) => <button key={item.id} className={index === 0 ? 'is-active' : ''} onClick={() => selectOrigin(item.id)}><span>{item.flag}</span><strong>{item.name}</strong><small>{item.airportCodes.join(' · ')}</small><em>데모 데이터</em></button>)}
-            </div>}
+              {originSearch.loading && <p className="field-hint">Google Places에서 도시를 찾고 있어요…</p>}
+              {originSearch.error && <p className="form-error" role="alert">{originSearch.error}</p>}
+              {!originSearch.loading && !originSearch.error && originSearch.locations.map((item, index) => <button type="button" key={item.id} className={index === 0 ? 'is-active' : ''} onClick={() => selectOrigin(item)}><span>{item.flag}</span><strong>{item.name}</strong><small>{locationSubtitle(item)}</small><em>{originSearch.fromGoogle ? 'Google Places' : '지원 도시'}</em></button>)}
+            </div>
           </div>
         )}
       </section>
@@ -273,16 +287,18 @@ function CityStep({ trip, update }: { trip: Trip; update: (patch: Partial<Trip>)
         <div className="field-label"><span>{messages.city.destination}</span>{city && <Check size={14} />}</div>
         {city && !destinationMenuOpen ? (
           <div className="city-hero" style={{ backgroundImage: `url(${city.image})` }}>
-            <div><strong><span>{city.flag}</span>{city.name}</strong><small>{city.country} · {city.airportCodes.join(' · ')} · {city.timezone}</small></div>
+            <div><strong><span>{city.flag}</span>{city.name}</strong><small>{locationSubtitle(city)}</small></div>
             <button className="button button--glass" onClick={() => setDestinationMenuOpen(true)}>변경</button>
           </div>
         ) : (
           <div className="city-combobox">
             <div className="input-with-icon"><Search size={17} /><input value={destinationQuery} onChange={(event) => setDestinationQuery(event.target.value)} placeholder={messages.city.chooseCity} /></div>
-            {(!destinationQuery || filteredDestinations.length > 0) && <div className="city-options">
+            <div className="city-options">
               <span className="option-group">{destinationQuery ? '검색 결과' : '인기 도시'}</span>
-              {filteredDestinations.map((item, index) => <button key={item.id} className={index === 0 ? 'is-active' : ''} onClick={() => selectDestination(item.id)}><span>{item.flag}</span><strong>{item.name}</strong><small>{item.country} · {item.nameEn}</small><em>데모 데이터</em></button>)}
-            </div>}
+              {destinationSearch.loading && <p className="field-hint">Google Places에서 도시를 찾고 있어요…</p>}
+              {destinationSearch.error && <p className="form-error" role="alert">{destinationSearch.error}</p>}
+              {!destinationSearch.loading && !destinationSearch.error && destinationSearch.locations.map((item, index) => <button type="button" key={item.id} className={index === 0 ? 'is-active' : ''} onClick={() => selectDestination(item)}><span>{item.flag}</span><strong>{item.name}</strong><small>{locationSubtitle(item)}</small><em>{destinationSearch.fromGoogle ? 'Google Places' : '지원 도시'}</em></button>)}
+            </div>
           </div>
         )}
       </section>
@@ -408,8 +424,8 @@ function FlightsStep({ trip, update }: { trip: Trip; update: (patch: Partial<Tri
   const [preferredAirlineCodes, setPreferredAirlineCodes] = useState<string[]>(['KE', 'JL']);
   const airlines = [{ code: 'KE', name: '대한항공' }, { code: 'OZ', name: '아시아나항공' }, { code: 'JL', name: '일본항공' }, { code: 'NH', name: '전일본공수' }];
   const togglePreferredAirline = (code: string) => setPreferredAirlineCodes((current) => current.includes(code) ? current.filter((item) => item !== code) : [...current, code]);
-  const origin = ORIGIN_CITIES.find((item) => item.id === trip.originId);
-  const destination = CITIES.find((item) => item.id === trip.destinationId);
+  const origin = getTripOrigin(trip);
+  const destination = getTripDestination(trip);
   const departureWindows = [
     { id: 'night', label: '새벽', range: '00–06', from: 0, to: 6 },
     { id: 'morning', label: '오전', range: '06–12', from: 6, to: 12 },

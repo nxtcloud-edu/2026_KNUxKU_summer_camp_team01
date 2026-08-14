@@ -9,6 +9,7 @@ export type StepId =
 
 export type City = {
   id: string;
+  placeId?: string;
   name: string;
   nameEn: string;
   country: string;
@@ -18,6 +19,7 @@ export type City = {
   image: string;
   color: string;
   airportCodes: string[];
+  source?: 'catalog' | 'google-places';
 };
 
 export type PlaceCategory = '명소' | '역사' | '자연' | '미술관' | '맛집' | '쇼핑';
@@ -134,6 +136,8 @@ export type Trip = {
   completedSteps: StepId[];
   originId: string | null;
   destinationId: string | null;
+  originLocation: City | null;
+  destinationLocation: City | null;
   startDate: string;
   endDate: string;
   persona: {
@@ -170,6 +174,8 @@ export const createTrip = (id: string): Trip => {
     completedSteps: [],
     originId: null,
     destinationId: null,
+    originLocation: null,
+    destinationLocation: null,
     startDate: '',
     endDate: '',
     persona: {

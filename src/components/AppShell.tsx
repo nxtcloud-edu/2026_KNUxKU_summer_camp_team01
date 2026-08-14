@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, type ReactNode } from 'react';
 
-import { CITIES } from '@/lib/data';
+import { getTripDestination } from '@/lib/locations';
 import type { StepId, Trip } from '@/lib/types';
 
 const STEP_META: { id: StepId; label: string; icon: typeof MapPin }[] = [
@@ -40,7 +40,7 @@ export function AppShell({ trip, step, children, footer }: {
   footer: ReactNode;
 }) {
   const router = useRouter();
-  const city = CITIES.find((item) => item.id === trip.destinationId);
+  const city = getTripDestination(trip);
   const steps = useMemo(
     () => STEP_META.filter((item) =>
       (item.id !== 'flights' || trip.persona.includeFlights !== false) &&
