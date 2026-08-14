@@ -20,6 +20,17 @@ export type City = {
   airportCodes: string[];
 };
 
+export type Airport = {
+  /** IATA 3-letter code, e.g. 'ICN' */
+  code: string;
+  name: string;
+  city: string;
+  country: string;
+  /** ISO 3166-1 alpha-2 country code, e.g. 'KR' */
+  countryCode: string;
+  flag: string;
+};
+
 export type PlaceCategory = '명소' | '역사' | '자연' | '미술관' | '맛집' | '쇼핑';
 
 export type TripPlace = {

@@ -9,7 +9,7 @@ import { getMappablePlaces } from '@/lib/places';
 import type { StayOffer, TripPlace } from '@/lib/types';
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
-const SCRIPT_ID = 'voyagent-google-maps-script';
+const SCRIPT_ID = 'justgo-google-maps-script';
 
 const TOKYO_CENTER = { lat: 35.6812, lng: 139.7671 };
 const OVERVIEW_ZOOM = 12;

@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, type ReactNode } from 'react';
 
-import { CITIES } from '@/lib/data';
+import { getCityById } from '@/lib/cities';
 import type { StepId, Trip } from '@/lib/types';
 
 const STEP_META: { id: StepId; label: string; icon: typeof MapPin }[] = [
@@ -40,7 +40,7 @@ export function AppShell({ trip, step, children, footer }: {
   footer: ReactNode;
 }) {
   const router = useRouter();
-  const city = CITIES.find((item) => item.id === trip.destinationId);
+  const city = getCityById(trip.destinationId);
   const steps = useMemo(
     () => STEP_META.filter((item) =>
       (item.id !== 'flights' || trip.persona.includeFlights !== false) &&
@@ -50,14 +50,14 @@ export function AppShell({ trip, step, children, footer }: {
   const activeIndex = steps.findIndex((item) => item.id === step);
 
   useEffect(() => {
-    const isDark = window.localStorage.getItem('voyagent:theme') === 'dark';
+    const isDark = window.localStorage.getItem('justgo:theme') === 'dark';
     document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
   }, []);
 
   const toggleTheme = () => {
     const isDark = document.documentElement.dataset.theme !== 'dark';
     document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
-    window.localStorage.setItem('voyagent:theme', isDark ? 'dark' : 'light');
+    window.localStorage.setItem('justgo:theme', isDark ? 'dark' : 'light');
   };
 
   return (
@@ -116,17 +116,17 @@ export function AppShell({ trip, step, children, footer }: {
 
 export function BrandHeader() {
   useEffect(() => {
-    const isDark = window.localStorage.getItem('voyagent:theme') === 'dark';
+    const isDark = window.localStorage.getItem('justgo:theme') === 'dark';
     document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
   }, []);
   const toggle = () => {
     const isDark = document.documentElement.dataset.theme !== 'dark';
     document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
-    window.localStorage.setItem('voyagent:theme', isDark ? 'dark' : 'light');
+    window.localStorage.setItem('justgo:theme', isDark ? 'dark' : 'light');
   };
   return (
     <header className="brand-header">
-      <Link href="/" className="wordmark"><span className="wordmark__mark"><Sparkles size={15} /></span> Voyagent</Link>
+      <Link href="/" className="wordmark"><span className="wordmark__mark"><Sparkles size={15} /></span> JustGO</Link>
       <div className="brand-header__actions">
         <button className="key-hint" aria-label="명령 팔레트">⌘ K</button>
         <button className="icon-button" onClick={toggle} aria-label="테마 변경"><Moon size={17} /></button>

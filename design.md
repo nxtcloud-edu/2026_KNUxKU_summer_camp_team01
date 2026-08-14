@@ -1,4 +1,4 @@
-# Voyagent — AI 디자인 프롬프트 세트
+# JustGO — AI 디자인 프롬프트 세트
 
 > **문서 버전** v1.0 · **최종 수정** 2026-08-13
 > **짝 문서** [`spec.md`](./spec.md) — 화면·데이터·인터랙션 전체 명세
@@ -72,7 +72,7 @@ B를 빼고 C만 넣으면 도구가 자기 기본값(보라 그라데이션, �
 > **아래 블록 전체를 복사해 모든 프롬프트 맨 앞에 붙인다.**
 
 ````text
-당신은 여행 계획 웹앱 "Voyagent"의 프론트엔드를 만드는 시니어 프로덕트 디자이너 겸
+당신은 여행 계획 웹앱 "JustGO"의 프론트엔드를 만드는 시니어 프로덕트 디자이너 겸
 프론트엔드 엔지니어입니다. 아래 시스템을 **그대로** 따르세요. 임의로 색·폰트·모양을
 새로 고르지 마세요.
 
@@ -179,7 +179,7 @@ default / hover / focus-visible / active / disabled / loading / error / success
   필요한 값이 토큰에 없으면 토큰 블록에 새 변수로 올린 뒤 이름으로 참조한다.
 - 한국어 문구는 프롬프트에 주어진 것을 **그대로** 쓴다. 임의로 바꾸거나 영어로 만들지 않는다.
 - 파일 맨 위에 다음 형식의 주석을 남긴다:
-  /* Voyagent · screen: <화면ID> · 자체검수: P_ H_ E_ S_ R_ V_ */
+  /* JustGO · screen: <화면ID> · 자체검수: P_ H_ E_ S_ R_ V_ */
 - 코드 뒤에 자체 검수 결과를 6축(철학·위계·완성도·구체성·절제·다양성) 1~5점으로
   적고, 3점 미만 항목이 있으면 그 부분을 수정한 뒤 다시 제출한다.
 ````
@@ -204,7 +204,7 @@ default / hover / focus-visible / active / disabled / loading / error / success
 바로 도시를 검색해 시작한다.
 
 ## 구조 (위에서 아래로 이 순서만. 섹션을 추가하지 마세요)
-1. 상단 바 (56px): 좌측 워드마크 "Voyagent" (text-base 600).
+1. 상단 바 (56px): 좌측 워드마크 "JustGO" (text-base 600).
    우측에 테마 토글 아이콘 버튼 + ⌘K 힌트 버튼. 링크 메뉴 없음.
 2. 시작 블록 (상하 패딩 96px, 최대 폭 720px 중앙):
    - h1 2행, text-4xl(44px) 600, 행간 52px:
@@ -948,7 +948,7 @@ default / hover / focus-visible / active / disabled / loading / error / success
 독립 페이지. 프로덕션 코드가 아니며 확인 후 삭제할 용도입니다.
 
 ## 파일 맨 위 주석
-/* Voyagent · component: <타입> · states: default·hover·focus·active·disabled·loading·error·success */
+/* JustGO · component: <타입> · states: default·hover·focus·active·disabled·loading·error·success */
 ````
 
 ## D-1. 버튼 세트
@@ -1509,7 +1509,7 @@ generous negative space, Swiss typographic poster discipline
 ````
 
 생성 후 텍스트는 **직접 얹는다**(이미지 생성 모델의 한글 렌더는 신뢰할 수 없다).
-얹을 문구: `Voyagent` / `도시와 날짜만 정하면, AI가 여행을 계획합니다`
+얹을 문구: `JustGO` / `도시와 날짜만 정하면, AI가 여행을 계획합니다`
 
 ## F-3. 빈 상태 (생성하지 않는다)
 

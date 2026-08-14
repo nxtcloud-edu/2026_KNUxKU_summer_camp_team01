@@ -6,7 +6,7 @@ import { StoreHydrator } from '@/components/StoreHydrator';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: { default: 'Voyagent — AI 여행 계획', template: '%s · Voyagent' },
+  title: { default: 'JustGO — AI 여행 계획', template: '%s · JustGO' },
   description: '도시와 날짜만 정하면 AI가 검증된 여행 일정을 만들어 드립니다.',
 };
 

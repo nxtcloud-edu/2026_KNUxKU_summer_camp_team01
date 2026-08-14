@@ -1,4 +1,4 @@
-# Voyagent — AI 여행 플래너 프론트엔드 UI/UX 명세서
+# JustGO — AI 여행 플래너 프론트엔드 UI/UX 명세서
 
 > **문서 버전** v1.0 · **최종 수정** 2026-08-13 · **상태** 구현 착수 가능(Implementation-Ready)
 > **프로젝트** 강원대 × 고려대 Summer Agentic AI 심화 몰입 캠프 1팀
@@ -175,7 +175,7 @@ flowchart TD
 
 **의도적으로 다르게 가는 것 (차별점)**
 
-| 항목 | Wanderlog | Voyagent |
+| 항목 | Wanderlog | JustGO |
 |---|---|---|
 | 시작 방식 | 빈 일정에 사용자가 직접 장소를 쌓는다 | **도시·날짜 → 페르소나** 만으로 에이전트가 후보를 먼저 제시 |
 | 장소 발견 | 가이드 글 크롤링 결과에서 선택 | **에이전트가 페르소나 기반으로 큐레이션**한 리스트에서 체크 |
@@ -242,11 +242,11 @@ flowchart TD
 
 ```bash
 # 1) 프로젝트 생성
-npx create-next-app@latest voyagent \
+npx create-next-app@latest justgo \
   --typescript --tailwind --eslint --app \
   --src-dir --import-alias "@/*" --use-npm
 
-cd voyagent
+cd justgo
 
 # 2) 런타임 의존성
 npm i zustand @tanstack/react-query \
@@ -285,7 +285,7 @@ npx playwright install --with-deps chromium
 아래 트리는 **구현 완료 시점의 최종 형태**다. 문서 이후 장에서 언급되는 모든 파일이 여기에 존재한다.
 
 ```
-voyagent/
+justgo/
 ├── public/
 │   ├── fonts/
 │   │   └── PretendardVariable.woff2
@@ -1803,9 +1803,9 @@ stateDiagram-v2
 
 ```ts
 // localStorage 키 구조
-'voyagent:trips'            → TripSummary[]              // 홈 목록용 경량 데이터
-'voyagent:trip:{tripId}'    → TripDraft                  // 여행별 전체 데이터
-'voyagent:prefs'            → { theme, splitRatio, currency }
+'justgo:trips'            → TripSummary[]              // 홈 목록용 경량 데이터
+'justgo:trip:{tripId}'    → TripDraft                  // 여행별 전체 데이터
+'justgo:prefs'            → { theme, splitRatio, currency }
 ```
 
 ```ts
@@ -2661,9 +2661,9 @@ type UiState = {
 // src/lib/store/persist.ts
 import { persist, createJSONStorage } from 'zustand/middleware';
 
-export const TRIP_STORAGE_PREFIX = 'voyagent:trip:';
-export const TRIP_LIST_KEY = 'voyagent:trips';
-export const PREFS_KEY = 'voyagent:prefs';
+export const TRIP_STORAGE_PREFIX = 'justgo:trip:';
+export const TRIP_LIST_KEY = 'justgo:trips';
+export const PREFS_KEY = 'justgo:prefs';
 
 /** 스키마 버전이 올라갈 때마다 여기에 마이그레이션 추가 */
 export const migrations: Record<number, (state: unknown) => unknown> = {
@@ -3322,7 +3322,7 @@ data: {"seq":6,"at":9100,"type":"done","payload":[{...}],"summary":"12개 항공
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────┐
-│  Voyagent                                        [테마] [⌘K]               │  56px
+│  JustGO                                        [테마] [⌘K]               │  56px
 ├────────────────────────────────────────────────────────────────────────────┤
 │                                                                            │
 │                                                                            │
@@ -3442,7 +3442,7 @@ data: {"seq":6,"at":9100,"type":"done","payload":[{...}],"summary":"12개 항공
 ### 카피
 
 ```
-페이지 제목(<title>)   Voyagent — AI 여행 계획
+페이지 제목(<title>)   JustGO — AI 여행 계획
 히어로 제목            도시와 날짜만 정하세요.\n나머지는 AI가 계획합니다.
 히어로 설명            항공권부터 관광지, 하루 동선까지.\n검증까지 마친 여행 일정을 만들어 드려요.
 검색 placeholder       어디로 떠나세요?
@@ -5961,7 +5961,7 @@ localStorage 기반이라 서버에 데이터가 없다. 두 가지 중 하나�
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────┐
-│  Voyagent                                       [이 일정 복사해서 편집하기] │  56px
+│  JustGO                                       [이 일정 복사해서 편집하기] │  56px
 ├────────────────────────────────────────────────────────────────────────────┤
 │  🇯🇵 도쿄 여행                                              ✓ 검증 완료     │
 │  6월 12일 목요일 – 6월 16일 월요일 · 4박 5일 · 성인 2명                      │
@@ -5981,7 +5981,7 @@ localStorage 기반이라 서버에 데이터가 없다. 두 가지 중 하나�
 │  ● Day 2   6/13 금   시부야 & 하라주쿠    │                                 │
 │    ...                                   │                                 │
 ├──────────────────────────────────────────┴─────────────────────────────────┤
-│  Voyagent로 만든 일정입니다.                     [나도 만들어보기]           │
+│  JustGO로 만든 일정입니다.                     [나도 만들어보기]           │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -6011,7 +6011,7 @@ localStorage 기반이라 서버에 데이터가 없다. 두 가지 중 하나�
 
 ```
 ┌─────────────────────────────────────────────┐
-│  도쿄 여행                          Voyagent │  헤더 (모든 페이지)
+│  도쿄 여행                          JustGO │  헤더 (모든 페이지)
 │  2026.6.12(목) – 6.16(월) · 4박 5일 · 2명    │
 │  ────────────────────────────────────────── │
 │                                             │

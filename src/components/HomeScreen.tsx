@@ -6,22 +6,22 @@ import { ArrowRight, CheckCircle2, Compass, MoreHorizontal, Search, Sparkles, Tr
 import { useMemo, useState } from 'react';
 
 import { BrandHeader } from '@/components/AppShell';
-import { CITIES, ORIGIN_CITIES } from '@/lib/data';
+import { getCityById, isDemoCity, searchCities } from '@/lib/cities';
+import { CITIES } from '@/lib/data';
 import { isVerificationCurrent } from '@/lib/itinerary';
 import { useTripStore } from '@/lib/store';
-import type { City } from '@/lib/types';
 import messages from '../../messages/ko.json';
 
-function LocationSearch({ options, query, selectedId, placeholder, onQueryChange, onSelect }: {
-  options: City[];
+/** Autocomplete over every airport/city in the bundled international dataset (src/lib/cities.ts). */
+function LocationSearch({ query, selectedId, placeholder, onQueryChange, onSelect }: {
   query: string;
   selectedId: string | null;
   placeholder: string;
   onQueryChange: (value: string) => void;
   onSelect: (id: string | null) => void;
 }) {
-  const selected = options.find((item) => item.id === selectedId);
-  const filtered = options.filter((item) => `${item.name} ${item.nameEn} ${item.country} ${item.airportCodes.join(' ')}`.toLowerCase().includes(query.toLowerCase()));
+  const selected = getCityById(selectedId);
+  const results = query.trim() ? searchCities(query, 20) : [];
 
   return (
     <div className="city-search">
@@ -33,11 +33,11 @@ function LocationSearch({ options, query, selectedId, placeholder, onQueryChange
         placeholder={placeholder}
         aria-label={placeholder}
       />
-      {query && !selected && filtered.length > 0 && (
+      {query && !selected && results.length > 0 && (
         <div className="city-search__menu">
-          {filtered.map((item) => (
+          {results.map((item) => (
             <button key={item.id} onClick={() => { onSelect(item.id); onQueryChange(''); }}>
-              <span>{item.flag}</span><strong>{item.name}</strong><small>{item.country} · {item.airportCodes.join(' · ')}</small><em>데모 데이터</em>
+              <span>{item.flag}</span><strong>{item.name}</strong><small>{item.country} · {item.airportCodes.join(' · ')}</small>{isDemoCity(item) && <em>체험 데이터</em>}
             </button>
           ))}
         </div>
@@ -56,8 +56,8 @@ export function HomeScreen() {
   const removeTrip = useTripStore((state) => state.removeTrip);
   const hasHydrated = useTripStore((state) => state.hasHydrated);
   const tripList = useMemo(() => Object.values(trips).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)), [trips]);
-  const selectedOrigin = ORIGIN_CITIES.find((item) => item.id === selectedOriginId);
-  const selectedCity = CITIES.find((item) => item.id === selectedCityId);
+  const selectedOrigin = getCityById(selectedOriginId);
+  const selectedCity = getCityById(selectedCityId);
 
   const start = (cityId?: string, originId = selectedOriginId ?? undefined) => {
     const params = new URLSearchParams();
@@ -74,8 +74,8 @@ export function HomeScreen() {
         <h1>{messages.home.title1}<br /><span>{messages.home.title2}</span></h1>
         <p>{messages.home.description1}<br />{messages.home.description2}</p>
         <div className="quick-start">
-          <LocationSearch options={ORIGIN_CITIES} query={originQuery} selectedId={selectedOriginId} placeholder={messages.home.originPlaceholder} onQueryChange={setOriginQuery} onSelect={setSelectedOriginId} />
-          <LocationSearch options={CITIES} query={destinationQuery} selectedId={selectedCityId} placeholder={messages.home.placeholder} onQueryChange={setDestinationQuery} onSelect={setSelectedCityId} />
+          <LocationSearch query={originQuery} selectedId={selectedOriginId} placeholder={messages.home.originPlaceholder} onQueryChange={setOriginQuery} onSelect={setSelectedOriginId} />
+          <LocationSearch query={destinationQuery} selectedId={selectedCityId} placeholder={messages.home.placeholder} onQueryChange={setDestinationQuery} onSelect={setSelectedCityId} />
           <button
             aria-label={selectedOrigin && selectedCity ? `${selectedOrigin.name}에서 ${selectedCity.name} 여행 계획 짜기` : messages.home.start}
             className="button button--primary button--large"
@@ -96,8 +96,8 @@ export function HomeScreen() {
         ) : (
           <div className="trip-grid">
             {tripList.map((trip) => {
-              const origin = ORIGIN_CITIES.find((item) => item.id === trip.originId);
-              const city = CITIES.find((item) => item.id === trip.destinationId);
+              const origin = getCityById(trip.originId);
+              const city = getCityById(trip.destinationId);
               const progress = Math.round((trip.completedSteps.length / 7) * 100);
               return (
                 <article className="trip-card" key={trip.id}>

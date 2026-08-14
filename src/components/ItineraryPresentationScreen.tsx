@@ -6,7 +6,8 @@ import { ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, Clock3, Navigation, 
 import { useEffect, useMemo, useState } from 'react';
 
 import { MapPanel } from '@/components/MapPanel';
-import { CITIES, STAYS } from '@/lib/data';
+import { getCityById } from '@/lib/cities';
+import { STAYS } from '@/lib/data';
 import { getTripPlace, getTripPlaces } from '@/lib/places';
 import { useTripStore } from '@/lib/store';
 import type { ItineraryItem, Trip } from '@/lib/types';
@@ -65,7 +66,7 @@ export function ItineraryPresentationScreen() {
   const activeItem = activeDay?.items[activeStepIndex];
   const allPlaces = useMemo(() => trip ? getTripPlaces(trip) : [], [trip]);
   const activePlace = trip ? getTripPlace(trip, activeItem?.placeId ?? '') : undefined;
-  const city = CITIES.find((item) => item.id === trip?.destinationId);
+  const city = getCityById(trip?.destinationId);
   const stay = STAYS.find((item) => item.id === trip?.selectedStayId) ?? null;
   const dayPlaceIds = activeDay?.items.flatMap((item) => item.placeId ? [item.placeId] : []) ?? [];
   const currentStepNumber = days.slice(0, activeDayIndex).reduce((count, day) => count + day.items.length, 0) + activeStepIndex + 1;

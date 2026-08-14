@@ -1,16 +1,16 @@
 import type { City, FlightOffer, Place, StayOffer, VerificationCheck } from '@/lib/types';
 
 export const ORIGIN_CITIES: City[] = [
-  { id: 'seoul', name: '서울', nameEn: 'Seoul', country: '대한민국', flag: '🇰🇷', currency: 'KRW', timezone: 'GMT+9', image: 'https://picsum.photos/seed/voyagent-seoul/1200/630', color: '#4f6bc7', airportCodes: ['ICN', 'GMP'] },
-  { id: 'busan', name: '부산', nameEn: 'Busan', country: '대한민국', flag: '🇰🇷', currency: 'KRW', timezone: 'GMT+9', image: 'https://picsum.photos/seed/voyagent-busan/1200/630', color: '#397f91', airportCodes: ['PUS'] },
-  { id: 'jeju', name: '제주', nameEn: 'Jeju', country: '대한민국', flag: '🇰🇷', currency: 'KRW', timezone: 'GMT+9', image: 'https://picsum.photos/seed/voyagent-jeju/1200/630', color: '#b26a43', airportCodes: ['CJU'] },
+  { id: 'seoul', name: '서울', nameEn: 'Seoul', country: '대한민국', flag: '🇰🇷', currency: 'KRW', timezone: 'GMT+9', image: 'https://picsum.photos/seed/justgo-seoul/1200/630', color: '#4f6bc7', airportCodes: ['ICN', 'GMP'] },
+  { id: 'busan', name: '부산', nameEn: 'Busan', country: '대한민국', flag: '🇰🇷', currency: 'KRW', timezone: 'GMT+9', image: 'https://picsum.photos/seed/justgo-busan/1200/630', color: '#397f91', airportCodes: ['PUS'] },
+  { id: 'jeju', name: '제주', nameEn: 'Jeju', country: '대한민국', flag: '🇰🇷', currency: 'KRW', timezone: 'GMT+9', image: 'https://picsum.photos/seed/justgo-jeju/1200/630', color: '#b26a43', airportCodes: ['CJU'] },
 ];
 
 export const CITIES: City[] = [
-  { id: 'tokyo', name: '도쿄', nameEn: 'Tokyo', country: '일본', flag: '🇯🇵', currency: 'JPY', timezone: 'GMT+9', image: 'https://picsum.photos/seed/voyagent-tokyo/1200/630', color: '#6173c9', airportCodes: ['NRT', 'HND'] },
-  { id: 'osaka', name: '오사카', nameEn: 'Osaka', country: '일본', flag: '🇯🇵', currency: 'JPY', timezone: 'GMT+9', image: 'https://picsum.photos/seed/voyagent-osaka/1200/630', color: '#b66c52', airportCodes: ['KIX'] },
-  { id: 'paris', name: '파리', nameEn: 'Paris', country: '프랑스', flag: '🇫🇷', currency: 'EUR', timezone: 'GMT+2', image: 'https://picsum.photos/seed/voyagent-paris/1200/630', color: '#3f8a7d', airportCodes: ['CDG'] },
-  { id: 'bangkok', name: '방콕', nameEn: 'Bangkok', country: '태국', flag: '🇹🇭', currency: 'THB', timezone: 'GMT+7', image: 'https://picsum.photos/seed/voyagent-bangkok/1200/630', color: '#915a91', airportCodes: ['BKK'] },
+  { id: 'tokyo', name: '도쿄', nameEn: 'Tokyo', country: '일본', flag: '🇯🇵', currency: 'JPY', timezone: 'GMT+9', image: 'https://picsum.photos/seed/justgo-tokyo/1200/630', color: '#6173c9', airportCodes: ['NRT', 'HND'] },
+  { id: 'osaka', name: '오사카', nameEn: 'Osaka', country: '일본', flag: '🇯🇵', currency: 'JPY', timezone: 'GMT+9', image: 'https://picsum.photos/seed/justgo-osaka/1200/630', color: '#b66c52', airportCodes: ['KIX'] },
+  { id: 'paris', name: '파리', nameEn: 'Paris', country: '프랑스', flag: '🇫🇷', currency: 'EUR', timezone: 'GMT+2', image: 'https://picsum.photos/seed/justgo-paris/1200/630', color: '#3f8a7d', airportCodes: ['CDG'] },
+  { id: 'bangkok', name: '방콕', nameEn: 'Bangkok', country: '태국', flag: '🇹🇭', currency: 'THB', timezone: 'GMT+7', image: 'https://picsum.photos/seed/justgo-bangkok/1200/630', color: '#915a91', airportCodes: ['BKK'] },
 ];
 
 export const PLACES: Place[] = [
