@@ -19,7 +19,7 @@ const SINGLE_POINT_ZOOM = 14;
 const MARKER_FILL = '#4f46e5';
 const MARKER_STROKE = '#ffffff';
 const CANDIDATE_FILL = '#ffffff';
-const CANDIDATE_STROKE = '#9497a6';
+const CANDIDATE_STROKE = '#ef4444';
 const STAY_FILL = '#52525b';
 
 const MAP_OPTIONS: google.maps.MapOptions = {
@@ -110,11 +110,13 @@ export function MapPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, boundsKey]);
 
-  // Hover-focus: smoothly zoom onto the active place, and zoom back out when hover ends.
+  // Hover/click-focus: smoothly zoom onto the active place or stay, and zoom back out when focus ends.
   useEffect(() => {
     if (!map || !focusActive) return;
     if (activePlace) {
       animateCamera(map, { lat: activePlace.latitude, lng: activePlace.longitude }, FOCUS_ZOOM);
+    } else if (activeStay) {
+      animateCamera(map, { lat: activeStay.latitude, lng: activeStay.longitude }, FOCUS_ZOOM);
     } else {
       fitToMarkers(map, mappable, stay ?? null);
     }
@@ -227,10 +229,16 @@ export function MapPanel({
           );
         })}
         {stay && stayMarkerIcon && (
-          <MarkerF position={{ lat: stay.latitude, lng: stay.longitude }} icon={stayMarkerIcon} zIndex={15} title={stay.name ?? '숙소'} />
+          <MarkerF
+            position={{ lat: stay.latitude, lng: stay.longitude }}
+            icon={stayMarkerIcon}
+            zIndex={15}
+            title={stay.name ?? '숙소'}
+            onClick={stay.id ? () => onMarkerClick?.(stay.id!) : undefined}
+          />
         )}
       </GoogleMap>
-      <div className="map-legend"><span><i className="legend-selected" /> 선택</span><span><i /> 후보</span>{stay && <span><BedDouble size={12} /> 숙소</span>}</div>
+      <div className="map-legend"><span><i className="legend-selected" /> 선택</span><span><i className="legend-candidate" /> 후보</span>{stay && <span><BedDouble size={12} /> 숙소</span>}</div>
       <div className="map-controls">
         <button onClick={resetView} aria-label="전체 보기"><LocateFixed size={15} /></button>
       </div>
