@@ -18,16 +18,9 @@ const requireRecord = (value: unknown, field = '요청 본문') => {
   return value;
 };
 
-const optionalString = (record: Record<string, unknown>, field: string) => {
-  const value = record[field];
-  if (value !== undefined && value !== null && typeof value !== 'string') {
-    throw new AgentInputError(`${field}은 문자열 또는 null이어야 합니다.`);
-  }
-};
-
 export function validateTaskInput(task: AgentTaskId, input: unknown): void {
   const body = requireRecord(input);
-  if (task === 'itineraryGenerate') {
+  if (task === 'itineraryGenerate' || task === 'flightSearch' || task === 'staySearch' || task === 'placeDiscovery') {
     const trip = requireRecord(body.trip, 'trip');
     if (typeof trip.id !== 'string' || trip.id.length === 0) {
       throw new AgentInputError('trip.id가 필요합니다.');
@@ -44,8 +37,6 @@ export function validateTaskInput(task: AgentTaskId, input: unknown): void {
     }
     return;
   }
-  optionalString(body, 'destinationId');
-  if (task === 'flightSearch') optionalString(body, 'originId');
 }
 
 const addDays = (iso: string, amount: number) => {
@@ -135,9 +126,10 @@ export function resolveTask(task: AgentTaskId, input: AgentTaskInput[AgentTaskId
   switch (task) {
     case 'flightSearch': {
       const search = input as AgentTaskInput['flightSearch'];
+      const trip = search.trip;
       const matches = FLIGHTS.filter((offer) =>
-        (!search.originId || offer.originId === search.originId) &&
-        (!search.destinationId || offer.destinationId === search.destinationId));
+        (!trip.originId || offer.originId === trip.originId) &&
+        (!trip.destinationId || offer.destinationId === trip.destinationId));
       return matches.length ? matches : FLIGHTS;
     }
     case 'staySearch': return STAYS;

@@ -1,9 +1,11 @@
 import type { AgentErrorCode, AgentEvent, AgentTaskId, AgentTaskInput } from '@/lib/agent/contracts';
 import {
   fromSupervisorPayload,
+  fromSearchPayload,
   fromVerificationPayload,
   SupervisorContractError,
   toSupervisorInput,
+  toSearchInput,
   toVerificationInput,
 } from '@/lib/agent/supervisor';
 
@@ -45,7 +47,7 @@ async function* parseSse(response: Response): AsyncGenerator<UpstreamEvent> {
 export const liveAgentEnabled = () => process.env.AGENT_MODE === 'live';
 
 export async function* createLiveAgentEvents(
-  task: Extract<AgentTaskId, 'itineraryGenerate' | 'itineraryVerify'>,
+  task: AgentTaskId,
   input: AgentTaskInput[typeof task],
   requestSignal: AbortSignal,
 ): AsyncGenerator<AgentEvent> {
@@ -61,11 +63,12 @@ export async function* createLiveAgentEvents(
   try {
     const trip = input.trip;
     const isGenerate = task === 'itineraryGenerate';
-    const baseUrl = isGenerate
-      ? process.env.SUPERVISOR_AGENT_URL ?? 'http://127.0.0.1:8000'
-      : process.env.VERIFICATION_AGENT_URL ?? 'http://127.0.0.1:8003';
-    const path = isGenerate ? '/agent/plan' : '/agent/itineraryVerify';
-    const body = isGenerate ? toSupervisorInput(trip) : toVerificationInput(trip);
+    const isVerify = task === 'itineraryVerify';
+    const baseUrl = isVerify
+      ? process.env.VERIFICATION_AGENT_URL ?? 'http://127.0.0.1:8003'
+      : process.env.SUPERVISOR_AGENT_URL ?? 'http://127.0.0.1:8000';
+    const path = isGenerate ? '/agent/plan' : isVerify ? '/agent/itineraryVerify' : '/agent/search';
+    const body = isGenerate ? toSupervisorInput(trip) : isVerify ? toVerificationInput(trip) : toSearchInput(trip);
     const timeoutMs = Math.max(1_000, Number(process.env.AGENT_HARD_TIMEOUT_MS ?? 45_000) || 45_000);
     const signal = AbortSignal.any([requestSignal, AbortSignal.timeout(timeoutMs)]);
     const response = await fetch(`${baseUrl.replace(/\/$/, '')}${path}`, {
@@ -85,7 +88,9 @@ export async function* createLiveAgentEvents(
         terminated = true;
         const payload = isGenerate
           ? fromSupervisorPayload(trip, upstream.payload)
-          : { verification: fromVerificationPayload(upstream.payload) };
+          : isVerify
+            ? { verification: fromVerificationPayload(upstream.payload) }
+            : { search: fromSearchPayload(trip, upstream.payload) };
         yield event({ type: 'done', payload, summary: typeof upstream.summary === 'string' ? upstream.summary : undefined });
         return;
       }

@@ -11,9 +11,9 @@ export const AGENT_TASKS = [
 export type AgentTaskId = (typeof AGENT_TASKS)[number];
 
 export type AgentTaskInput = {
-  flightSearch: Pick<Trip, 'originId' | 'destinationId' | 'startDate' | 'endDate' | 'persona'>;
-  staySearch: Pick<Trip, 'destinationId' | 'startDate' | 'endDate' | 'persona' | 'selectedPlaceIds'>;
-  placeDiscovery: Pick<Trip, 'destinationId' | 'startDate' | 'endDate' | 'persona'>;
+  flightSearch: { trip: Trip };
+  staySearch: { trip: Trip };
+  placeDiscovery: { trip: Trip };
   itineraryGenerate: { trip: Trip };
   itineraryVerify: { trip: Trip };
 };

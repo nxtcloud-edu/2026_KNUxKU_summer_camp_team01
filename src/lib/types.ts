@@ -100,6 +100,8 @@ export type StayOffer = {
   image: string;
   x: number;
   y: number;
+  latitude?: number;
+  longitude?: number;
 };
 
 export type ItineraryItem = {
@@ -138,6 +140,10 @@ export type Trip = {
   destinationId: string | null;
   originLocation: City | null;
   destinationLocation: City | null;
+  searchFlightOffers: FlightOffer[];
+  searchStayOffers: StayOffer[];
+  searchPlaceOffers: Place[];
+  searchProviders: Record<string, string>;
   startDate: string;
   endDate: string;
   persona: {
@@ -176,6 +182,10 @@ export const createTrip = (id: string): Trip => {
     destinationId: null,
     originLocation: null,
     destinationLocation: null,
+    searchFlightOffers: [],
+    searchStayOffers: [],
+    searchPlaceOffers: [],
+    searchProviders: {},
     startDate: '',
     endDate: '',
     persona: {

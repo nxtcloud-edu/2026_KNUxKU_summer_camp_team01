@@ -10,7 +10,7 @@ describe('agent input validation', () => {
   });
 
   it('accepts the search input used by the frontend', () => {
-    expect(() => validateTaskInput('flightSearch', { originId: 'seoul', destinationId: 'tokyo' })).not.toThrow();
+    expect(() => validateTaskInput('flightSearch', { trip: createTrip('search-trip') })).not.toThrow();
   });
 });
 
@@ -63,7 +63,7 @@ describe('SSE event contract', () => {
     process.env.AGENT_STREAM_DELAY_MS = '0';
     const events = [];
     try {
-      for await (const event of createAgentEvents('flightSearch', { originId: 'seoul', destinationId: 'tokyo' }, new AbortController().signal)) {
+      for await (const event of createAgentEvents('flightSearch', { trip: createTrip('search-trip') }, new AbortController().signal)) {
         events.push(event);
       }
     } finally {

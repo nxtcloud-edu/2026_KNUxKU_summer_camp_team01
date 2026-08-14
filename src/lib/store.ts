@@ -3,7 +3,7 @@
 import { create, type StateCreator } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { FLIGHTS, PLACES, STAYS, VERIFICATION_CHECKS } from '@/lib/data';
+import { PLACES, VERIFICATION_CHECKS } from '@/lib/data';
 import {
   applyItineraryEdit as applyEditToItinerary,
   cloneItinerary,
@@ -12,7 +12,8 @@ import {
   type ItineraryEdit,
 } from '@/lib/itinerary';
 import { getTripPlace } from '@/lib/places';
-import { createTrip, type ImportedPlace, type ItineraryDay, type StepId, type Trip, type VerificationCheck } from '@/lib/types';
+import { getTripFlight, getTripStay } from '@/lib/searchResults';
+import { createTrip, type FlightOffer, type ImportedPlace, type ItineraryDay, type Place, type StayOffer, type StepId, type Trip, type VerificationCheck } from '@/lib/types';
 
 type TripPatch = Partial<Omit<Trip, 'persona'>> & { persona?: Partial<Trip['persona']> };
 
@@ -30,6 +31,7 @@ type TripStore = {
   removePlaceFromItinerary: (id: string, placeId: string) => boolean;
   generateItinerary: (id: string) => void;
   applyAgentPlan: (id: string, itinerary: ItineraryDay[], verification: VerificationCheck[] | null) => void;
+  applyAgentSearch: (id: string, flights: FlightOffer[], stays: StayOffer[], places: Place[], providers: Record<string, string>) => void;
   applyItineraryEdit: (tripId: string, edit: ItineraryEdit) => void;
   updateItineraryItemDuration: (tripId: string, dayId: string, itemId: string, duration: number) => void;
   moveItineraryItem: (id: string, sourceDayId: string, itemId: string, targetDayId: string, targetIndex: number) => void;
@@ -55,6 +57,10 @@ const normalizeTrip = (trip: Trip): Trip => {
     originId: typeof trip.originId === 'undefined' ? 'seoul' : trip.originId,
     originLocation: trip.originLocation ?? null,
     destinationLocation: trip.destinationLocation ?? null,
+    searchFlightOffers: trip.searchFlightOffers ?? [],
+    searchStayOffers: trip.searchStayOffers ?? [],
+    searchPlaceOffers: trip.searchPlaceOffers ?? [],
+    searchProviders: trip.searchProviders ?? {},
     persona: {
       ...defaults.persona,
       ...(trip.persona ?? {}),
@@ -117,12 +123,12 @@ const buildItinerary = (trip: Trip): ItineraryDay[] => {
     title: ['도착 · 아사쿠사', '시부야 · 하라주쿠', '우에노 · 도요스', '긴자 · 도심 산책', '마지막 여유 일정'][index] ?? '도쿄 탐험',
     items: [],
   }));
-  const selectedFlight = FLIGHTS.find((flight) => flight.id === trip.selectedFlightId);
+  const selectedFlight = getTripFlight(trip, trip.selectedFlightId);
   if (selectedFlight) {
     const arrival = selectedFlight.outbound.split(' → ')[1]?.split(' ') ?? [];
     days[0].items.push({ id: 'arrival', kind: 'flight', time: arrival[0] ?? '11:20', title: `${arrival[1] ?? '목적지'} 공항 도착`, duration: 80, travelMinutes: 78, travelMode: '대중교통' });
   }
-  const selectedStay = STAYS.find((stay) => stay.id === trip.selectedStayId);
+  const selectedStay = getTripStay(trip, trip.selectedStayId);
   if (selectedStay) {
     days[0].items.push({ id: 'checkin', kind: 'stay', time: '14:00', title: `${selectedStay.name} 체크인`, duration: 30, travelMinutes: 8, travelMode: '도보' });
   }
@@ -317,6 +323,19 @@ const tripStoreCreator: StateCreator<TripStore> = (set) => ({
         },
       },
     };
+  }),
+  applyAgentSearch: (id, flights, stays, places, providers) => set((state) => {
+    const current = normalizeTrip(state.trips[id] ?? createTrip(id));
+    return { trips: { ...state.trips, [id]: {
+      ...current,
+      searchFlightOffers: flights,
+      searchStayOffers: stays,
+      searchPlaceOffers: places,
+      searchProviders: providers,
+      selectedFlightId: flights.some((offer) => offer.id === current.selectedFlightId) ? current.selectedFlightId : null,
+      selectedStayId: stays.some((offer) => offer.id === current.selectedStayId) ? current.selectedStayId : null,
+      updatedAt: new Date().toISOString(),
+    } } };
   }),
   applyItineraryEdit: (tripId, edit) => set((state) => {
     const current = normalizeTrip(state.trips[tripId] ?? createTrip(tripId));

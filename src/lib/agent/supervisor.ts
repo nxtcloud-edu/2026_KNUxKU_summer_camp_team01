@@ -1,7 +1,8 @@
-import { FLIGHTS, STAYS, VERIFICATION_CHECKS } from '@/lib/data';
-import { getTripDestination } from '@/lib/locations';
+import { VERIFICATION_CHECKS } from '@/lib/data';
+import { getTripDestination, getTripOrigin } from '@/lib/locations';
 import { getTripPlace, getTripPlaces } from '@/lib/places';
-import type { ItineraryDay, ItineraryItem, Trip, TripPlace, VerificationCheck } from '@/lib/types';
+import { getTripFlight, getTripStay } from '@/lib/searchResults';
+import type { FlightOffer, ItineraryDay, ItineraryItem, Place, StayOffer, Trip, TripPlace, VerificationCheck } from '@/lib/types';
 
 type WalkingLevel = '낮음' | '중' | '중간' | '높음';
 type SupervisorCategory = '관광지' | '식사' | '카페' | '쇼핑' | '휴식' | '숙소';
@@ -82,6 +83,13 @@ export type AgentPlanResult = {
   verification: VerificationCheck[] | null;
 };
 
+export type AgentSearchResult = {
+  flights: FlightOffer[];
+  stays: StayOffer[];
+  places: Place[];
+  providers: Record<string, string>;
+};
+
 export class SupervisorContractError extends Error {
   constructor(message: string) {
     super(message);
@@ -141,7 +149,6 @@ const assertDate = (value: string, label: string) => {
   return value;
 };
 
-const unique = (values: string[]) => [...new Set(values.filter(Boolean))];
 
 const parsePrice = (value?: string) => {
   if (!value || value.includes('무료')) return 0;
@@ -154,6 +161,11 @@ const closedDays = (place: TripPlace) => {
     ['월', '월요일'], ['화', '화요일'], ['수', '수요일'], ['목', '목요일'],
     ['금', '금요일'], ['토', '토요일'], ['일', '일요일'],
   ].flatMap(([short, full]) => closed.includes(full) || closed.includes(`${short} 휴관`) ? [full] : []);
+};
+
+const canonicalOpeningHours = (place: TripPlace) => {
+  const candidate = place.openingHours?.find((value) => /^\s*\d{2}:\d{2}\s*[-~–]\s*\d{2}:\d{2}\s*$/.test(value));
+  return candidate?.trim().replace(/[~–]/, '-') ?? '09:00-18:00';
 };
 
 const placeCoordinates = (place: TripPlace) => {
@@ -180,7 +192,7 @@ const toSelectedPlace = (trip: Trip, place: TripPlace): SupervisorSelectedPlace 
     lng,
     price: parsePrice(place.price),
     price_unit: 'per_person',
-    opening_hours: place.openingHours?.join(', ') || '09:00-18:00',
+    opening_hours: canonicalOpeningHours(place),
     closed_days: closedDays(place),
     expected_duration_min: trip.placeDurations[place.id] ?? place.duration,
     physical_intensity: place.category === '자연' ? '중간' : '낮음',
@@ -207,7 +219,6 @@ const parseFlightLeg = (value: string, date: string) => {
 
 const getTripInfo = (trip: Trip): SupervisorTripInfo => {
   const destination = getTripDestination(trip);
-  const places = getTripPlaces(trip).filter((place) => trip.selectedPlaceIds.includes(place.id));
   const interests = trip.persona.interests.join(', ');
   const description = trip.persona.companionDescription.trim()
     || `${trip.persona.companion ?? '여행자'}와 함께하는 ${interests || '관광'} 중심 여행`;
@@ -224,7 +235,9 @@ const getTripInfo = (trip: Trip): SupervisorTripInfo => {
     day_end_time: '22:00',
     persona: {
       description,
-      must_visit: unique(places.map((place) => place.name)),
+      // Selecting candidates means "available for planning". It is not the same as
+      // the canonical must-visit constraint, which the current UI does not collect.
+      must_visit: [],
       avoid: trip.persona.pace === 'relaxed' ? ['장시간 도보', '복잡한 환승'] : [],
       pace: trip.persona.pace === 'relaxed' ? '여유' : trip.persona.pace === 'packed' ? '빡빡' : '보통',
       max_walking_level: trip.persona.pace === 'packed' ? '높음' : trip.persona.pace === 'relaxed' ? '낮음' : '중간',
@@ -238,9 +251,11 @@ export const toSupervisorInput = (trip: Trip): SupervisorInput => {
     .map((place) => toSelectedPlace(trip, place));
   if (places.length === 0) throw new SupervisorContractError('Supervisor 일정 생성에는 선택 장소가 한 곳 이상 필요합니다.');
 
-  const flight = FLIGHTS.find((offer) => offer.id === trip.selectedFlightId);
-  const stay = STAYS.find((offer) => offer.id === trip.selectedStayId);
-  const stayCoordinates = stay ? COORDINATES[stay.id] : undefined;
+  const flight = getTripFlight(trip, trip.selectedFlightId);
+  const stay = getTripStay(trip, trip.selectedStayId);
+  const stayCoordinates = stay ? (Number.isFinite(stay.latitude) && Number.isFinite(stay.longitude)
+    ? { lat: stay.latitude as number, lng: stay.longitude as number }
+    : COORDINATES[stay.id]) : undefined;
   if (stay && !stayCoordinates) throw new SupervisorContractError(`${stay.name}의 좌표가 없습니다.`);
 
   return {
@@ -269,10 +284,130 @@ export const toSupervisorInput = (trip: Trip): SupervisorInput => {
   };
 };
 
+export const toSearchInput = (trip: Trip) => {
+  const origin = getTripOrigin(trip);
+  const destination = getTripDestination(trip);
+  return {
+    trip_info: getTripInfo(trip),
+    origin: origin?.name ?? trip.originId ?? '',
+    origin_iata: origin?.airportCodes[0] || undefined,
+    destination_iata: destination?.airportCodes[0] || undefined,
+    include_flights: trip.persona.includeFlights !== false,
+    flight_trip_type: 'round_trip',
+    include_stays: trip.persona.includeStays !== false,
+    max_results: 10,
+  };
+};
+
+const recordArray = (value: unknown): Record<string, unknown>[] => Array.isArray(value) ? value.filter(isRecord) : [];
+const text = (value: unknown, fallback = '') => typeof value === 'string' ? value : fallback;
+const number = (value: unknown, fallback = 0) => typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+const hhmm = (value: unknown) => text(value).match(/T(\d{2}:\d{2})/)?.[1] ?? '00:00';
+const durationLabel = (minutes: number) => `${Math.floor(minutes / 60)}시간 ${minutes % 60}분`;
+
+export const fromSearchPayload = (trip: Trip, payload: unknown): AgentSearchResult => {
+  const outer = isRecord(payload) ? payload : {};
+  const result = isRecord(outer.result) ? outer.result : {};
+  const origin = getTripOrigin(trip);
+  const destination = getTripDestination(trip);
+  const originCode = origin?.airportCodes[0] ?? '출발지';
+  const destinationCode = destination?.airportCodes[0] ?? '목적지';
+  const flightsResult = isRecord(result.flights) ? result.flights : {};
+  const staysResult = isRecord(result.stays) ? result.stays : {};
+  const placesResult = isRecord(result.places) ? result.places : {};
+
+  const flights = recordArray(flightsResult.candidates).flatMap((candidate): FlightOffer[] => {
+    const offer = isRecord(candidate.offer) ? candidate.offer : {};
+    const outbound = isRecord(offer.outbound) ? offer.outbound : {};
+    const inbound = isRecord(offer.inbound) ? offer.inbound : null;
+    const totalPrice = isRecord(offer.total_price) ? offer.total_price : {};
+    const id = text(offer.id);
+    if (!id) return [];
+    const codes = Array.isArray(candidate.carrier_codes) ? candidate.carrier_codes.filter((value): value is string => typeof value === 'string') : [];
+    const code = codes[0] ?? id;
+    const duration = number(outbound.duration_min);
+    return [{
+      id,
+      originId: trip.originId ?? originCode,
+      destinationId: trip.destinationId ?? destinationCode,
+      airline: code,
+      code,
+      price: Math.round(number(totalPrice.amount) / Math.max(1, trip.persona.adults)),
+      outbound: `${hhmm(outbound.depart_at)} ${originCode} → ${hhmm(outbound.arrive_at)} ${destinationCode}`,
+      inbound: inbound ? `${hhmm(inbound.depart_at)} ${destinationCode} → ${hhmm(inbound.arrive_at)} ${originCode}` : '편도',
+      duration: durationLabel(duration),
+      tag: 'Search Agent',
+      note: 'Search Agent가 검증한 항공편 후보입니다.',
+    }];
+  });
+
+  const stays = recordArray(staysResult.candidates).flatMap((candidate, index): StayOffer[] => {
+    const stay = isRecord(candidate.stay) ? candidate.stay : {};
+    const id = text(stay.id);
+    if (!id) return [];
+    const price = Math.round(number(stay.price));
+    const rawRating = number(candidate.rating, 4);
+    return [{
+      id,
+      type: 'hotel',
+      features: ['central', 'station'],
+      name: text(stay.name, '숙소'),
+      area: destination?.name ?? '목적지',
+      address: text(stay.note, destination?.name ?? ''),
+      description: text(stay.note, 'Search Agent가 검증한 숙소 후보입니다.'),
+      rating: rawRating <= 5 ? rawRating * 2 : rawRating,
+      reviews: 0,
+      price,
+      total: price,
+      station: text(stay.note, '교통 정보를 확인해 주세요.'),
+      tag: 'Search Agent',
+      image: `https://picsum.photos/seed/${encodeURIComponent(id)}/800/520`,
+      x: 30 + (index % 3) * 25,
+      y: 35 + (index % 2) * 25,
+      latitude: number(stay.lat),
+      longitude: number(stay.lng),
+    }];
+  });
+
+  const categoryMap: Record<string, Place['category']> = { 관광지: '명소', 식사: '맛집', 카페: '맛집', 쇼핑: '쇼핑', 휴식: '자연', 숙소: '명소' };
+  const places = recordArray(placesResult.candidates).flatMap((candidate, index): Place[] => {
+    const place = isRecord(candidate.place) ? candidate.place : {};
+    const id = text(place.id);
+    if (!id) return [];
+    const duration = number(place.expected_duration_min, 90);
+    return [{
+      id,
+      name: text(place.name, '장소'),
+      category: categoryMap[text(place.category)] ?? '명소',
+      area: destination?.name ?? '목적지',
+      duration,
+      rating: number(candidate.rating, 0),
+      reviews: 0,
+      price: number(place.price) ? `${number(place.price).toLocaleString()}원` : '무료',
+      summary: text(place.note, 'Search Agent가 검증한 장소입니다.'),
+      note: text(place.note, 'Search Agent 추천'),
+      image: `https://picsum.photos/seed/${encodeURIComponent(id)}/640/420`,
+      x: 20 + (index % 4) * 20,
+      y: 25 + (index % 3) * 25,
+      latitude: number(place.lat),
+      longitude: number(place.lng),
+      openingHours: [text(place.opening_hours, '운영시간 확인 필요')],
+      closed: Array.isArray(place.closed_days) ? place.closed_days.join(', ') : undefined,
+    }];
+  });
+
+  const providers = isRecord(outer.providers)
+    ? Object.fromEntries(Object.entries(outer.providers).filter((entry): entry is [string, string] => typeof entry[1] === 'string'))
+    : {};
+  return { flights, stays, places, providers };
+};
+
 const toPlanItem = (trip: Trip, item: ItineraryItem, previousItem: ItineraryItem | undefined, dayIndex: number, itemIndex: number): SupervisorPlanItem => {
   const place = item.placeId ? getTripPlace(trip, item.placeId) : getTripPlaces(trip).find((candidate) => candidate.name === item.title);
-  const stay = item.kind === 'stay' ? STAYS.find((candidate) => candidate.id === trip.selectedStayId) : undefined;
-  const coordinate = place ? placeCoordinates(place) : stay ? COORDINATES[stay.id] : item.kind === 'flight' ? airportCoordinates(item.title) : undefined;
+  const stay = item.kind === 'stay' ? getTripStay(trip, trip.selectedStayId) : undefined;
+  const coordinate = place ? placeCoordinates(place) : stay
+    ? (Number.isFinite(stay.latitude) && Number.isFinite(stay.longitude) ? { lat: stay.latitude as number, lng: stay.longitude as number } : COORDINATES[stay.id])
+    : item.kind === 'flight' ? airportCoordinates(item.title) : undefined;
   if (!coordinate) throw new SupervisorContractError(`${item.title}의 좌표가 없어 일정을 검증할 수 없습니다.`);
   const category: SupervisorCategory = item.kind === 'stay' ? '숙소' : item.kind === 'meal' ? '식사' : place ? CATEGORY_MAP[place.category] : '관광지';
   const endMinutes = item.time.split(':').map(Number);

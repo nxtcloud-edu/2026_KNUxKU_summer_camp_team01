@@ -34,7 +34,7 @@ export async function POST(request: Request, context: { params: Promise<{ task: 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        const events = liveAgentEnabled() && (task === 'itineraryGenerate' || task === 'itineraryVerify')
+        const events = liveAgentEnabled()
           ? createLiveAgentEvents(task, input as never, request.signal)
           : createAgentEvents(task, input, request.signal);
         for await (const event of events) {

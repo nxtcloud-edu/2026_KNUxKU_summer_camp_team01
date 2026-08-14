@@ -7,8 +7,8 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { BrandHeader } from '@/components/AppShell';
 import { MapPanel } from '@/components/MapPanel';
-import { FLIGHTS, STAYS } from '@/lib/data';
 import { getTripDestination } from '@/lib/locations';
+import { getTripFlight, getTripStay } from '@/lib/searchResults';
 import { isVerificationCurrent } from '@/lib/itinerary';
 import { getTripPlace, getTripPlaces } from '@/lib/places';
 import { useTripStore } from '@/lib/store';
@@ -67,8 +67,8 @@ export function SharePrintScreen({ mode }: { mode: ReadonlyMode }) {
 
   const trip = savedTrip ?? (mode === 'share' ? snapshot : null);
   const city = trip ? getTripDestination(trip) : undefined;
-  const flight = FLIGHTS.find((item) => item.id === trip?.selectedFlightId);
-  const stay = STAYS.find((item) => item.id === trip?.selectedStayId);
+  const flight = trip ? getTripFlight(trip, trip.selectedFlightId) : undefined;
+  const stay = trip ? getTripStay(trip, trip.selectedStayId) : undefined;
   const allPlaces = useMemo(() => trip ? getTripPlaces(trip) : [], [trip]);
   const selectedPlaces = useMemo(() => trip ? allPlaces.filter((place) => trip.selectedPlaceIds.includes(place.id)) : [], [allPlaces, trip]);
 
