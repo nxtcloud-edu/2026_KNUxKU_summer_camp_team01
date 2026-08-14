@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   fromSupervisorPayload,
+  SupervisorContractError,
+  toSearchInput,
   toSupervisorInput,
   toVerificationInput,
 } from '@/lib/agent/supervisor';
@@ -28,6 +30,29 @@ const createSelectedTrip = () => {
 };
 
 describe('Supervisor contract adapter', () => {
+  it('validates selected IATA codes against the bundled airport dataset', () => {
+    const trip = createTrip('airport-resolution');
+    trip.startDate = '2026-08-17';
+    trip.endDate = '2026-08-20';
+    trip.originId = 'google-seoul';
+    trip.destinationId = 'google-tokyo';
+    trip.originLocation = { id: 'google-seoul', name: '서울', nameEn: '서울', country: '대한민국', flag: '🇰🇷', currency: '', timezone: '', image: '', color: '', airportCodes: ['ICN'], source: 'google-places' };
+    trip.destinationLocation = { id: 'google-tokyo', name: '도쿄', nameEn: '도쿄', country: '일본', flag: '🇯🇵', currency: '', timezone: '', image: '', color: '', airportCodes: ['NRT'], source: 'google-places' };
+
+    expect(toSearchInput(trip)).toMatchObject({ origin_iata: 'ICN', destination_iata: 'NRT', include_flights: true });
+  });
+
+  it('fails closed when a flight-search city has no verified IATA mapping', () => {
+    const trip = createTrip('unsupported-airport');
+    trip.startDate = '2026-08-17';
+    trip.endDate = '2026-08-20';
+    trip.originLocation = { id: 'unknown', name: 'Unknown City', nameEn: 'Unknown City', country: '', flag: '', currency: '', timezone: '', image: '', color: '', airportCodes: [], source: 'google-places' };
+    trip.originId = 'unknown';
+    trip.destinationId = 'tokyo';
+
+    expect(() => toSearchInput(trip)).toThrow(SupervisorContractError);
+  });
+
   it('builds the integrated SearchToPlanInput without extra place fields', () => {
     const input = toSupervisorInput(createSelectedTrip());
 
@@ -50,7 +75,7 @@ describe('Supervisor contract adapter', () => {
       name: '센소지',
       category: '관광지',
       expected_duration_min: 120,
-      lat: 35.7148,
+      lat: 35.7147,
       lng: 139.7967,
     });
     expect(Object.keys(input.selected.places[0]).sort()).toEqual([
