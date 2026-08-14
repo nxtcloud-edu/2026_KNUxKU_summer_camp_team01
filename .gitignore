@@ -1,14 +1,90 @@
-# Local secrets and environment overrides
+# ═══════════════════════════════════════════════════════════════
+#  비밀 — 가장 위에 둔다. 실수로 커밋되면 되돌리기 어렵다.
+# ═══════════════════════════════════════════════════════════════
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*.p12
+credentials.json
+service-account*.json
 
-# Python generated files
+
+# ═══════════════════════════════════════════════════════════════
+#  Python
+# ═══════════════════════════════════════════════════════════════
 __pycache__/
 *.py[cod]
-*.egg-info/
+*$py.class
+*.so
+.Python
 .venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.tox/
+*.egg-info/
+.eggs/
+dist/
+build/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
 
-# Search Agent build artifacts
-agent/search-agent/build/
-agent/search-agent/dist/
+
+# ═══════════════════════════════════════════════════════════════
+#  실행 산출물 · 캐시 · 로그
+# ═══════════════════════════════════════════════════════════════
+# Routes API 응답 캐시, 실행 기록
+.cache/
+runs/
+*.log
+logs/
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Node · Next.js (프론트엔드)
+# ═══════════════════════════════════════════════════════════════
+node_modules/
+.next/
+out/
+.vercel/
+*.tsbuildinfo
+.npm
+.eslintcache
+coverage/
+playwright-report/
+test-results/
+
+
+# ═══════════════════════════════════════════════════════════════
+#  에디터 · OS
+# ═══════════════════════════════════════════════════════════════
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+desktop.ini
+
+
+# ═══════════════════════════════════════════════════════════════
+#  반드시 커밋한다 — 위 규칙에 걸려 조용히 빠지는 것을 막는다
+# ═══════════════════════════════════════════════════════════════
+!.env.example
+!agent/schemas/
+!agent/schemas/**
+!agent/fixtures/
+!agent/fixtures/**
+!agent/tools/
+!agent/tools/**

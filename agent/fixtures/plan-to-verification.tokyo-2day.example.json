@@ -1,0 +1,324 @@
+{
+  "schema_version": "1.0",
+  "trip_info": {
+    "destination": "도쿄, 일본",
+    "start_date": "2026-09-12",
+    "end_date": "2026-09-13",
+    "num_travelers": 2,
+    "budget_total": 200000,
+    "budget_currency": "JPY",
+    "budget_includes": ["숙소", "식사", "관광지"],
+    "transport_mode": "지하철 및 도보 중심",
+    "day_start_time": "09:00",
+    "day_end_time": "21:00",
+    "persona": {
+      "description": "맛집과 사진 명소를 좋아하는 20대 커플 여행. 로컬 골목 감성과 대표 관광지를 고루 즐기고 싶어함",
+      "must_visit": ["센소지", "시부야 스크램블 교차로", "도쿄타워"],
+      "avoid": ["장거리 이동이 많은 일정", "관광지 위주의 빡빡한 일정"],
+      "pace": "보통",
+      "max_walking_level": "중"
+    }
+  },
+  "plan": {
+    "days": [
+      {
+        "day": 1,
+        "date": "2026-09-12",
+        "items": [
+          {
+            "id": "d1-1",
+            "name": "센소지",
+            "category": "관광지",
+            "start_time": "09:30",
+            "end_time": "10:30",
+            "lat": 35.7148,
+            "lng": 139.7967,
+            "price": 0,
+            "price_unit": "per_person",
+            "opening_hours": "06:00-17:00",
+            "closed_days": [],
+            "expected_duration_min": 60,
+            "physical_intensity": "낮음",
+            "note": "아사쿠사 나카미세 거리와 함께 둘러보기 좋음",
+            "travel_from_prev": null
+          },
+          {
+            "id": "d1-2",
+            "name": "나카미세 거리",
+            "category": "쇼핑",
+            "start_time": "10:30",
+            "end_time": "11:15",
+            "lat": 35.7139,
+            "lng": 139.7966,
+            "price": 0,
+            "price_unit": "per_person",
+            "opening_hours": "09:00-18:00",
+            "closed_days": [],
+            "expected_duration_min": 45,
+            "physical_intensity": "낮음",
+            "note": "기념품 및 전통 과자 구매 가능",
+            "travel_from_prev": {
+              "mode": "도보",
+              "estimated_min": 3,
+              "distance_km": 0.2
+            }
+          },
+          {
+            "id": "d1-3",
+            "name": "아사쿠사 텐동집",
+            "category": "식사",
+            "start_time": "11:30",
+            "end_time": "12:30",
+            "lat": 35.7115,
+            "lng": 139.796,
+            "price": 1800,
+            "price_unit": "per_person",
+            "opening_hours": "11:00-21:00",
+            "closed_days": ["수요일"],
+            "expected_duration_min": 60,
+            "physical_intensity": "낮음",
+            "note": "텐동 맛집, 웨이팅 있을 수 있음",
+            "travel_from_prev": {
+              "mode": "도보",
+              "estimated_min": 8,
+              "distance_km": 0.5
+            }
+          },
+          {
+            "id": "d1-4",
+            "name": "카페 아사쿠사",
+            "category": "카페",
+            "start_time": "13:00",
+            "end_time": "14:00",
+            "lat": 35.71,
+            "lng": 139.795,
+            "price": 800,
+            "price_unit": "per_person",
+            "opening_hours": "10:00-19:00",
+            "closed_days": [],
+            "expected_duration_min": 60,
+            "physical_intensity": "낮음",
+            "note": "디저트와 커피로 휴식",
+            "travel_from_prev": {
+              "mode": "도보",
+              "estimated_min": 6,
+              "distance_km": 0.4
+            }
+          },
+          {
+            "id": "d1-5",
+            "name": "시부야 스크램블 교차로",
+            "category": "관광지",
+            "start_time": "15:00",
+            "end_time": "16:00",
+            "lat": 35.6595,
+            "lng": 139.7005,
+            "price": 0,
+            "price_unit": "per_person",
+            "opening_hours": "00:00-23:59",
+            "closed_days": [],
+            "expected_duration_min": 60,
+            "physical_intensity": "낮음",
+            "note": "스타벅스 2층에서 교차로 전경 감상 추천",
+            "travel_from_prev": {
+              "mode": "지하철",
+              "estimated_min": 35,
+              "distance_km": 8.2
+            }
+          },
+          {
+            "id": "d1-6",
+            "name": "시부야 야키니쿠",
+            "category": "식사",
+            "start_time": "18:00",
+            "end_time": "19:30",
+            "lat": 35.658,
+            "lng": 139.7016,
+            "price": 4500,
+            "price_unit": "per_person",
+            "opening_hours": "17:00-23:00",
+            "closed_days": [],
+            "expected_duration_min": 90,
+            "physical_intensity": "낮음",
+            "note": "예약 권장",
+            "travel_from_prev": {
+              "mode": "도보",
+              "estimated_min": 10,
+              "distance_km": 0.7
+            }
+          },
+          {
+            "id": "d1-7",
+            "name": "시부야 호텔 체크인",
+            "category": "숙소",
+            "start_time": "20:30",
+            "end_time": "21:00",
+            "lat": 35.66,
+            "lng": 139.701,
+            "price": 25000,
+            "price_unit": "per_stay",
+            "opening_hours": "체크인 15:00 이후",
+            "closed_days": [],
+            "expected_duration_min": 30,
+            "physical_intensity": "낮음",
+            "note": "1박 숙박",
+            "travel_from_prev": {
+              "mode": "도보",
+              "estimated_min": 12,
+              "distance_km": 0.8
+            }
+          }
+        ]
+      },
+      {
+        "day": 2,
+        "date": "2026-09-13",
+        "items": [
+          {
+            "id": "d2-1",
+            "name": "츠키지 장외시장",
+            "category": "관광지",
+            "start_time": "09:00",
+            "end_time": "10:30",
+            "lat": 35.6654,
+            "lng": 139.7707,
+            "price": 0,
+            "price_unit": "per_person",
+            "opening_hours": "05:00-14:00",
+            "closed_days": ["일요일", "수요일"],
+            "expected_duration_min": 90,
+            "physical_intensity": "중",
+            "note": "신선한 해산물과 길거리 음식 시식",
+            "travel_from_prev": null
+          },
+          {
+            "id": "d2-2",
+            "name": "츠키지 스시 아침식사",
+            "category": "식사",
+            "start_time": "10:30",
+            "end_time": "11:30",
+            "lat": 35.665,
+            "lng": 139.77,
+            "price": 3200,
+            "price_unit": "per_person",
+            "opening_hours": "06:00-14:00",
+            "closed_days": ["일요일"],
+            "expected_duration_min": 60,
+            "physical_intensity": "낮음",
+            "note": "웨이팅 30분 이상 가능",
+            "travel_from_prev": {
+              "mode": "도보",
+              "estimated_min": 2,
+              "distance_km": 0.1
+            }
+          },
+          {
+            "id": "d2-3",
+            "name": "하마리큐 은사정원",
+            "category": "휴식",
+            "start_time": "12:00",
+            "end_time": "13:00",
+            "lat": 35.6603,
+            "lng": 139.7633,
+            "price": 300,
+            "price_unit": "per_person",
+            "opening_hours": "09:00-17:00",
+            "closed_days": [],
+            "expected_duration_min": 60,
+            "physical_intensity": "낮음",
+            "note": "도심 속 일본 전통 정원, 벤치에서 휴식 가능",
+            "travel_from_prev": {
+              "mode": "도보",
+              "estimated_min": 15,
+              "distance_km": 1.1
+            }
+          },
+          {
+            "id": "d2-4",
+            "name": "긴자 거리",
+            "category": "쇼핑",
+            "start_time": "13:30",
+            "end_time": "15:30",
+            "lat": 35.6717,
+            "lng": 139.765,
+            "price": 0,
+            "price_unit": "per_person",
+            "opening_hours": "10:00-20:00",
+            "closed_days": [],
+            "expected_duration_min": 120,
+            "physical_intensity": "중",
+            "note": "명품거리 및 백화점 다수",
+            "travel_from_prev": {
+              "mode": "지하철",
+              "estimated_min": 15,
+              "distance_km": 2.3
+            }
+          },
+          {
+            "id": "d2-5",
+            "name": "긴자 카페",
+            "category": "카페",
+            "start_time": "15:30",
+            "end_time": "16:15",
+            "lat": 35.672,
+            "lng": 139.7655,
+            "price": 900,
+            "price_unit": "per_person",
+            "opening_hours": "09:00-21:00",
+            "closed_days": [],
+            "expected_duration_min": 45,
+            "physical_intensity": "낮음",
+            "note": "쇼핑 중간 휴식",
+            "travel_from_prev": {
+              "mode": "도보",
+              "estimated_min": 3,
+              "distance_km": 0.2
+            }
+          },
+          {
+            "id": "d2-6",
+            "name": "도쿄타워",
+            "category": "관광지",
+            "start_time": "17:00",
+            "end_time": "18:30",
+            "lat": 35.6586,
+            "lng": 139.7454,
+            "price": 1200,
+            "price_unit": "per_person",
+            "opening_hours": "09:00-23:00",
+            "closed_days": [],
+            "expected_duration_min": 90,
+            "physical_intensity": "낮음",
+            "note": "일몰 시간대 전망대 추천",
+            "travel_from_prev": {
+              "mode": "택시",
+              "estimated_min": 18,
+              "distance_km": 3.5
+            }
+          },
+          {
+            "id": "d2-7",
+            "name": "롯폰기 라멘집",
+            "category": "식사",
+            "start_time": "19:00",
+            "end_time": "20:00",
+            "lat": 35.6627,
+            "lng": 139.7318,
+            "price": 1500,
+            "price_unit": "per_person",
+            "opening_hours": "11:00-24:00",
+            "closed_days": [],
+            "expected_duration_min": 60,
+            "physical_intensity": "낮음",
+            "note": "돈코츠 라멘 전문점",
+            "travel_from_prev": {
+              "mode": "도보",
+              "estimated_min": 20,
+              "distance_km": 1.6
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
