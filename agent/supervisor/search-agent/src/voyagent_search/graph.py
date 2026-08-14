@@ -9,6 +9,7 @@ from langgraph.graph import END, START, StateGraph
 from .aggregate import build_search_to_plan
 from .clients.base import CityInfoProvider, FlightProvider, ProviderBundle, StayPlaceProvider
 from .clients.demo_enrichment import DemoEnrichedGooglePlacesProvider
+from .clients.google_places import GooglePlacesClient
 from .clients.mock import MockTravelProvider
 from .clients.serpapi import SerpApiGoogleFlightsClient
 from .clients.web_city import web_city_provider_from_env
@@ -51,6 +52,29 @@ def hybrid_demo_provider_bundle(
         flights=live_flights,
         stays=google_demo,
         places=google_demo,
+        city=web_city,
+    )
+
+
+def live_provider_bundle(
+    flights: FlightProvider | None = None,
+    places: StayPlaceProvider | None = None,
+    city: CityInfoProvider | None = None,
+) -> ProviderBundle:
+    """실제 provider가 직접 준 값만 사용한다.
+
+    Google Places가 canonical 필수값(가격, 체크인, 체류시간, 활동강도 등)을
+    제공하지 않으면 정규화 단계에서 후보가 탈락한다. 빈칸을 만들거나 추정하지
+    않는 것이 이 bundle의 핵심이다.
+    """
+
+    live_flights = flights if flights is not None else SerpApiGoogleFlightsClient.from_env()
+    live_places = places if places is not None else GooglePlacesClient.from_env()
+    web_city = city if city is not None else web_city_provider_from_env()
+    return ProviderBundle(
+        flights=live_flights,
+        stays=live_places,
+        places=live_places,
         city=web_city,
     )
 

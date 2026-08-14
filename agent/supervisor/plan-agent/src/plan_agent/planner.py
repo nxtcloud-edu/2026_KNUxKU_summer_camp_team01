@@ -16,7 +16,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 
-from . import contracts
+from . import contracts, flights
 from .allocate import AllocationResult, Unassigned, allocate
 from .quota import BUDGET
 from .models import (
@@ -106,14 +106,40 @@ def build_plan(source: SearchToPlanInput) -> PlanningResult:
 
     trip = source.trip_info
     stay = source.selected.stay
+    flight = source.selected.flight
     places = list(source.selected.places)
 
     # 이번 요청의 Routes API 호출 예산을 초기화한다. 요청당 상한이 있어
     # 한 번의 일정 생성이 과금을 폭발시킬 수 없다.
     BUDGET.begin_request()
 
-    allocation = allocate(places, trip, stay)
-    schedule = build_schedule(allocation, places, trip, stay)
+    # 항공편이 있으면 도착일 실질 시작·출발일 실질 종료 시각을 계산한다.
+    # allocate()와 build_schedule() 모두에 같은 값을 넘겨야 배치 단계의
+    # 하루 용량과 시각 확정 단계의 실제 경계가 어긋나지 않는다.
+    day_overrides = flights.compute_day_overrides(trip, flight)
+
+    def _allocate() -> AllocationResult:
+        return allocate(
+            places,
+            trip,
+            stay,
+            day1_start_override=day_overrides.day1_start,
+            last_day_end_override=day_overrides.last_day_end,
+        )
+
+    def _build_schedule(allocation: AllocationResult):
+        return build_schedule(
+            allocation,
+            places,
+            trip,
+            stay,
+            flight=flight,
+            day1_start_override=day_overrides.day1_start,
+            last_day_end_override=day_overrides.last_day_end,
+        )
+
+    allocation = _allocate()
+    schedule = _build_schedule(allocation)
 
     # 넘친 장소를 다른 날에 다시 시도한다.
     for _ in range(MAX_REALLOCATION_PASSES - 1):
@@ -122,7 +148,7 @@ def build_plan(source: SearchToPlanInput) -> PlanningResult:
         allocation, moved = _reallocate_overflow(allocation, schedule, places)
         if not moved:
             break
-        schedule = build_schedule(allocation, places, trip, stay)
+        schedule = _build_schedule(allocation)
 
     by_id = {place.id: place for place in places}
     for overflow in schedule.overflow:
@@ -183,6 +209,20 @@ def build_plan(source: SearchToPlanInput) -> PlanningResult:
             len(diagnostics.violations),
             "; ".join(f"{v.code}" for v in diagnostics.violations),
         )
+        fatal_codes = {
+            "LAST_ITEM_NOT_STAY",
+            "MISSING_TRAVEL",
+            "INVALID_FIRST_TRAVEL",
+            "DURATION_MISMATCH",
+            "BEFORE_DAY_START",
+            "AFTER_DAY_END",
+            "DUPLICATE_ITEM_ID",
+            "DATE_OUT_OF_RANGE",
+            "DAY_COUNT_MISMATCH",
+            "MUST_VISIT_MISSING",
+        }
+        if any(violation.code in fatal_codes for violation in diagnostics.violations):
+            return PlanningResult(payload=None, diagnostics=diagnostics)
 
     if diagnostics.estimated_leg_count:
         logger.info(

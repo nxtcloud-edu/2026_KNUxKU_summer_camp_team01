@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import re
+import os
 from typing import Any
 
 from ..contracts import Category, PlaceCandidate, SearchRequest, SelectedPlace
 from .fact_check import verify_place
 
 _WEEKDAYS = {"월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"}
+_DEFAULT_VISIT_SLOT_MIN = 90
+_DISABLED_FACT_FEATURE_NOTE = (
+    "입장료·사실 기반 체류시간·활동강도 기능은 현재 provider 근거가 없어 제외됨"
+)
 _DAY_PATTERN = re.compile(r"(월요일|화요일|수요일|목요일|금요일|토요일|일요일)")
 _HHMM_PATTERN = re.compile(r"([01]?\d|2[0-3]):([0-5]\d)")
 _KOREAN_TIME_PATTERN = re.compile(r"(오전|오후)\s*([0-1]?\d|2[0-3]):([0-5]\d)")
@@ -74,7 +79,7 @@ def _opening_hours(raw: dict[str, Any]) -> str:
         normalized = _extract_hour_range(description)
         if normalized:
             return normalized
-    return "정보 확인 필요"
+    return "정보 없음" if _strict_facts_enabled() else "정보 확인 필요"
 
 
 def _closed_days(raw: dict[str, Any]) -> list[str]:
@@ -97,7 +102,29 @@ def _closed_days(raw: dict[str, Any]) -> list[str]:
 def _note(raw: dict[str, Any]) -> str:
     address = str(raw.get("formattedAddress", "")).strip()
     demo_note = str(raw.get("_demo_note", "")).strip()
-    return " · ".join(part for part in (address, demo_note) if part)
+    parts = [part for part in (address, demo_note) if part]
+    if _strict_facts_enabled() and not demo_note:
+        parts.append(_DISABLED_FACT_FEATURE_NOTE)
+    return " · ".join(parts)
+
+
+def _strict_facts_enabled() -> bool:
+    return os.getenv("STRICT_FACTS", "true").strip().casefold() not in {
+        "0",
+        "false",
+        "off",
+        "no",
+    }
+
+
+def _field_or_disabled(raw: dict[str, Any], field: str, fallback: object) -> object:
+    if field in raw:
+        value = raw[field]
+        if value is not None and value != "":
+            return value
+    if _strict_facts_enabled():
+        return fallback
+    raise KeyError(field)
 
 
 def normalize_places(
@@ -118,12 +145,18 @@ def normalize_places(
                 category=_category(raw),
                 lat=float(location["latitude"]),
                 lng=float(location["longitude"]),
-                price=float(raw["estimatedPrice"]),
-                price_unit=str(raw["priceUnit"]),
+                price=float(_field_or_disabled(raw, "estimatedPrice", 0.0)),
+                price_unit=str(_field_or_disabled(raw, "priceUnit", "per_person")),
                 opening_hours=_opening_hours(raw),
                 closed_days=_closed_days(raw),
-                expected_duration_min=int(raw["expectedDurationMin"]),
-                physical_intensity=str(raw["physicalIntensity"]),
+                expected_duration_min=int(
+                    _field_or_disabled(
+                        raw, "expectedDurationMin", _DEFAULT_VISIT_SLOT_MIN
+                    )
+                ),
+                physical_intensity=str(
+                    _field_or_disabled(raw, "physicalIntensity", "중간")
+                ),
                 note=_note(raw),
             )
             verification = verify_place(place, raw, request.trip_info.budget_currency)
@@ -135,5 +168,4 @@ def normalize_places(
                 issues.append(f"{record_id}: 사실 검증 거부 ({codes or 'unknown'})")
         except (KeyError, TypeError, ValueError) as error:
             issues.append(f"{record_id}: 정규화 실패 ({error})")
-    candidates.sort(key=lambda candidate: (-(candidate.rating or 0), candidate.place.price, candidate.place.name))
-    return candidates[: request.max_results], issues
+    return candidates, issues

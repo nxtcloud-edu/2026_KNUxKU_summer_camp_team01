@@ -31,6 +31,9 @@ _SCHEMA_DIR = Path(__file__).resolve().parents[3] / "schemas"
 _TIME_PATTERN = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 _DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _ITEM_ID_PATTERN = re.compile(r"^d[1-9]\d*-[1-9]\d*$")
+_DINNER_START_MIN = 17 * 60 + 30
+_FOOD_CATEGORIES = {"식사", "카페"}
+_AFTER_DINNER_CATEGORIES = {"관광지", "휴식", "쇼핑"}
 
 
 def _name_matches(required: str, candidate: str) -> bool:
@@ -63,6 +66,31 @@ class AcceptanceReport:
 def _minutes(value: str) -> int:
     hour, minute = value.split(":")
     return int(hour) * 60 + int(minute)
+
+
+def _has_after_dinner_activity(days: list[dict]) -> bool:
+    for day in days:
+        dinner_end: int | None = None
+        for item in day.get("items", []):
+            start_time = item.get("start_time", "")
+            end_time = item.get("end_time", "")
+            if not _TIME_PATTERN.match(str(start_time)) or not _TIME_PATTERN.match(
+                str(end_time)
+            ):
+                continue
+            start = _minutes(start_time)
+            end = _minutes(end_time)
+            category = item.get("category")
+            if category in _FOOD_CATEGORIES and start >= _DINNER_START_MIN:
+                dinner_end = end
+                continue
+            if (
+                dinner_end is not None
+                and category in _AFTER_DINNER_CATEGORIES
+                and start >= dinner_end
+            ):
+                return True
+    return False
 
 
 def load_schema(name: str) -> dict | None:
@@ -204,8 +232,9 @@ def check_plan_output(payload: Any, source: dict) -> AcceptanceReport:
                             f"{where}.travel_from_prev에 계약 외 필드: {sorted(extra)}"
                         )
 
-        # 마지막 여행일을 뺀 날의 마지막 항목은 숙소여야 한다.
-        if day_index < len(days) - 1 and items:
+        # 숙소 기능이 켜져 있을 때만 마지막 여행일 전 숙소 복귀를 요구한다.
+        selected_stay = source.get("selected", {}).get("stay")
+        if selected_stay is not None and day_index < len(days) - 1 and items:
             if items[-1].get("category") != "숙소":
                 report.failures.append(
                     f"days[{day_index}] 마지막 항목이 숙소가 아닙니다: "
@@ -241,6 +270,11 @@ def check_plan_output(payload: Any, source: dict) -> AcceptanceReport:
     for required in trip.get("persona", {}).get("must_visit", []):
         if not any(_name_matches(str(required), name) for name in scheduled):
             report.failures.append(f"필수 방문지 '{required}'가 일정에 없습니다")
+
+    # ── 저녁 이후 활동 ──
+    report.checked.append("저녁 식사 이후 활동")
+    if not _has_after_dinner_activity(days):
+        report.failures.append("저녁 식사 이후 활동 일정이 없습니다")
 
     return report
 

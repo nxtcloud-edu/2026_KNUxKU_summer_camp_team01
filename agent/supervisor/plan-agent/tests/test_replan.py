@@ -44,7 +44,7 @@ def _place_names(payload) -> set[str]:
         item.name
         for day in payload.plan.days
         for item in day.items
-        if item.category != "숙소"
+        if item.category not in {"숙소", "항공"}
     }
 
 

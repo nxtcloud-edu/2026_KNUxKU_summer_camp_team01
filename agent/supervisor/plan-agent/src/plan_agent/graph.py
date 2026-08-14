@@ -23,6 +23,7 @@ import logging
 from langgraph.graph import END, START, StateGraph
 
 from . import ai, contracts
+from .config import CONFIG
 from .models import PlanToVerificationInput, SearchToPlanInput
 from .planner import PlanningDiagnostics, build_plan
 from .state import PlanState
@@ -44,7 +45,10 @@ async def _narrate(state: PlanState) -> dict:
     if payload is None:
         # 만들 일정이 없으면 문장도 필요 없다.
         return {"narration": None}
-    narration = await ai.narrate_plan(payload)
+    if CONFIG.strict_facts:
+        narration = ai.fallback_narration(payload)
+    else:
+        narration = await ai.narrate_plan(payload)
     return {"narration": narration}
 
 

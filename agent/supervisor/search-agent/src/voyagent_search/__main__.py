@@ -11,7 +11,7 @@ from typing import Sequence
 from .aggregate import build_search_to_plan
 from .clients.base import ProviderBundle
 from .contracts import Persona, SearchRequest, SearchRunResult, SearchSelection, TripInfo
-from .graph import hybrid_demo_provider_bundle, mock_provider_bundle, run_search
+from .graph import hybrid_demo_provider_bundle, live_provider_bundle, mock_provider_bundle, run_search
 
 
 def _positive_int(value: str) -> int:
@@ -29,11 +29,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Voyagent Search Agent demo runner")
     parser.add_argument(
         "--mode",
-        choices=("mock", "hybrid"),
+        choices=("mock", "hybrid", "hybrid_demo", "live"),
         default="mock",
         help=(
-            "mock: 도쿄 전용 전체 DEMO DATA, hybrid: 실제 SerpApi 항공 + "
-            "Google Places 정체성/위치 + canonical 누락값 DEMO 보강"
+            "mock: 도쿄 전용 전체 DEMO DATA, hybrid: 실제 정체성/위치 + canonical 누락값 DEMO 보강, "
+            "live: 실제 provider 직접 제공값만 사용"
         ),
     )
     parser.add_argument("--start-date", help="여행 시작일 YYYY-MM-DD; 생략 시 오늘부터 30일 뒤")
@@ -75,11 +75,11 @@ def _build_request(args: argparse.Namespace) -> SearchRequest:
     if args.mode == "mock" and not is_tokyo:
         raise ValueError("mock mode는 도쿄 전용 fixture입니다. 다른 목적지는 hybrid mode를 사용하세요")
     destination_iata = args.destination_iata or ("NRT" if is_tokyo else None)
-    if args.mode == "hybrid" and not destination_iata:
+    if args.mode in {"hybrid", "hybrid_demo", "live"} and not destination_iata:
         raise ValueError("도쿄 외 hybrid 목적지는 정확한 --destination-iata를 함께 입력해야 합니다")
 
     start_date, end_date = _trip_dates(args.start_date, args.end_date)
-    if args.mode == "hybrid" and date.fromisoformat(start_date) < date.today():
+    if args.mode in {"hybrid", "hybrid_demo", "live"} and date.fromisoformat(start_date) < date.today():
         raise ValueError("hybrid mode의 실제 항공 출발일은 오늘 이후여야 합니다")
     budget_includes = ["식사", "관광지"]
     if not args.skip_stay:
@@ -116,7 +116,13 @@ def _build_request(args: argparse.Namespace) -> SearchRequest:
 def _providers_for_mode(mode: str) -> ProviderBundle:
     """사용자가 명시한 mode에만 live provider를 활성화한다."""
 
-    if mode == "hybrid":
+    if mode == "live":
+        print(
+            "[LIVE FACTS] provider가 직접 제공하지 않는 canonical 필드는 보강하지 않고 실패합니다.",
+            file=sys.stderr,
+        )
+        return live_provider_bundle()
+    if mode in {"hybrid", "hybrid_demo"}:
         print(
             "[HYBRID DEMO] 항공은 SerpApi 실데이터, 숙소·장소의 이름·좌표·주소·평점·Google 제공 "
             "영업시간은 Google Places 실데이터입니다. canonical에 필요한 가격·일정·활동강도 일부는 "

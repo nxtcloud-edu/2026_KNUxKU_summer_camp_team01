@@ -249,6 +249,20 @@ async def _replan(state: SupervisorState) -> dict:
             "failures": state["failures"] + [f"replan: {error.message}"],
         }
 
+    report = check_plan_output(result.payload, state["source"])
+    if not report.ok:
+        logger.warning(
+            "재계획 결과가 수락 검사를 통과하지 못해 기존 일정을 유지합니다: %s",
+            report.failures[:3],
+        )
+        return {
+            "plan": state["plan"],
+            "replan_count": state["replan_count"] + 1,
+            "failures": state["failures"]
+            + [f"replan 산출물 계약 위반: {report.failures[0]}"],
+            "reports": state["reports"] + [report],
+        }
+
     return {
         "plan": result.payload,
         "replan_count": state["replan_count"] + 1,

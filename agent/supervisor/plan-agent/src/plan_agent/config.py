@@ -14,7 +14,7 @@
 
 | 없는 키 | 결과 |
 |---|---|
-| `GOOGLE_MAPS_API_KEY` | 이동시간을 좌표 기반으로 추정한다. 로그에 추정임을 남긴다 |
+| `GOOGLE_MAPS_API_KEY` | 기본적으로 이동시간 계산에 실패한다. `ROUTES_ALLOW_ESTIMATES=true`일 때만 좌표 기반 추정을 쓴다 |
 | `GEMINI_API_KEY` | 배치 순서·이유 문장을 결정론 규칙과 템플릿으로 만든다 |
 """
 
@@ -100,6 +100,13 @@ def _get_float(key: str, default: float) -> float:
         return default
 
 
+def _get_bool(key: str, default: bool) -> bool:
+    raw = _get(key)
+    if not raw:
+        return default
+    return raw.casefold() in {"1", "true", "on", "yes"}
+
+
 @dataclass(frozen=True)
 class Config:
     """import 시점에 한 번 고정된다. 런타임에 바뀌지 않는다."""
@@ -117,11 +124,13 @@ class Config:
     google_maps_api_key: str
     routes_timeout_s: float
     routes_cache_enabled: bool
+    routes_allow_estimates: bool
 
     # ── Gemini (검증 에이전트와 같은 변수명을 쓴다) ──
     gemini_api_key: str
     gemini_model: str
     gemini_temperature: float
+    strict_facts: bool
 
     @property
     def has_routes_api(self) -> bool:
@@ -140,9 +149,11 @@ def _build_config() -> Config:
         google_maps_api_key=_get("GOOGLE_MAPS_API_KEY"),
         routes_timeout_s=_get_float("ROUTES_TIMEOUT_S", 8.0),
         routes_cache_enabled=_get("ROUTES_CACHE", "on").casefold() != "off",
+        routes_allow_estimates=_get_bool("ROUTES_ALLOW_ESTIMATES", False),
         gemini_api_key=_get("GEMINI_API_KEY"),
         gemini_model=_get("GEMINI_MODEL", "gemini-2.5-flash"),
         gemini_temperature=_get_float("GEMINI_TEMPERATURE", 0.2),
+        strict_facts=_get_bool("STRICT_FACTS", True),
     )
 
 
@@ -158,11 +169,18 @@ def describe_capabilities() -> list[str]:
         (
             "Google Routes API: 사용"
             if CONFIG.has_routes_api
-            else "Google Routes API: 키 없음 → 좌표 기반 추정으로 대체"
+            else "Google Routes API: 키 없음"
+        ),
+        (
+            "Routes 좌표 기반 추정: 허용"
+            if CONFIG.routes_allow_estimates
+            else "Routes 좌표 기반 추정: 차단"
         ),
         (
             f"Gemini: 사용 ({CONFIG.gemini_model})"
-            if CONFIG.has_gemini
+            if CONFIG.has_gemini and not CONFIG.strict_facts
+            else "Gemini: STRICT_FACTS=true → 서술 생성 비활성화"
+            if CONFIG.strict_facts
             else "Gemini: 키 없음 → 결정론 배치 + 템플릿 문장으로 대체"
         ),
     ]

@@ -64,6 +64,21 @@ def to_hhmm(total_minutes: int) -> str:
     return f"{total_minutes // 60:02d}:{total_minutes % 60:02d}"
 
 
+def split_datetime(value: str) -> tuple[str, str]:
+    """`YYYY-MM-DDTHH:MM...` 형태의 ISO 시각 문자열에서 날짜와 `HH:MM`을 뽑는다.
+
+    항공편 `depart_at`/`arrive_at`이 이 형식이다. 초·timezone이 붙어 있어도
+    앞의 날짜와 시:분만 있으면 된다. 형식이 어긋나면 예외를 던진다 — 항공편
+    시각을 조용히 무시하고 일정에서 빼면 사용자가 이유를 알 수 없다.
+    """
+
+    match = re.match(r"^(\d{4}-\d{2}-\d{2})[T ](\d{2}):(\d{2})", value)
+    if match is None:
+        raise ValueError(f"ISO 날짜/시각 형식이 아닙니다: {value!r}")
+    date_str, hour, minute = match.group(1), match.group(2), match.group(3)
+    return date_str, f"{hour}:{minute}"
+
+
 def parse_date(value: str) -> date:
     """`YYYY-MM-DD`를 date로 바꾼다. 달력에 없는 날짜는 예외."""
 
@@ -184,6 +199,7 @@ __all__ = [
     "parse_date",
     "parse_opening_hours",
     "round_up_to_5",
+    "split_datetime",
     "to_date_str",
     "to_hhmm",
     "to_minutes",

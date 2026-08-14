@@ -1,4 +1,4 @@
-"""이동시간 계산 — Google Routes API 1차, 좌표 기반 추정 폴백.
+"""이동시간 계산 — Google Routes API 1차, 선택적 좌표 기반 추정.
 
 ## 어떤 Google API를 쓰는가
 
@@ -183,11 +183,10 @@ def estimate_leg(
     destination: tuple[float, float],
     transport_mode: str,
 ) -> TravelEstimate:
-    """두 지점 사이 이동을 계산한다. 실패해도 예외를 올리지 않는다.
+    """두 지점 사이 이동을 계산한다.
 
-    Routes API가 안 되면 좌표 기반 추정으로 떨어지고, 그 사실을 `source`와
-    로그에 남긴다. 일정 생성이 멈추는 것보다 추정값으로라도 만드는 게 낫되,
-    추정을 실제 측정값처럼 보이게 하지는 않는다.
+    기본은 fail-closed다. Routes API가 없거나 실패하면 예외를 올린다.
+    `ROUTES_ALLOW_ESTIMATES=true`일 때만 좌표 기반 추정으로 대체한다.
     """
 
     mode_key = geo.normalize_mode(transport_mode)
@@ -222,22 +221,31 @@ def _estimate_uncached(
         except QuotaExhausted:
             # 예산 소진은 오류가 아니라 정상 운영 상태다. quota 모듈이 이미
             # 경고를 남겼으므로 여기서 또 시끄럽게 하지 않는다.
-            logger.debug("호출 예산 소진. 좌표 기반 추정을 사용합니다.")
+            logger.debug("호출 예산 소진.")
+            if not CONFIG.routes_allow_estimates:
+                raise
         except (urllib.error.URLError, TimeoutError, OSError) as error:
             logger.warning(
-                "Routes API 호출 실패(%s). 좌표 기반 추정으로 대체합니다: %s",
+                "Routes API 호출 실패(%s): %s",
                 type(error).__name__,
                 error,
             )
+            if not CONFIG.routes_allow_estimates:
+                raise
         except (KeyError, ValueError, RuntimeError) as error:
             logger.warning(
-                "Routes API 응답 처리 실패(%s). 좌표 기반 추정으로 대체합니다: %s",
+                "Routes API 응답 처리 실패(%s): %s",
                 type(error).__name__,
                 error,
             )
+            if not CONFIG.routes_allow_estimates:
+                raise
     else:
+        if not CONFIG.routes_allow_estimates:
+            raise RuntimeError("GOOGLE_MAPS_API_KEY가 없어 이동시간을 사실 기반으로 계산할 수 없습니다")
         logger.debug("GOOGLE_MAPS_API_KEY 없음. 좌표 기반 추정을 사용합니다.")
 
+    logger.warning("Routes API 사실값을 얻지 못해 좌표 기반 추정을 사용합니다.")
     minutes = timecalc.round_up_to_5(geo.estimate_minutes(straight_km, mode_key))
     return TravelEstimate(
         mode_label=transport_mode,
@@ -303,8 +311,8 @@ def matrix_minutes(
 ) -> list[list[int]]:
     """모든 지점 쌍의 이동시간(분). 일자 배치에서 클러스터링 기준으로 쓴다.
 
-    Routes API를 쓸 수 없거나 원소 수 상한을 넘으면 전부 좌표 기반 추정으로
-    계산한다. 상한은 TRANSIT 100개, 그 외 625개다.
+    기본은 Routes API 결과만 쓴다. `ROUTES_ALLOW_ESTIMATES=true`일 때만
+    좌표 기반 추정으로 계산한다. 상한은 TRANSIT 100개, 그 외 625개다.
     """
 
     size = len(points)
@@ -320,20 +328,29 @@ def matrix_minutes(
         try:
             return _call_matrix(points, transport_mode, mode_key)
         except QuotaExhausted:
-            logger.debug("호출 예산 소진. 행렬을 좌표 기반으로 추정합니다.")
+            logger.debug("호출 예산 소진.")
+            if not CONFIG.routes_allow_estimates:
+                raise
         except (urllib.error.URLError, TimeoutError, OSError, ValueError, KeyError) as error:
             logger.warning(
-                "computeRouteMatrix 실패(%s). 좌표 기반 추정으로 대체합니다: %s",
+                "computeRouteMatrix 실패(%s): %s",
                 type(error).__name__,
                 error,
             )
+            if not CONFIG.routes_allow_estimates:
+                raise
     elif CONFIG.has_routes_api:
         logger.info(
-            "행렬 원소 %d개가 상한 %d개를 넘어 좌표 기반 추정을 사용합니다.",
+            "행렬 원소 %d개가 상한 %d개를 넘었습니다.",
             elements,
             limit,
         )
+        if not CONFIG.routes_allow_estimates:
+            raise RuntimeError("Routes Matrix 원소 수 상한을 넘어 사실 기반 이동시간을 계산할 수 없습니다")
+    elif not CONFIG.routes_allow_estimates:
+        raise RuntimeError("GOOGLE_MAPS_API_KEY가 없어 사실 기반 이동시간 행렬을 계산할 수 없습니다")
 
+    logger.warning("Routes Matrix 사실값을 얻지 못해 좌표 기반 추정을 사용합니다.")
     return [
         [
             timecalc.round_up_to_5(

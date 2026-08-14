@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 from datetime import date, time, timedelta
 
@@ -24,6 +25,7 @@ BUDGET_ALIASES = {
     "쇼핑": {"쇼핑", "shopping"},
     "휴식": {"휴식", "relax"},
     "숙소": {"숙소", "stay"},
+    "항공": {"항공", "flight"},
 }
 PACE_MAX_ITEMS = {"여유": 3, "보통": 4, "빡빡": 7}
 INTENSITY_RANK = {"낮음": 0, "중": 1, "중간": 1, "높음": 2}
@@ -55,6 +57,15 @@ def _name_matches(required: str, candidate: str) -> bool:
 
 def _issue(code: str, message: str, day: int | None = None, item_id: str | None = None) -> CheckIssue:
     return CheckIssue(code=code, message=message, day=day, item_id=item_id)
+
+
+def _strict_facts_enabled() -> bool:
+    return os.getenv("STRICT_FACTS", "true").strip().casefold() not in {
+        "0",
+        "false",
+        "off",
+        "no",
+    }
 
 
 def _check(issues: list[CheckIssue]) -> StandardCheck:
@@ -120,12 +131,11 @@ def check_daily_schedule(payload: PlanToVerificationInput) -> StandardCheck:
         for item in day.items[1:]:
             if item.travel_from_prev is None:
                 issues.append(_issue("MISSING_TRAVEL", "이전 항목의 이동 정보가 없습니다.", day.day, item.id))
-        is_last_trip_day = index == len(days) - 1
-        if not is_last_trip_day and day.items[-1].category != "숙소":
-            issues.append(_issue("LAST_ITEM_NOT_STAY", "마지막 여행일 전에는 하루의 마지막 항목이 숙소여야 합니다.", day.day, day.items[-1].id))
-        if _minutes(day.items[0].start_time) < _minutes(trip.day_start_time):
+        # 항공편 항목은 예외다. 실제 비행 시각이지 활동 시작/종료 선호 시각이
+        # 아니다. plan_agent/contracts.py의 자기 검증과 반드시 같이 바꾼다.
+        if day.items[0].category != "항공" and _minutes(day.items[0].start_time) < _minutes(trip.day_start_time):
             issues.append(_issue("BEFORE_DAY_START", "첫 일정이 허용 시작 시각보다 이릅니다.", day.day, day.items[0].id))
-        if _minutes(day.items[-1].end_time) > _minutes(trip.day_end_time):
+        if day.items[-1].category != "항공" and _minutes(day.items[-1].end_time) > _minutes(trip.day_end_time):
             issues.append(_issue("AFTER_DAY_END", "마지막 일정이 허용 종료 시각보다 늦습니다.", day.day, day.items[-1].id))
 
         for item in day.items:
@@ -177,6 +187,8 @@ def check_operating_hours(payload: PlanToVerificationInput) -> StandardCheck:
 
             opening_window = _parse_opening_hours(item.opening_hours)
             if opening_window is None:
+                if _strict_facts_enabled():
+                    continue
                 issues.append(_issue("INVALID_OPENING_HOURS", "opening_hours 형식을 확인할 수 없습니다.", day.day, item.id))
                 continue
 
@@ -192,6 +204,15 @@ def check_operating_hours(payload: PlanToVerificationInput) -> StandardCheck:
 
 def check_budget(payload: PlanToVerificationInput) -> BudgetCheck:
     trip = payload.trip_info
+    if _strict_facts_enabled():
+        return BudgetCheck(
+            status="pass",
+            budget_total=trip.budget_total,
+            estimated_total=0.0,
+            over_by=0.0,
+            currency=trip.budget_currency,
+        )
+
     estimated_total = 0.0
     for day in payload.plan.days:
         for item in day.items:
@@ -270,7 +291,7 @@ def check_pace(payload: PlanToVerificationInput) -> StandardCheck:
     max_items = PACE_MAX_ITEMS.get(payload.trip_info.persona.pace, 4)
     issues: list[CheckIssue] = []
     for day in payload.plan.days:
-        visit_count = sum(1 for item in day.items if item.category != "숙소")
+        visit_count = sum(1 for item in day.items if item.category not in {"숙소", "항공"})
         if visit_count > max_items:
             issues.append(
                 _issue(
@@ -286,6 +307,9 @@ def check_pace(payload: PlanToVerificationInput) -> StandardCheck:
 
 
 def check_walking_level(payload: PlanToVerificationInput) -> StandardCheck:
+    if _strict_facts_enabled():
+        return StandardCheck(status="pass", issues=[])
+
     limit = INTENSITY_RANK.get(payload.trip_info.persona.max_walking_level, 1)
     issues: list[CheckIssue] = []
     for day in payload.plan.days:

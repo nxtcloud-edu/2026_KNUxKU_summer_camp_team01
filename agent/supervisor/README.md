@@ -21,7 +21,7 @@ supervisor는 각 하위 에이전트를 HTTP SSE 호출로 실행합니다.
 
 ```text
 프론트엔드 웹사이트                Search Agent
-(사용자 선호·조건 수집)            (항공편·숙소·장소 정보 수집)
+(사용자 선호·조건 수집)            (항공편·장소 정보 수집)
         │                                │
         │ trip_info                      │ selected
         │  (persona 포함)                 │  (flight / stay / places)
@@ -40,10 +40,33 @@ supervisor는 각 하위 에이전트를 HTTP SSE 호출로 실행합니다.
 | 블록 | 만드는 곳 | 내용 |
 |---|---|---|
 | `trip_info` | 프론트엔드 웹사이트 | 목적지·날짜·인원·예산·이동수단·하루 시간대 + `persona` |
-| `selected` | Search Agent | 항공편·숙소·장소 후보 |
+| `selected` | Search Agent | 항공편·장소 후보. 현재 strict 로컬 모드에서는 `stay=null` |
 
 사용자에게 선호를 묻는 것은 **프론트엔드의 일**이다. Search Agent는 그 조건을
-받아 항공편·숙소·여행장소 **정보만** 수집한다.
+받아 항공편·여행장소 **정보만** 수집한다.
+
+## 현재 strict 로컬 모드
+
+`.env`의 기본 운영값은 다음 기준을 따른다.
+
+```text
+STRICT_FACTS=true
+ROUTES_ALLOW_ESTIMATES=false
+```
+
+추가 provider 없이는 사실 기반으로 확인할 수 없는 기능은 현재 파이프라인에서
+제외되어 있다.
+
+| 제외 기능 | 현재 처리 |
+|---|---|
+| 숙소 실제 가격·체크인·체크아웃 | Search 결과의 `selected.stay`를 `null`로 둔다 |
+| 장소 입장료 | schema 호환용 `price: 0`만 남기고 예산 검증에서 사용하지 않는다 |
+| 사실 기반 체류시간 | 일정 슬롯 계산용 기본값만 사용한다 |
+| 사실 기반 활동강도 | walking level 검증에서 사용하지 않는다 |
+| Google Places가 영업시간을 주지 않는 장소 | `opening_hours: "정보 없음"`으로 보존하고 영업시간 검증에서 제외한다 |
+
+이 값들은 UI에서 사실 데이터처럼 보여주면 안 된다. 필요하면 숙박/티켓/activity
+provider를 추가한 뒤 다시 검증 기능으로 켠다.
 
 | 경계 | 정본 스키마 | 예제 |
 |---|---|---|

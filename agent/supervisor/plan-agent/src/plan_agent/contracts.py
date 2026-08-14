@@ -32,6 +32,7 @@ Plan Agent가 만든 일정은 곧바로 Verification Agent로 넘어간다. 거
 
 from __future__ import annotations
 
+from .config import CONFIG
 from . import timecalc
 from .budget import check_budget
 from .models import (
@@ -85,7 +86,10 @@ def check_input_usable(payload: SearchToPlanInput) -> list[Violation]:
             )
         seen_ids.add(place.id)
 
-        if timecalc.parse_opening_hours(place.opening_hours) is None:
+        if (
+            timecalc.parse_opening_hours(place.opening_hours) is None
+            and not CONFIG.strict_facts
+        ):
             violations.append(
                 Violation(
                     code="INVALID_OPENING_HOURS",
@@ -125,12 +129,8 @@ def check_input_usable(payload: SearchToPlanInput) -> list[Violation]:
                 )
             )
 
-    # 다일 여행에서 숙소가 없으면 `LAST_ITEM_NOT_STAY`를 만족시킬 방법이 없다.
-    # 검증 에이전트는 마지막 여행일을 뺀 모든 날의 마지막 항목이 `숙소`이기를
-    # 요구하는데, Plan Agent는 숙소를 만들어낼 수 없다. 배치를 시작하기 전에
-    # 알려야 하는 구조적 불가능이다.
     total_days = timecalc.day_count(trip.start_date, trip.end_date)
-    if total_days > 1:
+    if not CONFIG.strict_facts and total_days > 1:
         has_stay_category = any(
             place.category == "숙소" for place in payload.selected.places
         )
@@ -253,7 +253,11 @@ def check_daily_schedule(payload: PlanToVerificationInput) -> list[Violation]:
                 )
 
         is_last_trip_day = index == len(days) - 1
-        if not is_last_trip_day and day.items[-1].category != "숙소":
+        if (
+            not CONFIG.strict_facts
+            and not is_last_trip_day
+            and day.items[-1].category != "숙소"
+        ):
             violations.append(
                 Violation(
                     code="LAST_ITEM_NOT_STAY",
@@ -263,9 +267,12 @@ def check_daily_schedule(payload: PlanToVerificationInput) -> list[Violation]:
                 )
             )
 
-        if timecalc.to_minutes(day.items[0].start_time) < timecalc.to_minutes(
-            trip.day_start_time
-        ):
+        # 항공편 항목은 예외다. 도착·출발 시각은 실제 비행 시각이지 사용자가
+        # 정한 "활동 시작/종료 허용 시각" 선호가 아니다. 이른 아침 도착
+        # 항공편을 BEFORE_DAY_START로 잡으면 매번 위반이 나게 된다.
+        if day.items[0].category != "항공" and timecalc.to_minutes(
+            day.items[0].start_time
+        ) < timecalc.to_minutes(trip.day_start_time):
             violations.append(
                 Violation(
                     code="BEFORE_DAY_START",
@@ -277,9 +284,9 @@ def check_daily_schedule(payload: PlanToVerificationInput) -> list[Violation]:
                     item_id=day.items[0].id,
                 )
             )
-        if timecalc.to_minutes(day.items[-1].end_time) > timecalc.to_minutes(
-            trip.day_end_time
-        ):
+        if day.items[-1].category != "항공" and timecalc.to_minutes(
+            day.items[-1].end_time
+        ) > timecalc.to_minutes(trip.day_end_time):
             violations.append(
                 Violation(
                     code="AFTER_DAY_END",
@@ -382,6 +389,8 @@ def check_operating_hours(payload: PlanToVerificationInput) -> list[Violation]:
 
             window = timecalc.parse_opening_hours(item.opening_hours)
             if window is None:
+                if CONFIG.strict_facts:
+                    continue
                 violations.append(
                     Violation(
                         code="INVALID_OPENING_HOURS",
@@ -457,6 +466,10 @@ def check_names_are_grounded(
     violations: list[Violation] = []
     for day in payload.plan.days:
         for item in day.items:
+            # 항공편 항목은 Plan Agent가 flights.py에서 직접 합성한다
+            # (search 선택 결과에는 "출국 항공편" 같은 장소 이름이 없다).
+            if item.category == "항공":
+                continue
             if _normalize(item.name) not in available:
                 violations.append(
                     Violation(

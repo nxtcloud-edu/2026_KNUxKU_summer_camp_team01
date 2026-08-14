@@ -48,6 +48,13 @@ DEFAULT_PACE_TARGET = (3, 4)
 # 같은 순위로 취급한다. 이건 계약의 모호함이라 담당자와 정리할 항목이다
 # (둘 중 하나로 통일하는 게 맞다).
 INTENSITY_RANK: dict[str, int] = {"낮음": 0, "중": 1, "중간": 1, "높음": 2}
+LUNCH_WINDOW_START_MIN = 11 * 60 + 30
+LUNCH_WINDOW_END_MIN = 14 * 60
+DINNER_START_MIN = 17 * 60 + 30
+AFTER_DINNER_GAP_MIN = 10
+EVENING_ACTIVITY_DURATION_MIN = 60
+FOOD_CATEGORIES = {"식사", "카페"}
+AFTER_DINNER_CATEGORIES = {"관광지", "휴식", "쇼핑"}
 
 
 @dataclass
@@ -57,6 +64,12 @@ class DayAllocation:
     day_number: int  # 1부터
     date: str
     place_ids: list[str] = field(default_factory=list)
+    # 이 날 점심/저녁으로 예약된 장소 id. `schedule.py`가 이 값으로 시각을
+    # 점심·저녁 시간대에 고정한다. 하루에 식사가 몰리거나 아예 빠지는 것을
+    # 막으려면 "어떤 장소가 식사인가"가 아니라 "이 날의 점심은 무엇인가"가
+    # 결정되어 있어야 한다.
+    lunch_id: str | None = None
+    dinner_id: str | None = None
 
 
 @dataclass
@@ -110,11 +123,20 @@ def allocate(
     places: list[SelectedPlace],
     trip: TripInfo,
     stay: SelectedStay | None,
+    *,
+    day1_start_override: int | None = None,
+    last_day_end_override: int | None = None,
 ) -> AllocationResult:
     """장소를 일자에 배치한다.
 
     필수 방문지를 먼저, 그다음 제약이 강한 순서로 배치한다. 배치하지 못한
     장소는 이유와 함께 `unassigned`에 담는다.
+
+    `day1_start_override`/`last_day_end_override`는 항공편이 있을 때
+    `flights.compute_day_overrides()`가 계산한, 도착일 실질 시작·출발일 실질
+    종료 시각(분)이다. 이 두 날의 하루 용량이 줄어드는 것을 배치 단계부터
+    반영해야 한다 — 그러지 않으면 배치는 "하루 종일 쓸 수 있다" 가정으로
+    장소를 몰아넣고, 시각 확정 단계에서야 넘쳐서 뒤늦게 알게 된다.
     """
 
     dates = trip_dates(trip)
@@ -129,6 +151,7 @@ def allocate(
         return result
 
     by_id = {place.id: place for place in places}
+
     def is_must_visit(place: SelectedPlace) -> bool:
         place_name = place.name.strip().casefold()
         return any(
@@ -161,6 +184,24 @@ def allocate(
             )
         )
 
+    max_intensity = intensity_rank(trip.persona.max_walking_level)
+    comfortable_placeable: list[SelectedPlace] = []
+    for place in placeable:
+        if is_must_visit(place) or intensity_rank(place.physical_intensity) <= max_intensity:
+            comfortable_placeable.append(place)
+            continue
+        result.unassigned.append(
+            Unassigned(
+                place_id=place.id,
+                place_name=place.name,
+                reason=(
+                    f"활동 강도({place.physical_intensity})가 요청 수준"
+                    f"({trip.persona.max_walking_level})을 넘습니다"
+                ),
+            )
+        )
+    placeable = comfortable_placeable
+
     # 배치 순서: 필수 방문지 먼저 → 갈 수 있는 날이 적은 것 → id (결정론)
     ordered = sorted(
         placeable,
@@ -172,7 +213,24 @@ def allocate(
     )
 
     _, pace_max = pace_target(trip.persona.pace)
-    capacity = _day_capacity_minutes(trip)
+    base_capacity = _day_capacity_minutes(trip)
+    day_count_for_capacity = len(days)
+    capacities = [base_capacity] * day_count_for_capacity
+    if day_count_for_capacity:
+        if day1_start_override is not None:
+            capacities[0] = max(
+                0, timecalc.to_minutes(trip.day_end_time) - day1_start_override
+            )
+        last_index = day_count_for_capacity - 1
+        if last_day_end_override is not None:
+            last_day_start = (
+                day1_start_override
+                if last_index == 0 and day1_start_override is not None
+                else timecalc.to_minutes(trip.day_start_time)
+            )
+            capacities[last_index] = min(
+                capacities[last_index], max(0, last_day_end_override - last_day_start)
+            )
 
     # 하루에 몇 곳까지 둘지.
     #
@@ -198,7 +256,15 @@ def allocate(
     # 누적 소요시간(체류시간만). 이동시간은 schedule 단계에서 정확히 계산한다.
     used_minutes = [0] * day_count
 
+    # 하루마다 점심 하나, 저녁 하나를 먼저 예약한다. 이후 나머지 장소를
+    # "적게 채워진 날 우선" 기준으로 채우는 일반 배치 루프에서는 식사가
+    # 몰리거나 빠지는 것을 막을 수 없다 — 식사도 그냥 장소 하나일 뿐이기
+    # 때문이다. 그래서 식사는 일반 배치보다 먼저, 날짜별로 결정한다.
+    reserved_ids = _reserve_daily_meals(ordered, feasible, days, used_minutes)
+
     for place in ordered:
+        if place.id in reserved_ids:
+            continue
         candidates = feasible[place.id]
         best_index = _choose_day(
             place=place,
@@ -207,7 +273,7 @@ def allocate(
             by_id=by_id,
             used_minutes=used_minutes,
             per_day_cap=per_day_cap,
-            capacity=capacity,
+            capacities=capacities,
         )
         if best_index is None:
             result.unassigned.append(
@@ -223,12 +289,102 @@ def allocate(
 
     # 하루 안의 순서를 정한다. 개장 시각을 고려해 하루를 일찍 시작하게 한다.
     seed = (stay.lat, stay.lng) if stay is not None else None
-    day_start = timecalc.to_minutes(trip.day_start_time)
-    for day in days:
-        day.place_ids = _order_within_day(day.place_ids, by_id, seed, day_start)
+    default_day_start = timecalc.to_minutes(trip.day_start_time)
+    for day_index, day in enumerate(days):
+        day_start_for_day = (
+            day1_start_override
+            if day_index == 0 and day1_start_override is not None
+            else default_day_start
+        )
+        meal_starts = {
+            place_id: start
+            for place_id, start in (
+                (day.lunch_id, LUNCH_WINDOW_START_MIN),
+                (day.dinner_id, DINNER_START_MIN),
+            )
+            if place_id is not None
+        }
+        day.place_ids = _order_within_day(
+            day.place_ids, by_id, seed, day_start_for_day, meal_starts
+        )
 
     _add_intensity_notes(result, days, by_id, trip)
     return result
+
+
+def _reserve_daily_meals(
+    ordered: list[SelectedPlace],
+    feasible: dict[str, list[str]],
+    days: list[DayAllocation],
+    used_minutes: list[int],
+) -> set[str]:
+    """하루마다 점심 하나, 저녁 하나를 예약해 `day.lunch_id`/`day.dinner_id`에 남긴다.
+
+    기존에는 "저녁식사 + 저녁 활동" 한 쌍만 여행 전체에서 딱 한 번, 마지막
+    가능일에 예약했다. 그 결과 식사는 다른 장소와 똑같이 일반 배치 루프의
+    "적게 채워진 날 우선" 기준으로만 배치되어, 어떤 날은 식사가 두세 곳
+    몰리고 어떤 날은 하나도 없는 일이 생겼다.
+
+    이 함수는 날짜 순서대로 각 날에 점심 후보(정오 무렵 열려 있고 그 안에
+    끝낼 수 있는 곳) 하나와 저녁 후보(17:30 이후 시작 가능한 곳) 하나를
+    먼저 배정한다. 같은 장소가 여러 날 중복 예약되지 않도록 예약된 id는
+    다음 날 후보에서 제외한다.
+    """
+
+    foods = [place for place in ordered if place.category in FOOD_CATEGORIES]
+    reserved: set[str] = set()
+
+    for day in days:
+        lunch_candidates = [
+            place
+            for place in foods
+            if place.id not in reserved
+            and day.date in feasible.get(place.id, [])
+            and _fits_at(place, LUNCH_WINDOW_START_MIN)
+            and LUNCH_WINDOW_START_MIN + place.expected_duration_min <= LUNCH_WINDOW_END_MIN
+        ]
+        if lunch_candidates:
+            lunch = min(lunch_candidates, key=lambda place: (place.expected_duration_min, place.id))
+            reserved.add(lunch.id)
+            day.lunch_id = lunch.id
+            day.place_ids.append(lunch.id)
+            used_minutes[days.index(day)] += lunch.expected_duration_min
+
+        dinner_candidates = [
+            place
+            for place in foods
+            if place.id not in reserved
+            and day.date in feasible.get(place.id, [])
+            and _fits_at(place, DINNER_START_MIN)
+        ]
+        if dinner_candidates:
+            dinner = min(
+                dinner_candidates,
+                key=lambda place: (
+                    place.expected_duration_min > 120,
+                    place.expected_duration_min,
+                    place.id,
+                ),
+            )
+            reserved.add(dinner.id)
+            day.dinner_id = dinner.id
+            day.place_ids.append(dinner.id)
+            used_minutes[days.index(day)] += dinner.expected_duration_min
+
+    return reserved
+
+
+def _fits_at(place: SelectedPlace, start: int) -> bool:
+    window = timecalc.parse_opening_hours(place.opening_hours)
+    if window is None:
+        return True
+    opens_at, closes_at = window
+    duration = (
+        EVENING_ACTIVITY_DURATION_MIN
+        if place.category in AFTER_DINNER_CATEGORIES and start >= DINNER_START_MIN
+        else place.expected_duration_min
+    )
+    return start >= opens_at and start + duration <= closes_at
 
 
 def _choose_day(
@@ -239,7 +395,7 @@ def _choose_day(
     by_id: dict[str, SelectedPlace],
     used_minutes: list[int],
     per_day_cap: int,
-    capacity: int,
+    capacities: list[int],
 ) -> int | None:
     """장소를 둘 가장 좋은 날의 인덱스. 없으면 None."""
 
@@ -252,7 +408,8 @@ def _choose_day(
 
         # 체류시간 합이 하루 창을 넘으면 그 날은 후보에서 뺀다.
         # 이동시간은 아직 모르므로 여유를 남긴다(schedule이 최종 판정).
-        if used_minutes[index] + place.expected_duration_min > capacity:
+        # 항공편이 있는 날은 `capacities[index]`가 이미 줄어들어 있다.
+        if used_minutes[index] + place.expected_duration_min > capacities[index]:
             continue
 
         already_full = len(day.place_ids) >= per_day_cap
@@ -303,9 +460,17 @@ def _affinity_minutes(
     return int(round(min(distances) * 10))  # 0.1km 단위 정수화 (결정론 정렬용)
 
 
-def _opens_at(place: SelectedPlace) -> int:
-    """장소의 개장 시각(분). 파싱 불가면 하루 시작으로 본다."""
+def _opens_at(place: SelectedPlace, meal_starts: dict[str, int] | None = None) -> int:
+    """장소의 개장 시각(분). 파싱 불가면 하루 시작으로 본다.
 
+    `meal_starts`에 있는 장소(그 날의 점심/저녁으로 예약된 식사)는 실제
+    영업시간 대신 식사 시간대 시작을 "개장 시각"으로 친다. 그래야 아래
+    순서 정렬 알고리즘이 자연히 점심·저녁 시간대 근처로 이 장소를 밀어
+    넣는다 — 종일 영업하는 식당이라도 오전 9시에 배치되지 않는다.
+    """
+
+    if meal_starts and place.id in meal_starts:
+        return meal_starts[place.id]
     window = timecalc.parse_opening_hours(place.opening_hours)
     return window[0] if window is not None else 0
 
@@ -315,6 +480,7 @@ def _order_within_day(
     by_id: dict[str, SelectedPlace],
     seed: tuple[float, float] | None,
     day_start_minutes: int = 0,
+    meal_starts: dict[str, int] | None = None,
 ) -> list[str]:
     """하루 안의 방문 순서를 정한다.
 
@@ -325,7 +491,9 @@ def _order_within_day(
     두 시간을 버리는 것이다.
 
     그래서 **하루 시작 시각에 이미 열려 있는 곳을 먼저** 배치하고, 그 안에서
-    근접성으로 정한다. 늦게 여는 곳은 자연히 뒤로 밀린다.
+    근접성으로 정한다. 늦게 여는 곳은 자연히 뒤로 밀린다. 점심/저녁으로
+    예약된 장소는 `_opens_at`이 식사 시간대를 돌려주므로 같은 논리로 자연히
+    그 시간대 근처에 놓인다.
 
     숙소 좌표가 있으면 거기서 출발한다. 아침에 숙소에서 나오기 때문이다.
     """
@@ -340,7 +508,7 @@ def _order_within_day(
         start_id = min(
             remaining,
             key=lambda pid: (
-                max(0, _opens_at(by_id[pid]) - day_start_minutes),
+                max(0, _opens_at(by_id[pid], meal_starts) - day_start_minutes),
                 by_id[pid].lng,
                 pid,
             ),
@@ -360,7 +528,7 @@ def _order_within_day(
             place = by_id[pid]
             distance = geo.haversine_km(current[0], current[1], place.lat, place.lng)
             # 도착 예상 시각에 아직 안 열렸으면 기다려야 하는 분.
-            wait = max(0, _opens_at(place) - clock)
+            wait = max(0, _opens_at(place, meal_starts) - clock)
             # 대기가 있는 곳은 뒤로 밀되, 0.5km 단위로 근접성과 견준다.
             return (wait, round(distance * 2), pid)
 
@@ -368,7 +536,7 @@ def _order_within_day(
         place = by_id[next_id]
         ordered.append(next_id)
         remaining.remove(next_id)
-        clock = max(clock, _opens_at(place)) + place.expected_duration_min
+        clock = max(clock, _opens_at(place, meal_starts)) + place.expected_duration_min
         current = (place.lat, place.lng)
 
     return ordered

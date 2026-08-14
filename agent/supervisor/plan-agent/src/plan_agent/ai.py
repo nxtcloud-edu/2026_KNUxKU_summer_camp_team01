@@ -169,9 +169,11 @@ def _template_narration(payload: PlanToVerificationInput) -> PlanNarration:
                 )
             if item.category == "숙소":
                 note = f"체크인 가능 시각 이후인 {item.start_time}에 배치했어요"
+            if item.category == "항공":
+                note = f"{item.start_time}~{item.end_time} 항공편이에요"
             item_notes.append(ItemNote(item_id=item.id, note=_clean(note, NOTE_MAX_LENGTH)))
 
-        place_count = len([item for item in day.items if item.category != "숙소"])
+        place_count = len([item for item in day.items if item.category not in {"숙소", "항공"}])
         summary = (
             f"{day.date}에 {place_count}곳을 둘러보는 하루예요"
             if place_count
@@ -189,6 +191,12 @@ def _template_narration(payload: PlanToVerificationInput) -> PlanNarration:
             f"{len(payload.plan.days)}일 동안 {total_items}개 일정을 배치했어요", 120
         ),
     )
+
+
+def fallback_narration(payload: PlanToVerificationInput) -> PlanNarration:
+    """Gemini 없이 이미 계산된 값만 사용해 문장을 만든다."""
+
+    return _template_narration(payload)
 
 
 def _parse_response(response: Any) -> PlanNarration:
@@ -330,5 +338,6 @@ __all__ = [
     "PlanNarration",
     "SYSTEM_INSTRUCTION",
     "apply_notes",
+    "fallback_narration",
     "narrate_plan",
 ]

@@ -47,7 +47,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from . import contracts
+from . import contracts, flights
 from .allocate import AllocationResult, DayAllocation, allocate, trip_dates
 from .config import CONFIG
 from .gemini_schema import gemini_response_schema
@@ -172,7 +172,7 @@ def _build_prompt_payload(
                         "physical_intensity": item.physical_intensity,
                     }
                     for item in day.items
-                    if item.category != "숙소"
+                    if item.category not in {"숙소", "항공"}
                 ],
             }
             for day in payload.plan.days
@@ -282,7 +282,7 @@ def apply_decision(
     for day in payload.plan.days:
         ids: list[str] = []
         for item in day.items:
-            if item.category == "숙소":
+            if item.category in {"숙소", "항공"}:
                 continue
             place_id = by_name.get(item.name.strip().casefold())
             if place_id is not None:
@@ -381,6 +381,8 @@ async def replan_with_feedback(
     places = list(source.selected.places)
     trip = payload.trip_info
     stay = source.selected.stay
+    flight = source.selected.flight
+    day_overrides = flights.compute_day_overrides(trip, flight)
 
     # 배치가 바뀌었으니 하루 안 순서를 다시 정한다. allocate가 하던 정렬을
     # 재사용하기 위해 place_ids만 넘겨 다시 배열한다.
@@ -388,6 +390,8 @@ async def replan_with_feedback(
         [place for place in places if any(place.id in day.place_ids for day in allocation.days)],
         trip,
         stay,
+        day1_start_override=day_overrides.day1_start,
+        last_day_end_override=day_overrides.last_day_end,
     )
     # allocate가 자체 판단으로 다시 배치하므로, LLM이 지정한 날을 강제로 되돌린다.
     target_day = {
@@ -408,7 +412,15 @@ async def replan_with_feedback(
         if day is not None and place_id not in day.place_ids:
             day.place_ids.append(place_id)
 
-    schedule = build_schedule(reordered, places, trip, stay)
+    schedule = build_schedule(
+        reordered,
+        places,
+        trip,
+        stay,
+        flight=flight,
+        day1_start_override=day_overrides.day1_start,
+        last_day_end_override=day_overrides.last_day_end,
+    )
 
     diagnostics.estimated_leg_count = schedule.estimated_leg_count
     diagnostics.total_leg_count = schedule.total_leg_count

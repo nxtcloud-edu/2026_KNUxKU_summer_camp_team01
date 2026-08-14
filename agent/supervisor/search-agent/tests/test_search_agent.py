@@ -661,6 +661,21 @@ class SearchAgentContractTests(unittest.TestCase):
         self.assertEqual(request.trip_info.persona.must_visit, [])
         self.assertNotIn("센소지", request.trip_info.persona.description)
 
+    def test_hybrid_demo_cli_accepts_non_tokyo_with_explicit_iata(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args([
+            "--mode", "hybrid_demo",
+            "--destination", "파리",
+            "--destination-iata", "CDG",
+            "--start-date", "2026-10-15",
+            "--end-date", "2026-10-17",
+        ])
+
+        request = _build_request(args)
+
+        self.assertEqual(request.trip_info.destination, "파리")
+        self.assertEqual(request.destination_iata, "CDG")
+
     def test_cli_keeps_mock_tokyo_only_and_requires_non_tokyo_hybrid_iata(self) -> None:
         parser = build_parser()
         mock_args = parser.parse_args(["--mode", "mock", "--destination", "파리"])

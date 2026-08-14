@@ -57,7 +57,13 @@ class GooglePlacesClient:
         load_project_environment()
         return cls(os.environ.get("GOOGLE_PLACES_API_KEY", ""))
 
-    async def _search(self, query: str, request: SearchRequest) -> list[dict[str, Any]]:
+    async def _search(
+        self,
+        query: str,
+        request: SearchRequest,
+        *,
+        page_size: int | None = None,
+    ) -> list[dict[str, Any]]:
         headers = {
             "Content-Type": "application/json",
             "X-Goog-Api-Key": self._api_key,
@@ -65,7 +71,7 @@ class GooglePlacesClient:
         }
         body = {
             "textQuery": query,
-            "pageSize": request.max_results,
+            "pageSize": page_size or request.max_results,
             "languageCode": "ko",
         }
         async with httpx.AsyncClient(timeout=self._timeout, transport=self._transport) as client:
@@ -83,12 +89,30 @@ class GooglePlacesClient:
                 "url": row.get("googleMapsUri", self._endpoint),
                 "retrieved_at": retrieved_at,
             }
-        return rows[: request.max_results]
+        return rows[: page_size or request.max_results]
 
     async def search_stays(self, request: SearchRequest) -> list[dict[str, Any]]:
         """숙소 Places 원문만 반환하며 객실가와 체크인 시각을 만들지 않는다."""
 
-        return await self._search(f"{request.trip_info.destination} 호텔 숙소", request)
+        rows: list[dict[str, Any]] = []
+        seen_ids: set[str] = set()
+
+        async def add_results(query: str, *, page_size: int | None = None) -> None:
+            for row in await self._search(query, request, page_size=page_size):
+                row_id = str(row.get("id", ""))
+                if row_id in seen_ids:
+                    continue
+                seen_ids.add(row_id)
+                rows.append(row)
+
+        for name in request.trip_info.persona.must_visit:
+            await add_results(
+                f"{request.trip_info.destination} {name} 근처 호텔",
+                page_size=request.max_results,
+            )
+
+        await add_results(f"{request.trip_info.destination} 호텔 숙소")
+        return rows[: max(request.max_results * 3, request.max_results)]
 
     async def search_places(self, request: SearchRequest) -> list[dict[str, Any]]:
         """장소 Places 원문만 반환하며 입장료·체류시간·활동강도를 만들지 않는다."""
@@ -99,16 +123,43 @@ class GooglePlacesClient:
         rows: list[dict[str, Any]] = []
         seen_ids: set[str] = set()
 
-        async def add_results(query: str) -> None:
-            for row in await self._search(query, request):
+        async def add_results(
+            query: str,
+            requested_name: str | None = None,
+            *,
+            page_size: int | None = None,
+        ) -> None:
+            for index, row in enumerate(
+                await self._search(query, request, page_size=page_size)
+            ):
                 row_id = str(row.get("id", ""))
                 if row_id in seen_ids:
                     continue
+                if requested_name and index == 0:
+                    row["displayName"] = {"text": requested_name}
                 seen_ids.add(row_id)
                 rows.append(row)
 
         for name in request.trip_info.persona.must_visit:
-            await add_results(f"{request.trip_info.destination} {name}")
+            await add_results(
+                f"{request.trip_info.destination} {name}",
+                name,
+                page_size=min(3, request.max_results),
+            )
+            await add_results(
+                f"{request.trip_info.destination} {name} 주변 놀거리 관광",
+                page_size=min(5, request.max_results),
+            )
+            await add_results(
+                f"{request.trip_info.destination} {name} 주변 맛집",
+                page_size=request.max_results,
+            )
+            await add_results(
+                f"{request.trip_info.destination} {name} 근처 카페",
+                page_size=min(5, request.max_results),
+            )
 
-        await add_results(f"{request.trip_info.destination} 관광 명소 맛집")
-        return rows[: request.max_results]
+        await add_results(f"{request.trip_info.destination} 대표 관광 명소")
+        await add_results(f"{request.trip_info.destination} 대표 놀거리")
+        await add_results(f"{request.trip_info.destination} 현지 맛집")
+        return rows[: max(request.max_results * 3, request.max_results)]

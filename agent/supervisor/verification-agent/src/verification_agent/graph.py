@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import os
+
 from langgraph.graph import END, START, StateGraph
 
 from .ai import judge_human_constraints
 from .models import (
+    AvoidCheck,
     PlanToVerificationInput,
     StandardCheck,
     VerificationChecks,
@@ -110,13 +113,33 @@ def _run_rule_checks(state: VerificationState) -> dict[str, VerificationChecks]:
 
 
 def _prefer_ai(ai_check, rule_check):
-    return rule_check if ai_check.status == "skipped" else ai_check
+    if ai_check.status == "skipped":
+        return rule_check
+    if isinstance(ai_check, AvoidCheck):
+        if ai_check.status in {"warning", "fail"} and not ai_check.matched:
+            return rule_check
+    if isinstance(ai_check, StandardCheck):
+        if ai_check.status in {"warning", "fail"} and not ai_check.issues:
+            return rule_check
+    return ai_check
+
+
+def _strict_facts_enabled() -> bool:
+    return os.getenv("STRICT_FACTS", "true").strip().casefold() not in {
+        "0",
+        "false",
+        "off",
+        "no",
+    }
 
 
 async def _run_ai_checks(state: VerificationState) -> dict[str, VerificationChecks]:
     checks = state["checks"]
     if checks is None:
         raise RuntimeError("Rule checks must run before AI checks")
+
+    if _strict_facts_enabled():
+        return {"checks": checks}
 
     judgement = await judge_human_constraints(state["payload"])
     return {

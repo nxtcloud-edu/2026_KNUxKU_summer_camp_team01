@@ -43,7 +43,7 @@ Search Agent는 검색 후보 전체가 아니라 사용자가 선택한 결과�
 
 - `trip_info`: 여행 기간, 인원, 예산, 이동 방식, persona
 - `selected.flight`: 선택 항공편 또는 `null`
-- `selected.stay`: 선택 숙소 또는 `null`
+- `selected.stay`: 선택 숙소 또는 `null`. 현재 strict 로컬 모드에서는 숙소 provider가 없어 `null`
 - `selected.places`: Plan Agent가 배치할 장소
 
 ## 2. Plan → Verification
@@ -65,7 +65,24 @@ Plan Agent는 같은 `trip_info`와 완성된 일정을 전달합니다.
 - 하루 첫 item의 `travel_from_prev`는 `null`
 - 이후 item에는 이전 item에서의 이동 정보가 필요
 - `start_time`, `end_time`, `expected_duration_min`은 서로 일치해야 함
-- 마지막 여행일 전에는 하루 마지막 item이 `숙소`여야 함
+- 숙소 기능이 켜진 입력에서는 마지막 여행일 전 하루 마지막 item이 `숙소`여야 함
+- 현재 strict 로컬 모드에서는 숙소 기능을 제외하므로 이 규칙을 적용하지 않음
+
+### 현재 strict 로컬 모드에서 제외된 사실 기능
+
+아래 값은 추가 API 없이는 사실 기반으로 확인하기 어렵기 때문에 현재 기능에서
+제외되어 있습니다.
+
+| 값 | 현재 처리 |
+|---|---|
+| 숙소 실제 가격·체크인·체크아웃 | `selected.stay = null` |
+| 장소 입장료 | schema 호환용 `price: 0`, 예산 검증 제외 |
+| 사실 기반 체류시간 | 일정 슬롯 계산용 기본값만 사용 |
+| 사실 기반 활동강도 | walking level 검증 제외 |
+| 영업시간 미제공 장소 | `opening_hours: "정보 없음"`, 영업시간 검증 제외 |
+
+schema 호환을 위해 일부 필드는 payload에 남아 있지만, UI에서는 사실 데이터처럼
+노출하지 않아야 합니다.
 
 ## 공통 값 규칙
 

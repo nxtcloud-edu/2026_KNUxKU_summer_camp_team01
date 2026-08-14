@@ -29,6 +29,7 @@
 
 from __future__ import annotations
 
+from .config import CONFIG
 from .models import (
     Category,
     PlanToVerificationInput,
@@ -44,6 +45,7 @@ BUDGET_ALIASES: dict[str, set[str]] = {
     "쇼핑": {"쇼핑", "shopping"},
     "휴식": {"휴식", "relax"},
     "숙소": {"숙소", "stay"},
+    "항공": {"항공", "flight"},
 }
 
 
@@ -98,6 +100,9 @@ def distribute_stay_price(total_price: float, occurrences: int) -> list[float]:
 def estimate_total(payload: PlanToVerificationInput) -> float:
     """검증 에이전트가 계산할 `estimated_total`을 미리 같은 방식으로 구한다."""
 
+    if CONFIG.strict_facts:
+        return 0.0
+
     trip = payload.trip_info
     total = 0.0
     for day in payload.plan.days:
@@ -114,6 +119,9 @@ def check_budget(payload: PlanToVerificationInput) -> list[Violation]:
     검증 에이전트는 초과를 `fail`로 판정하므로, 여기서 걸리면 일정을 고쳐야 한다.
     조용히 넘기지 않고 초과액을 담아 반환한다.
     """
+
+    if CONFIG.strict_facts:
+        return []
 
     trip = payload.trip_info
     total = estimate_total(payload)

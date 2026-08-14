@@ -31,6 +31,7 @@ _ENV_KEYS_TO_ISOLATE = (
     "ROUTES_MAX_CALLS_TOTAL",
     "ROUTES_MAX_CALLS_PER_REQUEST",
     "ROUTES_CACHE",
+    "ROUTES_ALLOW_ESTIMATES",
     "GOOGLE_MAPS_API_KEY",
     "GEMINI_API_KEY",
 )
@@ -80,18 +81,26 @@ def _isolate_external_apis(request: pytest.FixtureRequest, monkeypatch):
         monkeypatch.delenv(key, raising=False)
 
     from plan_agent import config as config_module
+    from plan_agent import budget as budget_module
+    from plan_agent import contracts as contracts_module
     from plan_agent import quota as quota_module
     from plan_agent import routing
+    from plan_agent import schedule
 
     isolated = config_module.CONFIG.__class__(
         **{
             **vars(config_module.CONFIG),
             "google_maps_api_key": "",
             "gemini_api_key": "",
+            "routes_allow_estimates": True,
+            "strict_facts": False,
         }
     )
     monkeypatch.setattr(config_module, "CONFIG", isolated)
+    monkeypatch.setattr(budget_module, "CONFIG", isolated)
+    monkeypatch.setattr(contracts_module, "CONFIG", isolated)
     monkeypatch.setattr(routing, "CONFIG", isolated)
+    monkeypatch.setattr(schedule, "CONFIG", isolated)
 
     # quota.BUDGET은 import 시점에 한 번 생성된 전역 싱글턴이다. 환경변수를
     # 지운 뒤 기본값으로 다시 맞춘다.

@@ -28,7 +28,7 @@ class TripInfo(StrictModel):
     num_travelers: int = Field(ge=1)
     budget_total: float = Field(ge=0)
     budget_currency: str = Field(pattern=r"^[A-Z]{3}$")
-    budget_includes: list[Literal["관광지", "식사", "카페", "쇼핑", "휴식", "숙소"]]
+    budget_includes: list[Literal["관광지", "식사", "카페", "쇼핑", "휴식", "숙소", "항공"]]
     transport_mode: str
     day_start_time: time
     day_end_time: time
@@ -44,7 +44,7 @@ class TravelFromPrevious(StrictModel):
 class PlanItem(StrictModel):
     id: str = Field(pattern=r"^d[1-9]\d*-[1-9]\d*$")
     name: str
-    category: Literal["관광지", "식사", "카페", "쇼핑", "휴식", "숙소"]
+    category: Literal["관광지", "식사", "카페", "쇼핑", "휴식", "숙소", "항공"]
     start_time: time
     end_time: time
     lat: float = Field(ge=-90, le=90)
