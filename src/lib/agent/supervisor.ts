@@ -1,4 +1,5 @@
 import { VERIFICATION_CHECKS } from '@/lib/data';
+import { resolvePrimaryAirport } from '@/lib/airports';
 import { getTripDestination, getTripOrigin } from '@/lib/locations';
 import { getTripPlace, getTripPlaces } from '@/lib/places';
 import { getTripFlight, getTripStay } from '@/lib/searchResults';
@@ -287,12 +288,21 @@ export const toSupervisorInput = (trip: Trip): SupervisorInput => {
 export const toSearchInput = (trip: Trip) => {
   const origin = getTripOrigin(trip);
   const destination = getTripDestination(trip);
+  const includeFlights = trip.persona.includeFlights !== false;
+  const originIata = resolvePrimaryAirport(origin);
+  const destinationIata = resolvePrimaryAirport(destination);
+  if (includeFlights && (!originIata || !destinationIata)) {
+    const unresolved = [!originIata ? origin?.name ?? trip.originId ?? '출발지' : '', !destinationIata ? destination?.name ?? trip.destinationId ?? '목적지' : '']
+      .filter(Boolean)
+      .join(', ');
+    throw new SupervisorContractError(`${unresolved}의 공항 코드를 확인할 수 없습니다. 현재 지원되는 도시를 선택해 주세요.`);
+  }
   return {
     trip_info: getTripInfo(trip),
     origin: origin?.name ?? trip.originId ?? '',
-    origin_iata: origin?.airportCodes[0] || undefined,
-    destination_iata: destination?.airportCodes[0] || undefined,
-    include_flights: trip.persona.includeFlights !== false,
+    origin_iata: originIata,
+    destination_iata: destinationIata,
+    include_flights: includeFlights,
     flight_trip_type: 'round_trip',
     include_stays: trip.persona.includeStays !== false,
     max_results: 10,
