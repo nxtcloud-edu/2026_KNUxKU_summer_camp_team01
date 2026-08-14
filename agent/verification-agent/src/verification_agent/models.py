@@ -151,7 +151,7 @@ class VerificationFinding(StrictModel):
     item_id: str | None = None
 
 
-class VerificationFindings(StrictModel):
+class VerificationFeedback(StrictModel):
     cautions: list[VerificationFinding] = Field(default_factory=list)
     dangers: list[VerificationFinding] = Field(default_factory=list)
 
@@ -159,7 +159,7 @@ class VerificationFindings(StrictModel):
 class VerificationResult(StrictModel):
     possible: bool
     checks: VerificationChecks
-    findings: VerificationFindings = Field(default_factory=VerificationFindings)
+    feedback: VerificationFeedback = Field(default_factory=VerificationFeedback)
 
 
 class AiHumanJudgement(StrictModel):

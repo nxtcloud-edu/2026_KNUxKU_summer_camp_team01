@@ -8,7 +8,7 @@ from .models import (
     StandardCheck,
     VerificationChecks,
     VerificationFinding,
-    VerificationFindings,
+    VerificationFeedback,
     VerificationResult,
 )
 from .rules import build_rule_checks
@@ -46,7 +46,7 @@ def _standard_findings(
     ]
 
 
-def _build_findings(checks: VerificationChecks) -> VerificationFindings:
+def _build_feedback(checks: VerificationChecks) -> VerificationFeedback:
     items: list[VerificationFinding] = []
     for check_name, check in (
         ("physical_feasibility", checks.physical_feasibility),
@@ -118,7 +118,7 @@ def _build_findings(checks: VerificationChecks) -> VerificationFindings:
             )
         )
 
-    return VerificationFindings(
+    return VerificationFeedback(
         cautions=[item for item in items if item.level == "주의"],
         dangers=[item for item in items if item.level == "위험"],
     )
@@ -192,5 +192,5 @@ async def verify_plan(payload: PlanToVerificationInput) -> VerificationResult:
     return VerificationResult(
         possible=state["possible"],
         checks=checks,
-        findings=_build_findings(checks),
+        feedback=_build_feedback(checks),
     )

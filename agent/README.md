@@ -145,7 +145,7 @@ Accept: text/event-stream
       ]
     }
   },
-  "findings": {
+  "feedback": {
     "cautions": [
       {
         "level": "주의",
@@ -162,7 +162,7 @@ Accept: text/event-stream
 }
 ```
 
-`findings.cautions`와 `findings.dangers`는 문제가 있는 사안을 한 건씩 분리해 제공합니다. `warning` issue는 `주의`, `fail` issue는 `위험`으로 분류됩니다. 모든 `주의` finding에는 사용자가 확인하거나 조정해야 할 내용을 `attention`으로 제공합니다. 기존 `checks`는 상세 원본 판정을 위해 그대로 유지됩니다.
+`feedback.cautions`와 `feedback.dangers`는 문제가 있는 사안을 하나의 상위 `feedback` 객체 아래에서 한 건씩 분리해 제공합니다. `warning` issue는 `주의`, `fail` issue는 `위험`으로 분류됩니다. 모든 `주의` feedback에는 사용자가 확인하거나 조정해야 할 내용을 `attention`으로 제공합니다. 기존 `checks`는 상세 원본 판정을 위해 그대로 유지됩니다.
 
 결정론 규칙은 물리적 시간, 예산, 영업시간, 일정 구조, 필수 방문을 처리합니다. Gemini는 회피 조건, 페이스, 걷기/활동 강도와 각 장소의 체류시간 현실성을 처리하며 `GEMINI_API_KEY`가 없으면 해당 체크만 `skipped`가 됩니다.
 
