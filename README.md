@@ -2,7 +2,7 @@
 
 강원대x고려대 Summer Agentic AI 심화 몰입 캠프 1팀 레포지토리입니다.
 
-## Voyagent — AI 여행 플래너
+## JustGO — AI 여행 플래너
 
 > 도시와 날짜만 정하면, AI 에이전트가 항공권·숙소·관광지를 찾아 **검증된 여행 일정표**까지 만들어 주는 웹앱.
 
@@ -49,7 +49,7 @@ node agent/tools/conformance.mjs http://localhost:8000
 | 프레임워크 | Next.js 15 (App Router) + TypeScript |
 | 스타일 | Tailwind CSS + shadcn/ui, OKLCH 토큰 |
 | 상태 | Zustand (+ localStorage 지속화) + TanStack Query |
-| 지도 | MapLibre GL JS + OpenFreeMap (**API 키 불필요**) |
+| 지도 | Google Maps JavaScript API (`@react-google-maps/api`, **API 키 필요** — `.env.example` 참고) |
 | 드래그&드롭 | dnd-kit |
 | 에이전트 | 목 스트리밍 계층 → `MockTransport` ↔ `SseTransport` 교체 가능 |
 | 배포 | Vercel |
