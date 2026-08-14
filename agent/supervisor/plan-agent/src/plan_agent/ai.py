@@ -37,6 +37,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from .config import CONFIG
+from .gemini_schema import gemini_response_schema
 from .models import PlanToVerificationInput
 
 logger = logging.getLogger(__name__)
@@ -238,7 +239,10 @@ async def narrate_plan(
                 system_instruction=SYSTEM_INSTRUCTION,
                 temperature=CONFIG.gemini_temperature,
                 response_mime_type="application/json",
-                response_schema=PlanNarration,
+                # Pydantic 모델을 직접 넘기면 extra="forbid"가 만드는
+                # additionalProperties:false를 Gemini가 거부한다(400 에러,
+                # replan.py에서 실제로 재현·확인함). 정제된 dict를 넘긴다.
+                response_schema=gemini_response_schema(PlanNarration),
             ),
         )
         narration = _parse_response(response)

@@ -50,6 +50,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from . import contracts
 from .allocate import AllocationResult, DayAllocation, allocate, trip_dates
 from .config import CONFIG
+from .gemini_schema import gemini_response_schema
 from .models import (
     PlanToVerificationInput,
     SearchToPlanInput,
@@ -232,7 +233,10 @@ async def decide_changes(
                 system_instruction=SYSTEM_INSTRUCTION,
                 temperature=CONFIG.gemini_temperature,
                 response_mime_type="application/json",
-                response_schema=ReplanDecision,
+                # Pydantic 모델을 직접 넘기지 않는다. extra="forbid"가 만드는
+                # additionalProperties:false를 Gemini가 거부한다(400 에러).
+                # gemini_response_schema()가 그 키를 제거한 dict를 넘긴다.
+                response_schema=gemini_response_schema(ReplanDecision),
             ),
         )
         parsed = getattr(response, "parsed", None)

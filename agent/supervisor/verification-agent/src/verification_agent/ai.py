@@ -7,6 +7,7 @@ from typing import Any
 
 from google import genai
 
+from .gemini_schema import gemini_response_schema
 from .models import (
     AiHumanJudgement,
     AvoidCheck,
@@ -123,7 +124,10 @@ async def judge_human_constraints(
             response_format={
                 "type": "text",
                 "mime_type": "application/json",
-                "schema": AiHumanJudgement.model_json_schema(),
+                # model_json_schema()를 그대로 넘기면 StrictModel의
+                # extra="forbid"가 만드는 additionalProperties:false를
+                # Gemini가 거부한다(plan-agent에서 실제 400 에러로 확인함).
+                "schema": gemini_response_schema(AiHumanJudgement),
             },
         )
         return _parse_response(response)

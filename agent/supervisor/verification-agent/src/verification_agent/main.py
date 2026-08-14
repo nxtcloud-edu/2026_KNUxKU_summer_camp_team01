@@ -8,11 +8,16 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import StreamingResponse
 
+# 다른 import보다 먼저 실행되어야 한다. GEMINI_API_KEY 등을 os.environ에
+# 채워 넣은 뒤에 graph.py -> ai.py가 os.getenv로 그 값을 읽는다.
+from .env_loader import ENV_FILE
 from .graph import verify_plan
 from .models import PlanToVerificationInput
 from .sse import SSE_HEADERS, SseEmitter
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+logger.info(".env: %s", ENV_FILE if ENV_FILE else "없음 (프로세스 환경변수만 사용)")
 
 app = FastAPI(title="Voyagent Verification Agent", version="0.1.0")
 
